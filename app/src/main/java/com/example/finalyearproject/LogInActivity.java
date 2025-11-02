@@ -1,6 +1,7 @@
 package com.example.finalyearproject;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -22,19 +23,39 @@ public class LogInActivity extends AppCompatActivity
         passwordET = findViewById(R.id.passwordET);
         loginBtn = findViewById(R.id.loginBtn);
 
-        loginBtn.setOnClickListener(v ->
-        {
-            String id = idET.getText().toString().trim();
-            String password = passwordET.getText().toString().trim();
+        loginBtn.setOnClickListener(v -> validateLogin());
+    }
 
-            if (id.isEmpty() || password.isEmpty())
-            {
-                Toast.makeText(LogInActivity.this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
-            }else
-            {
-                //need to add in database //
-                Toast.makeText(LogInActivity.this, "Database to be added in", Toast.LENGTH_SHORT).show();
-            }
-        });
+    private void validateLogin() {
+        String id = idET.getText().toString().trim();
+        String password = passwordET.getText().toString().trim();
+
+        //username/email parameters
+        if (TextUtils.isEmpty(id)) {
+            Toast.makeText(this, "Enter your Username/Password", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!id.contains("@") && !id.matches(".*\\d.*")) {
+            Toast.makeText(this, "Username must have a number or Email must have @", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        //password parameters
+        if (password.length() < 8) {
+            Toast.makeText(this, "Password must be 8 characters long", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!password.matches(".*\\d.*")) {
+            Toast.makeText(this, "Password must contain 1 number", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!password.matches(".*[!@#$%^&*+=?<>].*")) {
+            Toast.makeText(this, "Password must contain 1 special character", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        //need to check database for existing account
+
+        Toast.makeText(this, "Login Valid, Ready to Start!", Toast.LENGTH_SHORT).show();
     }
 }
