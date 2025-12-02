@@ -1,8 +1,4 @@
-package com.example.finalyearproject;
-
-import com.example.finalyearproject.ApiResponse;
-import com.example.finalyearproject.LoginRequest;
-import com.example.finalyearproject.RegisterRequest;
+package com.example.finalyearproject.data;
 
 import retrofit2.Call;
 import retrofit2.http.Body;

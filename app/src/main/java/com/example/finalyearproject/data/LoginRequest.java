@@ -1,4 +1,4 @@
-package com.example.finalyearproject;
+package com.example.finalyearproject.data;
 
 public class LoginRequest {
     public String email, password;

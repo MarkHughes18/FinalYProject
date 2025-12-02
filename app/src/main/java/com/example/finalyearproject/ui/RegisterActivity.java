@@ -1,10 +1,17 @@
-package com.example.finalyearproject;
+package com.example.finalyearproject.ui;
 
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.ApiResponse;
+import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.RegisterRequest;
+import com.example.finalyearproject.data.RetrofitClient;
+
 import java.util.Calendar;
 import retrofit2.*;
 

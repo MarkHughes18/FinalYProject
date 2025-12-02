@@ -1,4 +1,4 @@
-package com.example.finalyearproject;
+package com.example.finalyearproject.data;
 
 public class ApiResponse {
     public boolean success;

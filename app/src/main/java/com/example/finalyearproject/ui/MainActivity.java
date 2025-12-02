@@ -1,4 +1,4 @@
-package com.example.finalyearproject;
+package com.example.finalyearproject.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -6,7 +6,12 @@ import android.text.TextUtils;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.finalyearproject.ApiService;
+import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.ApiResponse;
+import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.LoginRequest;
+import com.example.finalyearproject.data.RetrofitClient;
+
 import retrofit2.*;
 
 public class MainActivity extends AppCompatActivity {

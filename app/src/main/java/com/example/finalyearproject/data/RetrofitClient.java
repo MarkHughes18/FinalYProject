@@ -1,4 +1,4 @@
-package com.example.finalyearproject;
+package com.example.finalyearproject.data;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
