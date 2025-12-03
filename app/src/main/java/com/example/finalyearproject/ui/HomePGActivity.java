@@ -59,7 +59,7 @@ public class HomePGActivity extends AppCompatActivity {
                         if (uri != null){
                             selectedFileUri = uri;
                             selectedFileName = getFileNameFromUri(uri);
-                            selectedFileTV.setText("Selected: " + selectedFileName)
+                            selectedFileTV.setText("Selected: " + selectedFileName);
                         }
                     }
                 }
