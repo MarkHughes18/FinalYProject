@@ -27,7 +27,7 @@
 
         <EditText
             android:id="@+id/regPasswordET"
-            android:hint="Password (8+ incl. number & special)"
+            android:hint="Password (8+ incl. number + special)"
             android:inputType="textPassword"
             android:layout_width="match_parent" android:layout_height="wrap_content"/>
 

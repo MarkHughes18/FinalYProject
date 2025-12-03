@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
+
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.finalyearproject.R;
@@ -15,13 +17,13 @@ import com.example.finalyearproject.data.RetrofitClient;
 import retrofit2.*;
 
 public class MainActivity extends AppCompatActivity {
-    EditText emailET, passwordET;
-    Button signInBtn;
-    TextView registerLink;
+    private EditText emailET, passwordET;
+    private Button signInBtn;
+    private TextView registerLink;
     ApiService api;
 
-    @Override protected void onCreate(Bundle b) {
-        super.onCreate(b);
+    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         emailET = findViewById(R.id.emailET);
@@ -29,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         signInBtn = findViewById(R.id.signInBtn);
         registerLink = findViewById(R.id.registerLink);
 
-        api = RetrofitClient.getInstance().create(ApiService.class);
+        api = RetrofitClient.getApiService();
 
         signInBtn.setOnClickListener(v -> trySignIn());
         registerLink.setOnClickListener(v ->
@@ -52,7 +54,8 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> res) {
                 if (res.isSuccessful() && res.body() != null && res.body().success) {
                     toast("Signed in!");
-                    // TODO: go to your next screen
+                    startActivity(new Intent(MainActivity.this, HomePGActivity.class));
+                    finish();
                 } else {
                     toast(res.body() != null ? res.body().message : "Login failed");
                 }

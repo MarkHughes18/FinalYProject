@@ -4,6 +4,8 @@ import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
+
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.finalyearproject.R;
@@ -16,12 +18,12 @@ import java.util.Calendar;
 import retrofit2.*;
 
 public class RegisterActivity extends AppCompatActivity {
-    EditText fullNameET, regEmailET, regPasswordET, dobET;
-    Button registerBtn;
-    ApiService api;
+    private EditText fullNameET, regEmailET, regPasswordET, dobET;
+    private Button registerBtn;
+    private ApiService api;
 
-    @Override protected void onCreate(Bundle b) {
-        super.onCreate(b);
+    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
         fullNameET = findViewById(R.id.fullNameET);
@@ -30,7 +32,7 @@ public class RegisterActivity extends AppCompatActivity {
         dobET = findViewById(R.id.dobET);
         registerBtn = findViewById(R.id.registerBtn);
 
-        api = RetrofitClient.getInstance().create(ApiService.class);
+        api = RetrofitClient.getApiService();
 
         dobET.setOnClickListener(v -> showDatePicker());
         registerBtn.setOnClickListener(v -> tryRegister());
