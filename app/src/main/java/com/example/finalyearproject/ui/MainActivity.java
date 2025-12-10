@@ -43,25 +43,25 @@ public class MainActivity extends AppCompatActivity {
         String password = passwordET.getText().toString();
 
         if (TextUtils.isEmpty(email) || !email.contains("@")) {
-            toast("Enter a valid email"); return;
+            toast("Enter a Valid Email"); return;
         }
         if (password.length() < 8) {
-            toast("Password must be at least 8 characters"); return;
+            toast("Password must be at least 8 Characters"); return;
         }
 
         LoginRequest req = new LoginRequest(email, password);
         api.login(req).enqueue(new Callback<ApiResponse>() {
             @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> res) {
                 if (res.isSuccessful() && res.body() != null && res.body().success) {
-                    toast("Signed in!");
+                    toast("Signed In!");
                     startActivity(new Intent(MainActivity.this, HomePGActivity.class));
                     finish();
                 } else {
-                    toast(res.body() != null ? res.body().message : "Login failed");
+                    toast(res.body() != null ? res.body().message : "Login Failed");
                 }
             }
             @Override public void onFailure(Call<ApiResponse> call, Throwable t) {
-                toast("Network error: " + t.getMessage());
+                toast("Network Error: " + t.getMessage());
             }
         });
     }

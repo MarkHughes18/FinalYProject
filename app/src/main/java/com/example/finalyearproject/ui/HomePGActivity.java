@@ -6,6 +6,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -15,6 +17,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
@@ -42,11 +45,41 @@ public class HomePGActivity extends AppCompatActivity {
         uploadBtn = findViewById(R.id.uploadBtn);
         uploadProgress = findViewById(R.id.uploadProgress);
         previousFilesRV = findViewById(R.id.previousFilesRV);
+        Toolbar toolbar = findViewById(R.id.homeToolbar);
+        setSupportActionBar(toolbar);
+
 
         setupFilePicker();
 
         pickFileBtn.setOnClickListener(v -> openFilePicker());
         uploadBtn.setOnClickListener(v -> onUploadClicked());
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.menu_homepg, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        int id = item.getItemId();
+        if (id == R.id.action_my_files) {
+            // create a my uploads screen
+            Toast.makeText(this, "My Uploads", Toast.LENGTH_SHORT).show();
+            return true;
+        } else if (id == R.id.action_settings) {
+            // create a settings page
+            Toast.makeText(this, "Settings", Toast.LENGTH_SHORT).show();
+            return true;
+        } else if (id == R.id.action_logout) {
+            Intent intent = new Intent(HomePGActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     //how we receive picked file
@@ -119,6 +152,8 @@ public class HomePGActivity extends AppCompatActivity {
 
         return result != null ? result : "Unnamed File";
     }
+
+
 
     private void toast(String msg){
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();

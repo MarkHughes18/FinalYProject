@@ -1,6 +1,7 @@
 package com.example.finalyearproject.ui;
 
 import android.app.DatePickerDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
@@ -19,7 +20,7 @@ import retrofit2.*;
 
 public class RegisterActivity extends AppCompatActivity {
     private EditText fullNameET, regEmailET, regPasswordET, dobET;
-    private Button registerBtn;
+    private Button registerBtn, bckToSignInBtn;
     private ApiService api;
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -31,11 +32,13 @@ public class RegisterActivity extends AppCompatActivity {
         regPasswordET = findViewById(R.id.regPasswordET);
         dobET = findViewById(R.id.dobET);
         registerBtn = findViewById(R.id.registerBtn);
+        bckToSignInBtn = findViewById(R.id.bckToSignInBtn);
 
         api = RetrofitClient.getApiService();
 
         dobET.setOnClickListener(v -> showDatePicker());
         registerBtn.setOnClickListener(v -> tryRegister());
+        bckToSignInBtn.setOnClickListener(v -> finish());
     }
 
     private void showDatePicker() {
@@ -53,24 +56,26 @@ public class RegisterActivity extends AppCompatActivity {
         String pwd = regPasswordET.getText().toString();
         String dob = dobET.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name)) { toast("Enter full name"); return; }
-        if (TextUtils.isEmpty(email) || !email.contains("@")) { toast("Enter a valid email"); return; }
+        if (TextUtils.isEmpty(name)) { toast("Enter Full Name"); return; }
+        if (TextUtils.isEmpty(email) || !email.contains("@")) { toast("Enter a Valid Email"); return; }
         if (!pwd.matches("^(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]|:;\"'<>,.?/]).{8,}$")) {
-            toast("Password needs 8+ chars incl. a number & special char"); return;
+            toast("Password needs 8+ Chars incl. a Number & Special Char"); return;
         }
-        if (TextUtils.isEmpty(dob)) { toast("Select your date of birth"); return; }
+        if (TextUtils.isEmpty(dob)) { toast("Select your Date of Birth"); return; }
 
         RegisterRequest req = new RegisterRequest(name, email, pwd, dob);
         api.register(req).enqueue(new Callback<ApiResponse>() {
             @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> res) {
                 if (res.isSuccessful() && res.body() != null && res.body().success) {
-                    toast("Registered! You can sign in now."); finish();
+                    toast("Registered! Welcome to our Learning Space!");
+                    startActivity(new Intent(RegisterActivity.this, HomePGActivity.class));
+                    finish();
                 } else {
-                    toast(res.body() != null ? res.body().message : "Registration failed");
+                    toast(res.body() != null ? res.body().message : "Registration Failed");
                 }
             }
             @Override public void onFailure(Call<ApiResponse> call, Throwable t) {
-                toast("Network error: " + t.getMessage());
+                toast("Network Error: " + t.getMessage());
             }
         });
     }

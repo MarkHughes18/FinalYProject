@@ -7,42 +7,41 @@
     tools:context=".ui.HomePGActivity"
     android:padding="45dp">
 
-    <TextView
-        android:id="@+id/homeTitleTV"
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/homeToolbar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Unconventioanl Learning - Home"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:padding="16dp"
-        android:gravity="center"
+        android:background="?attr/colorPrimary"
+        app:title="Unconventional Learning"
+        app:titleTextColor="@android:color/white"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Choose File button directly under toolbar -->
     <Button
         android:id="@+id/pickFileBtn"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Choose File"
-        app:layout_constraintTop_toBottomOf="@+id/homeTitleTV"
+        app:layout_constraintTop_toBottomOf="@+id/homeToolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="24dp" />
 
     <TextView
         android:id="@+id/selectedFileTV"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text= "No Files Selected"
+        android:text="No Files Selected"
         android:padding="12dp"
         android:textSize="14sp"
         app:layout_constraintTop_toBottomOf="@id/pickFileBtn"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="8dp" />
 
     <Button
         android:id="@+id/uploadBtn"
@@ -53,7 +52,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp" />
 
     <ProgressBar
         android:id="@+id/uploadProgress"
@@ -64,7 +63,7 @@
         app:layout_constraintTop_toBottomOf="@id/uploadBtn"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="8dp" />
 
     <TextView
         android:id="@+id/historyLabelTV"
@@ -76,7 +75,7 @@
         android:paddingTop="24dp"
         app:layout_constraintTop_toBottomOf="@id/uploadProgress"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/previousFilesRV"
@@ -87,6 +86,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_margin="16dp"
-        tools:listitem="@android:layout/simple_list_item_2"/>
+        tools:listitem="@android:layout/simple_list_item_2" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
