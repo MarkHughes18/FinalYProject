@@ -20,7 +20,7 @@ import retrofit2.*;
 
 public class RegisterActivity extends AppCompatActivity {
     private EditText fullNameET, regEmailET, regPasswordET, dobET;
-    private Button registerBtn, bckToSignInBtn;
+    private Button registerBtn, bckToSignInBtn; 
     private ApiService api;
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {

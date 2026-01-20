@@ -2,12 +2,14 @@ package com.example.finalyearproject.ui;
 
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -18,9 +20,22 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.HistoryItem;
+import com.example.finalyearproject.data.CreateHistoryRequest;
+import com.example.finalyearproject.data.RetrofitClient;
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class HomePGActivity extends AppCompatActivity {
 
@@ -32,6 +47,18 @@ public class HomePGActivity extends AppCompatActivity {
     //parameters for the dile selected by user
     private Uri selectedFileUri = null;
     private String selectedFileName;
+
+    // Data for RecyclerView
+    private final List<HistoryItem> historyItems = new ArrayList<>();
+    private HistoryAdapter historyAdapter;
+
+    private ApiService api;
+
+    private String getLoggedInEmail() {
+        SharedPreferences prefs = getSharedPreferences("auth", MODE_PRIVATE);
+        return prefs.getString("email", null);
+    }
+
 
     private ActivityResultLauncher<Intent> pickFileLauncher;
 
@@ -49,6 +76,11 @@ public class HomePGActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
 
+        previousFilesRV.setLayoutManager(new LinearLayoutManager(this));
+        historyAdapter = new HistoryAdapter(historyItems);
+        previousFilesRV.setAdapter(historyAdapter);
+
+        api = RetrofitClient.getApiService();
         setupFilePicker();
 
         pickFileBtn.setOnClickListener(v -> openFilePicker());
@@ -152,6 +184,122 @@ public class HomePGActivity extends AppCompatActivity {
 
         return result != null ? result : "Unnamed File";
     }
+
+    private void createHistory() {
+        if (selectedFileUri == null) {
+            Toast.makeText(this, "Please choose a file first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String userEmail = getLoggedInEmail();
+        if (userEmail == null) {
+            Toast.makeText(this, "Session expired. Please sign in again.", Toast.LENGTH_SHORT).show();
+            // optionally navigate back to MainActivity here
+            return;
+        }
+
+        // ---- Get file metadata from the Uri ----
+        String fileName = getFileNameFromUri(selectedFileUri);   // you already have this helper
+        String fileType = getContentResolver().getType(selectedFileUri); // e.g. "application/pdf"
+
+        if (fileType == null) {
+            // Fallback to extension if MIME type is unknown
+            fileType = "application/octet-stream";
+        }
+
+        long fileSize = 0L;
+        Cursor c = null;
+        try {
+            c = getContentResolver().query(selectedFileUri,
+                    new String[]{android.provider.OpenableColumns.SIZE},
+                    null, null, null);
+            if (c != null && c.moveToFirst()) {
+                int sizeIndex = c.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                if (sizeIndex >= 0) {
+                    fileSize = c.getLong(sizeIndex);
+                }
+            }
+        } finally {
+            if (c != null) c.close();
+        }
+
+        // ---- Build request object ----
+        CreateHistoryRequest req = new CreateHistoryRequest(
+                userEmail,
+                fileName,
+                fileType,
+                fileSize
+        );
+
+        // Optionally show a progress bar while we call the backend
+        uploadProgress.setVisibility(View.VISIBLE);
+
+        api.createHistory(req).enqueue(new Callback<HistoryItem>() {
+            @Override
+            public void onResponse(Call<HistoryItem> call, Response<HistoryItem> response) {
+                uploadProgress.setVisibility(View.GONE);
+
+                if (response.isSuccessful() && response.body() != null) {
+                    HistoryItem created = response.body();
+                    // Add the new item to the top of the list
+                    historyItems.add(0, created);
+                    historyAdapter.notifyItemInserted(0);
+                    Toast.makeText(HomePGActivity.this,
+                            "History updated for " + created.fileName,
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(HomePGActivity.this,
+                            "Failed to create history entry",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<HistoryItem> call, Throwable t) {
+                uploadProgress.setVisibility(View.GONE);
+                Toast.makeText(HomePGActivity.this,
+                        "Network error: " + t.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void getHistory(String userEmail) {
+        if (userEmail == null) {
+            Toast.makeText(this, "No logged in user", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        uploadProgress.setVisibility(View.VISIBLE);
+
+        api.getHistory(userEmail).enqueue(new Callback<List<HistoryItem>>() {
+            @Override
+            public void onResponse(Call<List<HistoryItem>> call,
+                                   Response<List<HistoryItem>> response) {
+                uploadProgress.setVisibility(View.GONE);
+
+                if (response.isSuccessful() && response.body() != null) {
+                    historyItems.clear();
+                    historyItems.addAll(response.body());
+                    historyAdapter.notifyDataSetChanged();
+                } else {
+                    Toast.makeText(HomePGActivity.this,
+                            "Failed to load history",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<HistoryItem>> call, Throwable t) {
+                uploadProgress.setVisibility(View.GONE);
+                Toast.makeText(HomePGActivity.this,
+                        "Network error: " + t.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
 
 
 
