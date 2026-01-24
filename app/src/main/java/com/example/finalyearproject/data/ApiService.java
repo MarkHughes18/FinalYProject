@@ -19,6 +19,6 @@ public interface ApiService {
     Call<HistoryItem> createHistory(@Body CreateHistoryRequest req);
 
     @GET("api/files/history")
-    Call<List<HistoryItem>> getHistory(@Query("userEmail") String userEmail);
+    Call<List<HistoryItem>> getHistory(@Query("email") String email);
 
 }

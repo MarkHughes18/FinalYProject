@@ -1,91 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.HomePGActivity"
-    android:padding="8dp">
+    tools:context=".ui.HomePGActivity">
 
-    <androidx.appcompat.widget.Toolbar
+    <!-- Top app bar -->
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/homeToolbar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
-        app:title="Unconventional Learning"
-        app:titleTextColor="@android:color/white"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:title="Unconventional Learning"
+        android:titleTextColor="@android:color/white"
+        app:layout_scrollFlags="scroll|enterAlways" />
 
-    <!-- Choose File button directly under toolbar -->
-    <Button
-        android:id="@+id/pickFileBtn"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Choose File"
-        app:layout_constraintTop_toBottomOf="@+id/homeToolbar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="24dp" />
-
-    <TextView
-        android:id="@+id/selectedFileTV"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="No Files Selected"
-        android:padding="12dp"
-        android:textSize="14sp"
-        app:layout_constraintTop_toBottomOf="@id/pickFileBtn"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp" />
-
-    <Button
-        android:id="@+id/uploadBtn"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Generate audio from file"
-        app:layout_constraintTop_toBottomOf="@id/selectedFileTV"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp" />
-
-    <ProgressBar
-        android:id="@+id/uploadProgress"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/uploadBtn"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/historyLabelTV"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Previous uploads"
-        android:textStyle="bold"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/uploadProgress"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/previousFilesRV"
-        android:layout_width="0dp"
+    <!-- Fragment container -->
+    <FrameLayout
+        android:id="@+id/homeFragmentContainer"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/historyLabelTV"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="16dp"
-        tools:listitem="@android:layout/simple_list_item_2" />
+        android:layout_marginTop="?attr/actionBarSize"
+        android:layout_marginBottom="56dp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Bottom navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/homeBottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:menu="@menu/menu_bottom_nav" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
