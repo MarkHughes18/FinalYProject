@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document(collection = "file_history")
+@Document(collection = "History")
 public class FileHistory {
 
     @Id
