@@ -1,90 +1,74 @@
 package com.example.finalyearproject.ui;
 
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 
 import com.example.finalyearproject.R;
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class HomePGActivity extends AppCompatActivity {
 
-    private MaterialToolbar homeToolbar;
-    private BottomNavigationView homeBottomNav;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        //Get logged-in email
+        SharedPreferences authPrefs = getSharedPreferences("auth", MODE_PRIVATE);
+        String email = authPrefs.getString("email", null);
+
+        //Build a per-user key
+        String themeKey = (email != null)
+                ? "theme_mode_" + email
+                : "theme_mode_default";
+
+        //Read that user’s theme or system default
+        SharedPreferences settingsPrefs = getSharedPreferences("settings", MODE_PRIVATE);
+        int mode = settingsPrefs.getInt(
+                themeKey,
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        );
+
+        AppCompatDelegate.setDefaultNightMode(mode);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_homepg);
 
-        homeToolbar = findViewById(R.id.homeToolbar);
-        homeBottomNav = findViewById(R.id.homeBottomNav);
+        // Toolbar
+        Toolbar toolbar = findViewById(R.id.homeToolbar);
+        setSupportActionBar(toolbar);
 
-        setSupportActionBar(homeToolbar);
-        // Optional explicit title if not set in XML
-        getSupportActionBar().setTitle("Unconventional Learning");
+        // Bottom navigation
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
-        // Default tab = Home
-        replaceFragment(new HomeFragment());
-
-        // Bottom navigation behaviour
-        homeBottomNav.setOnItemSelectedListener(item -> {
-            Fragment f;
+        bottomNav.setOnItemSelectedListener(item -> {
+            Fragment fragment = null;
             int id = item.getItemId();
+
             if (id == R.id.nav_home) {
-                f = new HomeFragment();
+                fragment = new HomeFragment();
             } else if (id == R.id.nav_history) {
-                // TODO: later move history list here if you want a separate screen
-                f = new HomeFragment(); // placeholder fragment
-                Toast.makeText(this, "History tab (WIP)", Toast.LENGTH_SHORT).show();
+                fragment = new HistoryFragment();
             } else if (id == R.id.nav_settings) {
-                f = new SettingsFragment(); // simple placeholder fragment
-            } else {
-                return false;
+                fragment = new SettingsFragment();
             }
-            replaceFragment(f);
-            return true;
+
+            if (fragment != null) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.homeFragmentContainer, fragment)
+                        .commit();
+                return true;
+            }
+            return false;
         });
-    }
 
-    private void replaceFragment(Fragment fragment) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.homeFragmentContainer, fragment)
-                .commit();
-    }
-
-    // Toolbar options menu
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_homepg, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_my_files) {
-            Toast.makeText(this, "My Uploads", Toast.LENGTH_SHORT).show();
-            return true;
-        } else if (id == R.id.action_settings) {
-            Toast.makeText(this, "Settings", Toast.LENGTH_SHORT).show();
-            return true;
-        } else if (id == R.id.action_logout) {
-            Intent intent = new Intent(HomePGActivity.this, MainActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
-            return true;
+        // Show Home tab by default on first creation
+        if (savedInstanceState == null) {
+            bottomNav.setSelectedItemId(R.id.nav_home);
         }
-        return super.onOptionsItemSelected(item);
     }
 }

@@ -1,23 +1,162 @@
 package com.example.finalyearproject.ui;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.RetrofitClient;
 
 public class SettingsFragment extends Fragment {
+
+    private TextView emailTV;
+    private Button logoutBtn;
+    private RadioGroup themeGroup;
+    private RadioButton rbSystem, rbLight, rbDark;
+    private Button clearHistoryBtn;
+
+    private ApiService api;
+
+    private static final String PREF_SETTINGS = "settings";
+    private static final String KEY_THEME_MODE = "theme_mode";
 
     public SettingsFragment() { }
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater,
+    public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_settings, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        emailTV         = view.findViewById(R.id.settingsEmailTV);
+        logoutBtn       = view.findViewById(R.id.settingsLogoutBtn);
+        themeGroup      = view.findViewById(R.id.themeRadioGroup);
+        rbSystem        = view.findViewById(R.id.rbThemeSystem);
+        rbLight         = view.findViewById(R.id.rbThemeLight);
+        rbDark          = view.findViewById(R.id.rbThemeDark);
+        clearHistoryBtn = view.findViewById(R.id.settingsClearHistoryBtn);
+
+        api = RetrofitClient.getApiService();
+
+        //Show logged-in email
+        String email = getLoggedInEmail();
+        if (email != null) {
+            emailTV.setText("Logged in as: " + email);
+        } else {
+            emailTV.setText("Logged in as: (none)");
+        }
+
+        //Theme selection
+        int savedMode = getSavedThemeMode(requireContext());
+        applyThemeSelectionToUI(savedMode);
+
+        themeGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            int mode;
+            if (checkedId == R.id.rbThemeLight) {
+                mode = AppCompatDelegate.MODE_NIGHT_NO;
+            } else if (checkedId == R.id.rbThemeDark) {
+                mode = AppCompatDelegate.MODE_NIGHT_YES;
+            } else {
+                mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+            }
+
+            saveThemeMode(requireContext(), mode);
+            AppCompatDelegate.setDefaultNightMode(mode);
+        });
+
+        //Logout
+        logoutBtn.setOnClickListener(v -> {
+            clearAuthPrefs();
+            AppCompatDelegate.setDefaultNightMode(
+                    AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            );
+
+            Toast.makeText(requireContext(),
+                    "Logged out",
+                    Toast.LENGTH_SHORT).show();
+
+            // Go back to sign-in screen
+            Intent i = new Intent(requireActivity(), MainActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                    Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+        });
+
+        //Clear upload history (for now just a placeholder)
+        clearHistoryBtn.setOnClickListener(v -> {
+            // TODO: implement real backend delete endpoint, then call it here.
+            Toast.makeText(requireContext(),
+                    "Clear history: backend endpoint to be implemented",
+                    Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    // helpers
+
+    private String getLoggedInEmail() {
+        SharedPreferences prefs =
+                requireActivity().getSharedPreferences("auth", Context.MODE_PRIVATE);
+        return prefs.getString("email", null);
+    }
+
+    private String getThemeKeyForCurrentUser() {
+        String email = getLoggedInEmail();
+        return (email != null) ? "theme_mode_" + email : "theme_mode_default";
+    }
+
+    private void clearAuthPrefs() {
+        SharedPreferences prefs =
+                requireActivity().getSharedPreferences("auth", Context.MODE_PRIVATE);
+        prefs.edit().clear().apply();
+    }
+
+    private int getSavedThemeMode(Context ctx) {
+        SharedPreferences prefs =
+                ctx.getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        return prefs.getInt(KEY_THEME_MODE,
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+    }
+
+    private void saveThemeMode(Context ctx, int mode) {
+        SharedPreferences prefs =
+                ctx.getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        prefs.edit().putInt(KEY_THEME_MODE, mode).apply();
+    }
+
+    private void applyThemeSelectionToUI(int mode) {
+        switch (mode) {
+            case AppCompatDelegate.MODE_NIGHT_NO:
+                rbLight.setChecked(true);
+                break;
+            case AppCompatDelegate.MODE_NIGHT_YES:
+                rbDark.setChecked(true);
+                break;
+            default:
+                rbSystem.setChecked(true);
+                break;
+        }
     }
 }

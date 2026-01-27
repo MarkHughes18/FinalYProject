@@ -1,23 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="24dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center_horizontal">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:text="Settings "
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:padding="8dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <TextView
-        android:text="• Change password\n• Profile details\n• App preferences\n• Theme"
-        android:textSize="14sp"
-        android:padding="8dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-</LinearLayout>
+        <TextView
+            android:id="@+id/settingsAccountHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Account"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/settingsEmailTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logged in as: -"
+            android:paddingBottom="8dp" />
+
+        <Button
+            android:id="@+id/settingsLogoutBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Logout" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#DDDDDD"
+            android:layout_marginVertical="16dp" />
+
+        <TextView
+            android:id="@+id/settingsAppearanceHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Appearance"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Theme"
+            android:paddingBottom="4dp" />
+
+        <RadioGroup
+            android:id="@+id/themeRadioGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/rbThemeSystem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="System default" />
+
+            <RadioButton
+                android:id="@+id/rbThemeLight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Light" />
+
+            <RadioButton
+                android:id="@+id/rbThemeDark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dark" />
+        </RadioGroup>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#DDDDDD"
+            android:layout_marginVertical="16dp" />
+
+
+        <TextView
+            android:id="@+id/settingsStorageHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Storage"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingBottom="4dp" />
+
+        <Button
+            android:id="@+id/settingsClearHistoryBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear upload history" />
+
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#DDDDDD"
+            android:layout_marginVertical="16dp" />
+
+        <TextView
+            android:id="@+id/settingsAboutHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="About"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/settingsAboutBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Unconventional Learning\nVersion 1.0.0\nFinal Year Project\nBackend: Spring Boot + MongoDB\nFrontend: Android (Java)"
+            android:paddingBottom="8dp" />
+    </LinearLayout>
+</ScrollView>

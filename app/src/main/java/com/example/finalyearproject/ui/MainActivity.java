@@ -1,12 +1,14 @@
 package com.example.finalyearproject.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiResponse;
@@ -24,6 +26,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppCompatDelegate.setDefaultNightMode(
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        );
         setContentView(R.layout.activity_main);
 
         emailET = findViewById(R.id.emailET);
@@ -53,11 +58,18 @@ public class MainActivity extends AppCompatActivity {
         api.login(req).enqueue(new Callback<ApiResponse>() {
             @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> res) {
                 if (res.isSuccessful() && res.body() != null && res.body().success) {
-                    toast("Signed In!");
-                    startActivity(new Intent(MainActivity.this, HomePGActivity.class));
+                    toast("Signed in!");
+                    SharedPreferences prefs = getSharedPreferences("auth", MODE_PRIVATE);
+                    prefs.edit()
+                            .putString("email", email)   // <-- the email user typed in
+                            .apply();
+
+                    //Navigate to home pg
+                    Intent intent = new Intent(MainActivity.this, HomePGActivity.class);
+                    startActivity(intent);
                     finish();
                 } else {
-                    toast(res.body() != null ? res.body().message : "Login Failed");
+                    toast(res.body() != null ? res.body().message : "Login failed");
                 }
             }
             @Override public void onFailure(Call<ApiResponse> call, Throwable t) {

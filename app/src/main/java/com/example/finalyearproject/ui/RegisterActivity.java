@@ -2,12 +2,14 @@ package com.example.finalyearproject.ui;
 
 import android.app.DatePickerDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.*;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiResponse;
@@ -25,6 +27,9 @@ public class RegisterActivity extends AppCompatActivity {
 
     @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppCompatDelegate.setDefaultNightMode(
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        );
         setContentView(R.layout.activity_register);
 
         fullNameET = findViewById(R.id.fullNameET);
@@ -67,11 +72,17 @@ public class RegisterActivity extends AppCompatActivity {
         api.register(req).enqueue(new Callback<ApiResponse>() {
             @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> res) {
                 if (res.isSuccessful() && res.body() != null && res.body().success) {
-                    toast("Registered! Welcome to our Learning Space!");
-                    startActivity(new Intent(RegisterActivity.this, HomePGActivity.class));
+                    SharedPreferences prefs = getSharedPreferences("auth", MODE_PRIVATE);
+                    prefs.edit()
+                            .putString("email", email)   // <-- the email user typed in
+                            .apply();
+
+                    // 2) Navigate to your host activity (the one with bottom nav)
+                    Intent intent = new Intent(RegisterActivity.this, HomePGActivity.class);
+                    startActivity(intent);
                     finish();
                 } else {
-                    toast(res.body() != null ? res.body().message : "Registration Failed");
+                    toast(res.body() != null ? res.body().message : "Login failed");
                 }
             }
             @Override public void onFailure(Call<ApiResponse> call, Throwable t) {
