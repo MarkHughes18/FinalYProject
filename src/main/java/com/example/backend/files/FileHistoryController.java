@@ -11,64 +11,64 @@ import java.util.List;
 @RequestMapping("/api/files")
 public class FileHistoryController {
 
-    private final FileHistoryRepository repo;
+        private final FileHistoryRepository repo;
 
-    public FileHistoryController(FileHistoryRepository repo) {
-        this.repo = repo;
-    }
+        public FileHistoryController(FileHistoryRepository repo) {
+                this.repo = repo;
+        }
 
-    public record CreateHistoryRequest(
-            String userEmail,
-            String fileName,
-            String fileType,
-            long fileSize) {
-    }
+        public record CreateHistoryRequest(
+                        String userEmail,
+                        String fileName,
+                        String fileType,
+                        long fileSize) {
+        }
 
-    public record HistoryResponse(
-            String id,
-            String fileName,
-            String fileType,
-            long fileSize,
-            String uploadedAt,
-            String audioStatus,
-            String audioUrl) {
-    }
+        public record HistoryResponse(
+                        String id,
+                        String fileName,
+                        String fileType,
+                        long fileSize,
+                        String uploadedAt,
+                        String audioStatus,
+                        String audioUrl) {
+        }
 
-    @PostMapping("/history")
-    public HistoryResponse createHistory(@RequestBody CreateHistoryRequest req) {
-        FileHistory fh = new FileHistory();
-        fh.setUserEmail(req.userEmail());
-        fh.setFileName(req.fileName());
-        fh.setFileType(req.fileType());
-        fh.setFileSize(req.fileSize());
-        fh.setUploadedAt(Instant.now());
-        fh.setAudioStatus("PENDING");
-        fh.setAudioUrl(null);
+        @PostMapping("/history")
+        public HistoryResponse createHistory(@RequestBody CreateHistoryRequest req) {
+                FileHistory fh = new FileHistory();
+                fh.setUserEmail(req.userEmail());
+                fh.setFileName(req.fileName());
+                fh.setFileType(req.fileType());
+                fh.setFileSize(req.fileSize());
+                fh.setUploadedAt(Instant.now());
+                fh.setAudioStatus("PENDING");
+                fh.setAudioUrl(null);
 
-        fh = repo.save(fh);
+                fh = repo.save(fh);
 
-        return new HistoryResponse(
-                fh.getId(),
-                fh.getFileName(),
-                fh.getFileType(),
-                fh.getFileSize(),
-                fh.getUploadedAt().toString(),
-                fh.getAudioStatus(),
-                fh.getAudioUrl());
-    }
+                return new HistoryResponse(
+                                fh.getId(),
+                                fh.getFileName(),
+                                fh.getFileType(),
+                                fh.getFileSize(),
+                                fh.getUploadedAt().toString(),
+                                fh.getAudioStatus(),
+                                fh.getAudioUrl());
+        }
 
-    @GetMapping("/history")
-    public List<HistoryResponse> getHistory(@RequestParam String userEmail) {
-        return repo.findByUserEmailOrderByUploadedAtDesc(userEmail)
-                .stream()
-                .map(fh -> new HistoryResponse(
-                        fh.getId(),
-                        fh.getFileName(),
-                        fh.getFileType(),
-                        fh.getFileSize(),
-                        fh.getUploadedAt().toString(),
-                        fh.getAudioStatus(),
-                        fh.getAudioUrl()))
-                .toList();
-    }
+        @GetMapping("/history")
+        public List<HistoryResponse> getHistory(@RequestParam("email") String email) {
+                return repo.findByUserEmailOrderByUploadedAtDesc(email)
+                                .stream()
+                                .map(fh -> new HistoryResponse(
+                                                fh.getId(),
+                                                fh.getFileName(),
+                                                fh.getFileType(),
+                                                fh.getFileSize(),
+                                                fh.getUploadedAt().toString(),
+                                                fh.getAudioStatus(),
+                                                fh.getAudioUrl()))
+                                .toList();
+        }
 }
