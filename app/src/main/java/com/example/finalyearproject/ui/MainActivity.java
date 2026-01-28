@@ -64,6 +64,16 @@ public class MainActivity extends AppCompatActivity {
                             .putString("email", email)   // <-- the email user typed in
                             .apply();
 
+                    // read this users theme from settings
+                    SharedPreferences settingsPrefs = getSharedPreferences("settings", MODE_PRIVATE);
+                    String themeKey = "theme_mode_" + email;
+                    int mode = settingsPrefs.getInt(
+                            themeKey,
+                            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    );
+
+                    AppCompatDelegate.setDefaultNightMode(mode);
+
                     //Navigate to home pg
                     Intent intent = new Intent(MainActivity.this, HomePGActivity.class);
                     startActivity(intent);

@@ -21,4 +21,8 @@ public interface ApiService {
     @GET("api/files/history")
     Call<List<HistoryItem>> getHistory(@Query("email") String email);
 
+    @GET("api/users/profile")
+    Call<UserProfile> getUserProfile(@Query("email") String email);
+
+
 }

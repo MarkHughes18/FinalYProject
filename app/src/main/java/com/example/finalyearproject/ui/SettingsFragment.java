@@ -22,10 +22,14 @@ import android.widget.Toast;
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.RetrofitClient;
+import com.example.finalyearproject.data.UserProfile;
+
+import retrofit2.Call;
+import retrofit2.Response;
 
 public class SettingsFragment extends Fragment {
 
-    private TextView emailTV;
+    private TextView emailTV, fullNameTV, dobTV;
     private Button logoutBtn;
     private RadioGroup themeGroup;
     private RadioButton rbSystem, rbLight, rbDark;
@@ -34,7 +38,6 @@ public class SettingsFragment extends Fragment {
     private ApiService api;
 
     private static final String PREF_SETTINGS = "settings";
-    private static final String KEY_THEME_MODE = "theme_mode";
 
     public SettingsFragment() { }
 
@@ -52,6 +55,8 @@ public class SettingsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         emailTV         = view.findViewById(R.id.settingsEmailTV);
+        fullNameTV      = view.findViewById(R.id.settingsFullNameTV);
+        dobTV           = view.findViewById(R.id.settingsDobTV);
         logoutBtn       = view.findViewById(R.id.settingsLogoutBtn);
         themeGroup      = view.findViewById(R.id.themeRadioGroup);
         rbSystem        = view.findViewById(R.id.rbThemeSystem);
@@ -65,12 +70,13 @@ public class SettingsFragment extends Fragment {
         String email = getLoggedInEmail();
         if (email != null) {
             emailTV.setText("Logged in as: " + email);
+            loadUserProfile(email);
         } else {
             emailTV.setText("Logged in as: (none)");
         }
 
         //Theme selection
-        int savedMode = getSavedThemeMode(requireContext());
+        int savedMode = getSavedThemeModeForCurrentUser();
         applyThemeSelectionToUI(savedMode);
 
         themeGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -83,7 +89,7 @@ public class SettingsFragment extends Fragment {
                 mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
             }
 
-            saveThemeMode(requireContext(), mode);
+            saveThemeModeForCurrentUser(mode);
             AppCompatDelegate.setDefaultNightMode(mode);
         });
 
@@ -116,6 +122,27 @@ public class SettingsFragment extends Fragment {
 
     // helpers
 
+    private void loadUserProfile(String email) {
+        api.getUserProfile(email).enqueue(new retrofit2.Callback<com.example.finalyearproject.data.UserProfile>() {
+            @Override
+            public void onResponse(Call<UserProfile> call,
+                                   Response<UserProfile> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    UserProfile profile = response.body();
+                    fullNameTV.setText("Full name: " + profile.fullName);
+                    dobTV.setText("DOB: " + profile.dob);
+                } else {
+                    Toast.makeText(requireContext(), "No User Info Available", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<UserProfile> call, Throwable t) {
+                Toast.makeText(requireContext(), "No User Info Available", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private String getLoggedInEmail() {
         SharedPreferences prefs =
                 requireActivity().getSharedPreferences("auth", Context.MODE_PRIVATE);
@@ -133,17 +160,18 @@ public class SettingsFragment extends Fragment {
         prefs.edit().clear().apply();
     }
 
-    private int getSavedThemeMode(Context ctx) {
+    private int getSavedThemeModeForCurrentUser() {
         SharedPreferences prefs =
-                ctx.getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
-        return prefs.getInt(KEY_THEME_MODE,
-                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        String key = getThemeKeyForCurrentUser();
+        return prefs.getInt(key, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
     }
 
-    private void saveThemeMode(Context ctx, int mode) {
+    private void saveThemeModeForCurrentUser(int mode) {
         SharedPreferences prefs =
-                ctx.getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
-        prefs.edit().putInt(KEY_THEME_MODE, mode).apply();
+                requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        String key = getThemeKeyForCurrentUser();
+        prefs.edit().putInt(key, mode).apply();
     }
 
     private void applyThemeSelectionToUI(int mode) {

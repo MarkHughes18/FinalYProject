@@ -25,6 +25,20 @@
             android:text="Logged in as: -"
             android:paddingBottom="8dp" />
 
+        <TextView
+            android:id="@+id/settingsFullNameTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Full name:"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/settingsDobTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DOB:"/>
+
+
         <Button
             android:id="@+id/settingsLogoutBtn"
             android:layout_width="wrap_content"
