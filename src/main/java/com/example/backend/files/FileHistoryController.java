@@ -2,6 +2,7 @@ package com.example.backend.files;
 
 import com.example.backend.model.FileHistory;
 import com.example.backend.repository.FileHistoryRepository;
+import com.example.backend.files.FileProcessingService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,9 +19,11 @@ import java.nio.file.Paths;
 public class FileHistoryController {
 
         private final FileHistoryRepository repo;
+        private final FileProcessingService processingService;
 
-        public FileHistoryController(FileHistoryRepository repo) {
+        public FileHistoryController(FileHistoryRepository repo, FileProcessingService processingService) {
                 this.repo = repo;
+                this.processingService = processingService;
         }
 
         public record CreateHistoryRequest(
@@ -123,13 +126,16 @@ public class FileHistoryController {
                 fh.setAudioPath(null);
 
                 // initial status
+                fh.setTextStatus("PENDING");
+                fh.setExtractedText(null);
+
                 fh.setAudioStatus("PENDING");
                 fh.setAudioUrl(null);
                 fh.setErrorMessage(null);
 
                 fh = repo.save(fh);
-                // NOTE: next step we will trigger async processing here (parse -> TTS -> save
-                // mp3 -> update record)
+                // trigger async processing -> extract text, tts, save mp3, update record
+                processingService.processHistoryAsync(fh.getId());
 
                 HistoryResponse resp = new HistoryResponse(
                                 fh.getId(),

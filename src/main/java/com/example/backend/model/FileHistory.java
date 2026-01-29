@@ -25,6 +25,9 @@ public class FileHistory {
     private String audioPath; // where generated mp3 is stored on disk
     private String errorMessage; // for when audioStatus = Failure
 
+    private String extractedText; // extracted text from the document
+    private String textStatus; // "PENDING" etc
+
     public FileHistory() {
     }
 
@@ -138,6 +141,22 @@ public class FileHistory {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
+    }
+
+    public String getTextStatus() {
+        return textStatus;
+    }
+
+    public void setTextStatus(String textStatus) {
+        this.textStatus = textStatus;
     }
 
 }
