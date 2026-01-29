@@ -69,6 +69,29 @@
 			<artifactId>spring-boot-starter-validation-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Text extraction -->
+		<dependency>
+    		<groupId>org.apache.tika</groupId>
+    		<artifactId>tika-core</artifactId>
+    		<version>2.9.2</version>
+		</dependency>
+		<dependency>
+    		<groupId>org.apache.tika</groupId>
+    		<artifactId>tika-parsers-standard-package</artifactId>
+    		<version>2.9.2</version>
+		</dependency>
+		<!-- Google Cloud TTS -->
+		<dependency>
+    		<groupId>com.google.cloud</groupId>
+    		<artifactId>google-cloud-texttospeech</artifactId>
+    		<version>2.48.0</version>
+		</dependency>
+		<!-- Dependency for easier file saving/copying -->
+		<dependency>
+    		<groupId>commons-io</groupId>
+    		<artifactId>commons-io</artifactId>
+    		<version>2.16.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -17,15 +17,20 @@ public class FileHistory {
     private long fileSize;
 
     private Instant uploadedAt;
+    private Instant updatedAt; // last status update time
 
     private String audioStatus; // "PENDING" etc
     private String audioUrl; // URL or path to audio file
+    private String sourcePath; // where uploaded doc is stored on disk
+    private String audioPath; // where generated mp3 is stored on disk
+    private String errorMessage; // for when audioStatus = Failure
 
     public FileHistory() {
     }
 
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
-            String audioStatus, String audioUrl) {
+            String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
+            String errorMessage) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -33,6 +38,10 @@ public class FileHistory {
         this.uploadedAt = uploadedAt;
         this.audioStatus = audioStatus;
         this.audioUrl = audioUrl;
+        this.sourcePath = sourcePath;
+        this.audioPath = audioPath;
+        this.updatedAt = updatedAt;
+        this.errorMessage = errorMessage;
     }
 
     public String getId() {
@@ -97,6 +106,38 @@ public class FileHistory {
 
     public void setAudioUrl(String audioUrl) {
         this.audioUrl = audioUrl;
+    }
+
+    public String getSourcePath() {
+        return sourcePath;
+    }
+
+    public void setSourcePath(String sourcePath) {
+        this.sourcePath = sourcePath;
+    }
+
+    public String getAudioPath() {
+        return audioPath;
+    }
+
+    public void setAudioPath(String audioPath) {
+        this.audioPath = audioPath;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 
 }
