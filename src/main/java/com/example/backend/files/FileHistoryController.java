@@ -6,6 +6,10 @@ import com.example.backend.files.FileProcessingService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import java.time.Instant;
 import java.util.List;
@@ -40,6 +44,7 @@ public class FileHistoryController {
                         long fileSize,
                         String uploadedAt,
                         String audioStatus,
+                        String textStatus,
                         String audioUrl,
                         String updatedAt,
                         String errorMessage) {
@@ -53,8 +58,11 @@ public class FileHistoryController {
                 fh.setFileType(req.fileType());
                 fh.setFileSize(req.fileSize());
                 fh.setUploadedAt(Instant.now());
+                // inintial status
                 fh.setAudioStatus("PENDING");
                 fh.setAudioUrl(null);
+                fh.setTextStatus("PENDING");
+                fh.setExtractedText(null);
                 fh.setSourcePath(null);
                 fh.setAudioPath(null);
                 fh.setErrorMessage(null);
@@ -67,8 +75,9 @@ public class FileHistoryController {
                                 fh.getFileName(),
                                 fh.getFileType(),
                                 fh.getFileSize(),
-                                fh.getUploadedAt().toString(),
+                                fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
                                 fh.getAudioStatus(),
+                                fh.getTextStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage());
@@ -85,6 +94,7 @@ public class FileHistoryController {
                                                 fh.getFileSize(),
                                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
                                                 fh.getAudioStatus(),
+                                                fh.getTextStatus(),
                                                 fh.getAudioUrl(),
                                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                                 fh.getErrorMessage()))
@@ -105,7 +115,9 @@ public class FileHistoryController {
                 Files.createDirectories(uploadRoot);
 
                 // save file to disk with a unique name
-                String safeOriginalName = file.getOriginalFilename() != null ? file.getOriginalFilename()
+                String original = file.getOriginalFilename();
+                String safeOriginalName = (original != null && !original.isBlank())
+                                ? Paths.get(original).getFileName().toString()
                                 : "upload.bin";
                 String storedName = System.currentTimeMillis() + "_" + safeOriginalName;
                 Path storedPath = uploadRoot.resolve(storedName);
@@ -144,6 +156,7 @@ public class FileHistoryController {
                                 fh.getFileSize(),
                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
                                 fh.getAudioStatus(),
+                                fh.getTextStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage());

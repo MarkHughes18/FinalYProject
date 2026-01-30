@@ -33,7 +33,7 @@ public class FileHistory {
 
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
             String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
-            String errorMessage) {
+            String errorMessage, String extractedText, String textStatus) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -45,6 +45,8 @@ public class FileHistory {
         this.audioPath = audioPath;
         this.updatedAt = updatedAt;
         this.errorMessage = errorMessage;
+        this.extractedText = extractedText;
+        this.textStatus = textStatus;
     }
 
     public String getId() {

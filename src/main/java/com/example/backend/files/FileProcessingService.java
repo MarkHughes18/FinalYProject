@@ -18,8 +18,8 @@ public class FileProcessingService {
 
     @Async
     public void processHistoryAsync(String historyId) {
-        // mark text/audio as READY so can prove async wiring works.
-        // replace this with real extraction + cloud TTS + mp3 saving.
+        // mark text/audio as READY so can prove async wiring works
+        // replace this with real extraction + cloud TTS + mp3 saving
         try {
             FileHistory fh = repo.findById(historyId).orElse(null);
             if (fh == null)
