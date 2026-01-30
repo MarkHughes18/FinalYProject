@@ -164,4 +164,25 @@ public class FileHistoryController {
                 return ResponseEntity.ok(resp);
         }
 
+        @GetMapping("/history/{id}/audio")
+        public ResponseEntity<Resource> streamAudio(@PathVariable String id) throws IOException {
+                FileHistory fh = repo.findById(id).orElse(null);
+                if (fh == null)
+                        return ResponseEntity.notFound().build();
+
+                if (fh.getAudioPath() == null || !"READY".equalsIgnoreCase(fh.getAudioStatus())) {
+                        return ResponseEntity.notFound().build(); // not ready yet
+                }
+
+                Path audioPath = Paths.get(fh.getAudioPath());
+                if (!Files.exists(audioPath)) {
+                        return ResponseEntity.notFound().build();
+                }
+
+                Resource resource = new UrlResource(audioPath.toUri());
+                return ResponseEntity.ok()
+                                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + id + ".mp3\"")
+                                .contentType(MediaType.parseMediaType("audio/mpeg"))
+                                .body(resource);
+        }
 }

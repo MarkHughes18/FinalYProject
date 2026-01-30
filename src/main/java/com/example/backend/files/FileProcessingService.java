@@ -5,44 +5,68 @@ import com.example.backend.repository.FileHistoryRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.time.Instant;
 
 @Service
 public class FileProcessingService {
 
     private final FileHistoryRepository repo;
+    private final FileTextExtractService textExtractService;
 
-    public FileProcessingService(FileHistoryRepository repo) {
+    public FileProcessingService(FileHistoryRepository repo, FileTextExtractService textExtractService) {
         this.repo = repo;
+        this.textExtractService = textExtractService;
     }
 
     @Async
     public void processHistoryAsync(String historyId) {
-        // mark text/audio as READY so can prove async wiring works
-        // replace this with real extraction + cloud TTS + mp3 saving
+        FileHistory fh = repo.findById(historyId).orElse(null);
+        if (fh == null)
+            return;
+
         try {
-            FileHistory fh = repo.findById(historyId).orElse(null);
-            if (fh == null)
-                return;
+            // mark processing started
+            fh.setTextStatus("PROCESSING");
+            fh.setAudioStatus("PROCESSING");
+            fh.setUpdatedAt(Instant.now());
+            repo.save(fh);
 
+            // Extract text from uploaded file
+            Path source = Paths.get(fh.getSourcePath());
+            String extracted = textExtractService.extractText(source);
+
+            fh.setExtractedText(extracted);
             fh.setTextStatus("READY");
-            fh.setExtractedText("Placeholder extracted text.");
+            fh.setUpdatedAt(Instant.now());
+            repo.save(fh);
 
+            // Smoke-test MP3 generation step:
+            // copy a real MP3 from resources to disk proves streaming + playback
+            Path audioDir = Paths.get("audio");
+            Files.createDirectories(audioDir);
+
+            Path outMp3 = audioDir.resolve(fh.getId() + ".mp3");
+            ClassPathResource sample = new ClassPathResource("sample.mp3");
+            Files.copy(sample.getInputStream(), outMp3, StandardCopyOption.REPLACE_EXISTING);
+
+            fh.setAudioPath(outMp3.toAbsolutePath().toString());
             fh.setAudioStatus("READY");
-            fh.setAudioUrl("http://10.0.2.2:8080/api/files/history/" + fh.getId() + "/audio"); // build this endpoint
-                                                                                               // later
+
+            // use relative URL for streaming endpoint
+            fh.setAudioUrl("/api/files/history/" + fh.getId() + "/audio");
 
             fh.setUpdatedAt(Instant.now());
             repo.save(fh);
 
         } catch (Exception ex) {
-            FileHistory fh = repo.findById(historyId).orElse(null);
-            if (fh != null) {
-                fh.setTextStatus("FAILED");
-                fh.setAudioStatus("FAILED");
-                fh.setErrorMessage(ex.getMessage());
-                fh.setUpdatedAt(Instant.now());
-                repo.save(fh);
+            FileHistory fail = repo.findById(historyId).orElse(null);
+            if (fail != null) {
+                fail.setTextStatus("FAILED");
+                fail.setAudioStatus("FAILED");
+                fail.setErrorMessage(ex.getMessage());
+                fail.setUpdatedAt(Instant.now());
+                repo.save(fail);
             }
         }
     }
