@@ -4,12 +4,10 @@ import com.example.backend.model.FileHistory;
 import com.example.backend.repository.FileHistoryRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.core.io.ClassPathResource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 
 @Service
@@ -51,9 +49,10 @@ public class FileProcessingService {
             Files.createDirectories(audioDir);
 
             Path outMp3 = audioDir.resolve(fh.getId() + ".mp3");
-            ClassPathResource sample = new ClassPathResource("sample.mp3");
-            Files.copy(sample.getInputStream(), outMp3, StandardCopyOption.REPLACE_EXISTING);
-
+            // Create a placeholder file for now not playable, but proves streaming works
+            if (!Files.exists(outMp3)) {
+                Files.write(outMp3, new byte[0]); // empty mp3 placeholder
+            }
             fh.setAudioPath(outMp3.toAbsolutePath().toString());
             fh.setAudioStatus("READY");
 
