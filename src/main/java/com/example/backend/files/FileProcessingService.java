@@ -15,10 +15,12 @@ public class FileProcessingService {
 
     private final FileHistoryRepository repo;
     private final FileTextExtractService textExtractService;
+    private final CloudTtsService ttsService;
 
-    public FileProcessingService(FileHistoryRepository repo, FileTextExtractService textExtractService) {
+    public FileProcessingService(FileHistoryRepository repo, FileTextExtractService textExtractService, CloudTtsService ttsService) {
         this.repo = repo;
         this.textExtractService = textExtractService;
+        this.ttsService = ttsService;
     }
 
     @Async
@@ -43,20 +45,25 @@ public class FileProcessingService {
             fh.setUpdatedAt(Instant.now());
             repo.save(fh);
 
-            // Smoke-test MP3 generation step:
-            // copy a real MP3 from resources to disk proves streaming + playback
+            // Generate MP3 using Google Cloud TTS
+            String toSpeak = extracted.isBlank()
+            ? "Sorry, no readable text was found in the document."
+            : extracted;
+
+            //limit length to avoid huge requests during testing
+            if (toSpeak.length() > 4500) {
+                toSpeak = toSpeak.substring(0, 4500);
+            }
+
+            byte[] mp3Bytes = ttsService.synthesizeMp3(toSpeak);
             Path audioDir = Paths.get("audio");
             Files.createDirectories(audioDir);
 
             Path outMp3 = audioDir.resolve(fh.getId() + ".mp3");
-            // Create a placeholder file for now not playable, but proves streaming works
-            if (!Files.exists(outMp3)) {
-                Files.write(outMp3, new byte[0]); // empty mp3 placeholder
-            }
+            Files.write(outMp3, mp3Bytes); // ✅ real audio bytes now
+
             fh.setAudioPath(outMp3.toAbsolutePath().toString());
             fh.setAudioStatus("READY");
-
-            // use relative URL for streaming endpoint
             fh.setAudioUrl("/api/files/history/" + fh.getId() + "/audio");
 
             fh.setUpdatedAt(Instant.now());
