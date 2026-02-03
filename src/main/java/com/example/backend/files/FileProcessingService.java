@@ -16,11 +16,14 @@ public class FileProcessingService {
     private final FileHistoryRepository repo;
     private final FileTextExtractService textExtractService;
     private final CloudTtsService ttsService;
+    private final NarrationService narrationService;
 
-    public FileProcessingService(FileHistoryRepository repo, FileTextExtractService textExtractService, CloudTtsService ttsService) {
+    public FileProcessingService(FileHistoryRepository repo, FileTextExtractService textExtractService,
+            CloudTtsService ttsService, NarrationService narrationService) {
         this.repo = repo;
         this.textExtractService = textExtractService;
         this.ttsService = ttsService;
+        this.narrationService = narrationService;
     }
 
     @Async
@@ -45,22 +48,31 @@ public class FileProcessingService {
             fh.setUpdatedAt(Instant.now());
             repo.save(fh);
 
-            // Generate MP3 using Google Cloud TTS
-            String toSpeak = extracted.isBlank()
-            ? "Sorry, no readable text was found in the document."
-            : extracted;
+            // Generate narration
+            fh.setNarrationStatus("PROCESSING");
+            fh.setUpdatedAt(Instant.now());
+            repo.save(fh);
 
-            //limit length to avoid huge requests during testing
+            String narration = narrationService.buildNarration(extracted);
+
+            fh.setNarrationText(narration);
+            fh.setNarrationStatus("READY");
+            fh.setUpdatedAt(Instant.now());
+            repo.save(fh);
+
+            // TTS uses narration
+            String toSpeak = narration;
             if (toSpeak.length() > 4500) {
                 toSpeak = toSpeak.substring(0, 4500);
             }
 
             byte[] mp3Bytes = ttsService.synthesizeMp3(toSpeak);
+
             Path audioDir = Paths.get("audio");
             Files.createDirectories(audioDir);
 
             Path outMp3 = audioDir.resolve(fh.getId() + ".mp3");
-            Files.write(outMp3, mp3Bytes); // ✅ real audio bytes now
+            Files.write(outMp3, mp3Bytes);
 
             fh.setAudioPath(outMp3.toAbsolutePath().toString());
             fh.setAudioStatus("READY");
@@ -73,6 +85,7 @@ public class FileProcessingService {
             FileHistory fail = repo.findById(historyId).orElse(null);
             if (fail != null) {
                 fail.setTextStatus("FAILED");
+                fail.setNarrationStatus("FAILED");
                 fail.setAudioStatus("FAILED");
                 fail.setErrorMessage(ex.getMessage());
                 fail.setUpdatedAt(Instant.now());

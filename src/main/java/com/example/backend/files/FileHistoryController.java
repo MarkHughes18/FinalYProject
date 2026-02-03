@@ -67,6 +67,8 @@ public class FileHistoryController {
                 fh.setAudioPath(null);
                 fh.setErrorMessage(null);
                 fh.setUpdatedAt(Instant.now());
+                fh.setNarrationStatus("PENDING");
+                fh.setNarrationText(null);
 
                 fh = repo.save(fh);
 
@@ -76,6 +78,8 @@ public class FileHistoryController {
                                 fh.getFileType(),
                                 fh.getFileSize(),
                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
+                                fh.getNarrationStatus(),
+                                fh.getNarrationText(),
                                 fh.getAudioStatus(),
                                 fh.getTextStatus(),
                                 fh.getAudioUrl(),
@@ -93,6 +97,8 @@ public class FileHistoryController {
                                                 fh.getFileType(),
                                                 fh.getFileSize(),
                                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
+                                                fh.getNarrationStatus(),
+                                                fh.getNarrationText(),
                                                 fh.getAudioStatus(),
                                                 fh.getTextStatus(),
                                                 fh.getAudioUrl(),
@@ -143,6 +149,10 @@ public class FileHistoryController {
 
                 fh.setAudioStatus("PENDING");
                 fh.setAudioUrl(null);
+
+                fh.setNarrationStatus("PENDING");
+                fh.setNarrationText(null);
+
                 fh.setErrorMessage(null);
 
                 fh = repo.save(fh);
@@ -155,6 +165,8 @@ public class FileHistoryController {
                                 fh.getFileType(),
                                 fh.getFileSize(),
                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
+                                fh.getNarrationStatus(),
+                                fh.getNarrationText(),
                                 fh.getAudioStatus(),
                                 fh.getTextStatus(),
                                 fh.getAudioUrl(),

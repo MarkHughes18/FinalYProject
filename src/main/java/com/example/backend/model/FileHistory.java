@@ -28,12 +28,16 @@ public class FileHistory {
     private String extractedText; // extracted text from the document
     private String textStatus; // "PENDING" etc
 
+    private String narrationText;
+    private String narrationStatus; // PENDING/PROCESSING/READY/FAILED
+
     public FileHistory() {
     }
 
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
             String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
-            String errorMessage, String extractedText, String textStatus) {
+            String errorMessage, String extractedText, String textStatus, String narrationText,
+            String narrationStatus) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -47,6 +51,8 @@ public class FileHistory {
         this.errorMessage = errorMessage;
         this.extractedText = extractedText;
         this.textStatus = textStatus;
+        this.narrationText = narrationText;
+        this.narrationStatus = narrationStatus;
     }
 
     public String getId() {
@@ -159,6 +165,22 @@ public class FileHistory {
 
     public void setTextStatus(String textStatus) {
         this.textStatus = textStatus;
+    }
+
+    public String getNarrationText() {
+        return narrationText;
+    }
+
+    public void setNarrationText(String narrationText) {
+        this.narrationText = narrationText;
+    }
+
+    public String getNarrationStatus() {
+        return narrationStatus;
+    }
+
+    public void setNarrationStatus(String narrationStatus) {
+        this.narrationStatus = narrationStatus;
     }
 
 }
