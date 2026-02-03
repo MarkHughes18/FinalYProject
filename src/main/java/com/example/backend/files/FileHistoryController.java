@@ -43,8 +43,9 @@ public class FileHistoryController {
                         String fileType,
                         long fileSize,
                         String uploadedAt,
-                        String audioStatus,
                         String textStatus,
+                        String narrationStatus,
+                        String audioStatus,
                         String audioUrl,
                         String updatedAt,
                         String errorMessage) {
@@ -78,10 +79,9 @@ public class FileHistoryController {
                                 fh.getFileType(),
                                 fh.getFileSize(),
                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
-                                fh.getNarrationStatus(),
-                                fh.getNarrationText(),
-                                fh.getAudioStatus(),
                                 fh.getTextStatus(),
+                                fh.getNarrationStatus(),
+                                fh.getAudioStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage());
@@ -97,10 +97,9 @@ public class FileHistoryController {
                                                 fh.getFileType(),
                                                 fh.getFileSize(),
                                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
-                                                fh.getNarrationStatus(),
-                                                fh.getNarrationText(),
-                                                fh.getAudioStatus(),
                                                 fh.getTextStatus(),
+                                                fh.getNarrationStatus(),
+                                                fh.getAudioStatus(),
                                                 fh.getAudioUrl(),
                                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                                 fh.getErrorMessage()))
@@ -165,15 +164,34 @@ public class FileHistoryController {
                                 fh.getFileType(),
                                 fh.getFileSize(),
                                 fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
-                                fh.getNarrationStatus(),
-                                fh.getNarrationText(),
-                                fh.getAudioStatus(),
                                 fh.getTextStatus(),
+                                fh.getNarrationStatus(),
+                                fh.getAudioStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage());
 
                 return ResponseEntity.ok(resp);
+        }
+
+        @GetMapping("/history/{id}/narration")
+        public ResponseEntity<String> getNarration(@PathVariable String id) {
+
+                FileHistory fh = repo.findById(id).orElse(null);
+                if (fh == null) {
+                        return ResponseEntity.notFound().build();
+                }
+
+                // Not ready yet
+                if (!"READY".equalsIgnoreCase(fh.getNarrationStatus()) || fh.getNarrationText() == null) {
+                        return ResponseEntity.status(202) // Accepted (processing)
+                                        .contentType(MediaType.TEXT_PLAIN)
+                                        .body("Narration is not ready yet. Status = " + fh.getNarrationStatus());
+                }
+
+                return ResponseEntity.ok()
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .body(fh.getNarrationText());
         }
 
         @GetMapping("/history/{id}/audio")

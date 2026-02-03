@@ -14,8 +14,9 @@ public class TextChunkService {
 
     public List<String> chunk(String text) {
         List<String> chunks = new ArrayList<>();
-        if (text == null || text.isBlank())
+        if (text == null || text.isBlank()) {
             return chunks;
+        }
 
         int start = 0;
         while (start < text.length()) {
@@ -24,17 +25,23 @@ public class TextChunkService {
             // try not to cut mid-sentence
             int cut = end;
             int lastPeriod = text.lastIndexOf('.', end);
-            if (lastPeriod > start + 100)
+            if (lastPeriod > start + 100) {
                 cut = lastPeriod + 1;
+            }
 
             String part = text.substring(start, cut).trim();
-            if (!part.isBlank())
+            if (!part.isBlank()) {
                 chunks.add(part);
+            }
 
             // overlap for continuity
-            start = Math.max(cut - OVERLAP, cut);
-        }
+            start = Math.max(0, cut - OVERLAP);
 
+            // avoid infite loop if no progress
+            if (start >= cut) {
+                start = cut;
+            }
+        }
         return chunks;
     }
 }

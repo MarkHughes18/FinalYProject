@@ -3,7 +3,7 @@ package com.example.backend.files;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @Service
 public class NarrationService {
@@ -22,27 +22,33 @@ public class NarrationService {
 
     public String buildNarration(String extractedText) throws Exception {
         String cleaned = cleanupService.clean(extractedText);
-        if (cleaned.isBlank()) {
+        if (cleaned == null || cleaned.isBlank()) {
             return "I couldn't find readable text in this document. Try a clearer file or a different format.";
         }
 
         List<String> chunks = chunkService.chunk(cleaned);
 
-        // Generate explained narration per chunk
-        List<String> explainedParts = new java.util.ArrayList<>();
+        // LLM returns JSON per chunk
+        List<String> jsonObjects = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             String chunk = chunks.get(i);
-            String explained = llmClient.explainChunk(chunk, i + 1, chunks.size());
-            explainedParts.add(explained);
+
+            // explainChunk should return a JSON object string
+            String json = llmClient.explainChunk(chunk, i + 1, chunks.size());
+
+            if (json != null && !json.isBlank()) {
+                jsonObjects.add(json.trim());
+            }
         }
 
-        // Stitch into one narration script
-        String stitched = explainedParts.stream()
-                .map(String::trim)
-                .collect(Collectors.joining("\n\n"));
+        if (jsonObjects.isEmpty()) {
+            return "I couldn't generate a narration summary from this file. Try a different document.";
+        }
 
-        // Optional: final smoothing pass (makes it sound like one consistent talk)
-        // If you want to save cost, skip this and go straight to TTS.
-        return llmClient.smoothNarration(stitched);
+        // combine into ONE JSON array for smoothing
+        String combinedJsonArray = "[\n" + String.join(",\n", jsonObjects) + "\n]";
+
+        // smoothing pass converts JSON summaries -> ONE spoken script
+        return llmClient.smoothNarration(combinedJsonArray);
     }
 }
