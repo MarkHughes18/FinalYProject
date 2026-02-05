@@ -3,7 +3,6 @@ package com.example.backend.files;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.ArrayList;
 
 @Service
 public class NarrationService {
@@ -22,32 +21,25 @@ public class NarrationService {
 
     public String buildNarration(String extractedText) throws Exception {
         String cleaned = cleanupService.clean(extractedText);
+        final int MAX_CLEANED_CHARS = 50_000;
+        if (cleaned != null && cleaned.length() > MAX_CLEANED_CHARS) {
+            cleaned = cleaned.substring(0, MAX_CLEANED_CHARS);
+        }
         if (cleaned == null || cleaned.isBlank()) {
             return "I couldn't find readable text in this document. Try a clearer file or a different format.";
         }
-
         List<String> chunks = chunkService.chunk(cleaned);
-
-        // LLM returns JSON per chunk
-        List<String> jsonObjects = new ArrayList<>();
-        for (int i = 0; i < chunks.size(); i++) {
-            String chunk = chunks.get(i);
-
-            // explainChunk should return a JSON object string
-            String json = llmClient.explainChunk(chunk, i + 1, chunks.size());
-
-            if (json != null && !json.isBlank()) {
-                jsonObjects.add(json.trim());
-            }
+        System.out.println("CLEANED length=" + cleaned.length());
+        System.out.println("CHUNKS count=" + chunks.size());
+        if (chunks.isEmpty()) {
+            return "I couldn't break this document into readable sections. Try a different file or format.";
         }
-        if (jsonObjects.isEmpty()) {
+        // one openai call for all chunks
+        String jsonArray = llmClient.explainChunks(chunks);
+        if (jsonArray == null || jsonArray.isBlank()) {
             return "I couldn't generate a narration summary from this file. Try a different document.";
         }
-
-        // combine into ONE JSON array for smoothing
-        String combinedJsonArray = "[\n" + String.join(",\n", jsonObjects) + "\n]";
-
-        // smoothing pass converts JSON summaries -> ONE spoken script
-        return llmClient.smoothNarration(combinedJsonArray);
+        // now smooth it into a final narration
+        return llmClient.smoothNarration(jsonArray);
     }
 }

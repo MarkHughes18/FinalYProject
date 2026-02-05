@@ -5,12 +5,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.Callable;
 
 @Service
 @Primary
@@ -18,6 +23,9 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
 
     private final WebClient web;
     private final ObjectMapper mapper = new ObjectMapper();
+    private static final Semaphore OPENAI_LOCK = new Semaphore(1);
+    private static volatile long lastCallMs = 0;
+    private static final long MIN_GAP_MS = 2500; // 2.5 seconds between calls
 
     public OpenAiNarrationClient() {
         String apiKey = System.getenv("OPENAI_API_KEY");
@@ -35,46 +43,67 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
     // Explain a chunk into STRUCTURED JSON for narration building, returns JSON
     // string
     @Override
-    public String explainChunk(String chunk, int chunkIndex, int totalChunks) {
+    public String explainChunks(List<String> chunks) throws Exception {
+        if (chunks == null || chunks.isEmpty()) {
+            return "[]";
+        }
         String system = """
                 You are an expert tutor. Output MUST be valid JSON only.
                 No markdown. No extra text.
                 """;
-
+        int totalChunks = chunks.size();
+        StringBuilder notes = new StringBuilder();
+        for (int i = 0; i < chunks.size(); i++) {
+            notes.append("=== CHUNK ").append(i + 1).append(" of ").append(totalChunks).append(" ===\n");
+            notes.append(chunks.get(i)).append("\n\n");
+        }
         String user = """
-                Convert this chunk of lecture notes into JSON for narration building.
+                    Convert the following lecture notes into structured JSON for narration building.
 
-                Chunk %d of %d
 
-                Return JSON EXACTLY in this schema:
+                    Return JSON EXACTLY in this schema (top-level object):
                 {
-                  "chunk": %d,
-                  "title": "short title",
-                  "key_points": ["...","..."],
-                  "definitions": [{"term":"...","meaning":"..."}],
-                  "examples": ["..."],
-                  "common_mistakes": ["..."],
-                  "quick_check_questions": ["..."]
+                  "chunks": [
+                    {
+                      "chunk": 1,
+                      "title": "short title",
+                      "key_points": ["...","..."],
+                      "definitions": [{"term":"...","meaning":"..."}],
+                      "examples": ["..."],
+                      "common_mistakes": ["..."],
+                      "quick_check_questions": ["..."]
+                    }
+                  ]
                 }
 
-                Notes chunk:
+                Notes:
                 %s
-                """.formatted(chunkIndex, totalChunks, chunkIndex, chunk);
+                """.formatted(notes.toString());
 
         Map<String, Object> payload = Map.of(
                 "model", "gpt-4.1-mini",
                 "temperature", 0.2,
+                "max_tokens", 2200,
                 "response_format", Map.of("type", "json_object"),
                 "messages", List.of(
                         Map.of("role", "system", "content", system),
                         Map.of("role", "user", "content", user)));
 
-        return callAndExtractContent(payload);
+        String content = withRateLimit(() -> callAndExtractContent(payload));
+
+        // extract and return JUST the JSON ARRAY string
+        JsonNode root = mapper.readTree(content);
+        JsonNode arr = root.get("chunks");
+        if (arr == null || !arr.isArray()) {
+            throw new RuntimeException("OpenAI JSON missing 'chunks' array:\n" + content);
+        }
+
+        return mapper.writeValueAsString(arr);
     }
 
-    // Take combined JSON summaries and produce 1 final spoken script
+    // take combined JSON summaries and produce 1 final spoken script
     @Override
-    public String smoothNarration(String combinedJsonSummaries) {
+    public String smoothNarration(String combinedJsonSummaries) throws Exception {
         String system = """
                 You are an expert tutor creating a spoken narration script.
                 Output plain text only.
@@ -103,7 +132,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                         Map.of("role", "system", "content", system),
                         Map.of("role", "user", "content", user)));
 
-        return callAndExtractContent(payload);
+        return withRateLimit(() -> callAndExtractContent(payload));
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -117,39 +146,109 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         }
     }
 
-    private String callAndExtractContent(Map<String, Object> payload) {
-        String raw = web.post()
-                .uri("/chat/completions")
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
-
-        if (raw == null || raw.isBlank()) {
-            throw new RuntimeException("Empty response from OpenAI");
-        }
-
+    private <T> T withRateLimit(Callable<T> fn) throws Exception {
+        OPENAI_LOCK.acquire();
         try {
-            ChatCompletionsResponse parsed = mapper.readValue(raw, ChatCompletionsResponse.class);
-            if (parsed.choices() == null || parsed.choices().isEmpty()) {
-                throw new RuntimeException("OpenAI returned no choices: " + raw);
-            }
-            ChatCompletionsResponse.Choice c0 = parsed.choices().get(0);
-            if (c0.message() == null || c0.message().content() == null) {
-                throw new RuntimeException("OpenAI returned empty message content: " + raw);
-            }
-            String content = c0.message().content().trim();
-            if (content.startsWith("```")) {
-                int firstNewline = content.indexOf('\n');
-                int lastFence = content.lastIndexOf("```");
-                if (firstNewline > 0 && lastFence > firstNewline) {
-                    content = content.substring(firstNewline + 1, lastFence).trim();
-                }
+            long now = System.currentTimeMillis();
+            long wait = MIN_GAP_MS - (now - lastCallMs);
+            if (wait > 0) {
+                Thread.sleep(wait);
             }
 
-            return content;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse OpenAI response JSON: " + e.getMessage() + "\nRAW:\n" + raw, e);
+            T result = fn.call();
+            lastCallMs = System.currentTimeMillis();
+            return result;
+        } finally {
+            OPENAI_LOCK.release();
         }
+    }
+
+    private String formatChunks(List<String> chunks) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < chunks.size(); i++) {
+            sb.append("\n--- CHUNK ").append(i + 1).append(" ---\n");
+            sb.append(chunks.get(i));
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String callAndExtractContent(Map<String, Object> payload) {
+
+        int maxAttempts = 5;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                String raw = web.post()
+                        .uri("/chat/completions")
+                        .bodyValue(payload)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(60));
+
+                if (raw == null || raw.isBlank()) {
+                    throw new RuntimeException("Empty response from OpenAI");
+                }
+
+                ChatCompletionsResponse parsed = mapper.readValue(raw, ChatCompletionsResponse.class);
+                if (parsed.choices() == null || parsed.choices().isEmpty()) {
+                    throw new RuntimeException("OpenAI returned no choices: " + raw);
+                }
+                ChatCompletionsResponse.Choice c0 = parsed.choices().get(0);
+                if (c0.message() == null || c0.message().content() == null) {
+                    throw new RuntimeException("OpenAI returned empty message content: " + raw);
+                }
+                String content = c0.message().content().trim();
+                // Validate JSON ONLY when response_format.type == "json_object"
+                boolean expectsJson = false;
+                Object rf = payload.get("response_format");
+                if (rf instanceof Map<?, ?> rfMap) {
+                    Object type = rfMap.get("type");
+                    expectsJson = "json_object".equals(String.valueOf(type));
+                }
+                if (expectsJson) {
+                    try {
+                        mapper.readTree(content); // throws if invalid JSON
+                    } catch (Exception jsonEx) {
+                        throw new RuntimeException("OpenAI returned invalid JSON:\n" + content);
+                    }
+                }
+                return content;
+            } catch (WebClientResponseException.TooManyRequests e) {
+                // 429 retry with backoff
+                long retryMs = 0;
+
+                String retryAfter = e.getHeaders().getFirst("Retry-After");
+                if (retryAfter != null) {
+                    try {
+                        retryMs = Long.parseLong(retryAfter.trim()) * 1000L;
+                    } catch (NumberFormatException ignore) {
+                    }
+                }
+                if (retryMs <= 0) {
+                    retryMs = Math.max(MIN_GAP_MS, (long) Math.pow(2, attempt - 1) * 1000L);
+                }
+                System.out
+                        .println("OPENAI 429 (attempt " + attempt + "/" + maxAttempts + ") waiting " + retryMs + "ms");
+                try {
+                    Thread.sleep(retryMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while backing off after 429", ie);
+                }
+                // last attempt -> fail
+                if (attempt == maxAttempts) {
+                    throw new RuntimeException("OpenAI rate limit (429) after retries: " + e.getMessage(), e);
+                }
+
+            } catch (WebClientResponseException e) {
+                // non-429 HTTP errors
+                throw new RuntimeException(
+                        "OpenAI HTTP error: " + e.getStatusCode().value() + " " + e.getResponseBodyAsString(), e);
+            } catch (Exception e) {
+                throw new RuntimeException("OpenAI call failed: " + e.getMessage(), e);
+            }
+        }
+        throw new RuntimeException("OpenAI call failed after retries");
     }
 }

@@ -40,12 +40,17 @@ public class FileProcessingService {
             fh.setUpdatedAt(Instant.now());
             repo.save(fh);
 
-            // -------- TEXT EXTRACT --------
+            // text extraction
             Path source = Paths.get(fh.getSourcePath()); // ✅ declare BEFORE using/logging
             System.out.println("TEXT extract start id=" + historyId + " source=" + source);
             String extracted = textExtractService.extractText(source);
+            final int MAX_EXTRACTED_CHARS = 50_000;
+            if (extracted != null && extracted.length() > MAX_EXTRACTED_CHARS) {
+                extracted = extracted.substring(0, MAX_EXTRACTED_CHARS);
+            }
 
-            System.out.println("TEXT extract done id=" + historyId + " len=" + (extracted == null ? 0 : extracted.length()));
+            System.out.println(
+                    "TEXT extract done id=" + historyId + " len=" + (extracted == null ? 0 : extracted.length()));
             fh.setExtractedText(extracted);
             fh.setTextStatus("READY");
             fh.setUpdatedAt(Instant.now());
@@ -59,7 +64,8 @@ public class FileProcessingService {
 
             String narration = narrationService.buildNarration(extracted);
 
-            System.out.println("NARRATION build done id=" + historyId + " len=" + (narration == null ? 0 : narration.length()));
+            System.out.println(
+                    "NARRATION build done id=" + historyId + " len=" + (narration == null ? 0 : narration.length()));
             fh.setNarrationText(narration);
             fh.setNarrationStatus("READY");
             fh.setUpdatedAt(Instant.now());

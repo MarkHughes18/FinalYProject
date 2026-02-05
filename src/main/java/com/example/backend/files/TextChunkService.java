@@ -9,8 +9,9 @@ import java.util.List;
 public class TextChunkService {
 
     // Rough character budget per chunk
-    private static final int CHUNK_SIZE = 3500;
+    private static final int CHUNK_SIZE = 2000;
     private static final int OVERLAP = 200;
+    private static final int MAX_CHUNKS = 30;
 
     public List<String> chunk(String text) {
         List<String> chunks = new ArrayList<>();
@@ -35,11 +36,19 @@ public class TextChunkService {
             if (!part.isBlank()) {
                 chunks.add(part);
             }
+            if (chunks.size() >= MAX_CHUNKS) {
+                break;
+            }
             // overlap correctly
             start = Math.max(cut - OVERLAP, 0);
             if (cut >= text.length()) {
                 break;
             }
+            int nextStart = cut - OVERLAP;
+            if (nextStart <= start) {
+                nextStart = cut; // no overlap possible, force forward progress
+            }
+            start = nextStart;
         }
         return chunks;
     }
