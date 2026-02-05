@@ -14,32 +14,31 @@ public class TextChunkService {
 
     public List<String> chunk(String text) {
         List<String> chunks = new ArrayList<>();
-        if (text == null || text.isBlank()) {
+        if (text == null || text.isBlank())
             return chunks;
-        }
 
         int start = 0;
-        while (start < text.length()) {
-            int end = Math.min(text.length(), start + CHUNK_SIZE);
+        int guard = 0; // safety
 
-            // try not to cut mid-sentence
+        while (start < text.length() && guard++ < 10000) {
+
+            int end = Math.min(text.length(), start + CHUNK_SIZE);
             int cut = end;
             int lastPeriod = text.lastIndexOf('.', end);
             if (lastPeriod > start + 100) {
                 cut = lastPeriod + 1;
             }
-
+            if (cut <= start) {
+                cut = end; // safety if period logic fails
+            }
             String part = text.substring(start, cut).trim();
             if (!part.isBlank()) {
                 chunks.add(part);
             }
-
-            // overlap for continuity
-            start = Math.max(0, cut - OVERLAP);
-
-            // avoid infite loop if no progress
-            if (start >= cut) {
-                start = cut;
+            // overlap correctly
+            start = Math.max(cut - OVERLAP, 0);
+            if (cut >= text.length()) {
+                break;
             }
         }
         return chunks;

@@ -40,7 +40,6 @@ public class NarrationService {
                 jsonObjects.add(json.trim());
             }
         }
-
         if (jsonObjects.isEmpty()) {
             return "I couldn't generate a narration summary from this file. Try a different document.";
         }
