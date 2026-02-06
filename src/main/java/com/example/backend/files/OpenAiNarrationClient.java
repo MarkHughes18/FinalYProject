@@ -215,6 +215,9 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                 }
                 return content;
             } catch (WebClientResponseException.TooManyRequests e) {
+                System.out.println("OPENAI 429 BODY: " + e.getResponseBodyAsString());
+                System.out.println("OPENAI 429 RETRY-AFTER: " + e.getHeaders().getFirst("Retry-After"));
+
                 // 429 retry with backoff
                 long retryMs = 0;
 
@@ -226,7 +229,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                     }
                 }
                 if (retryMs <= 0) {
-                    retryMs = Math.max(MIN_GAP_MS, (long) Math.pow(2, attempt - 1) * 1000L);
+                    retryMs = Math.max(MIN_GAP_MS, (long) Math.pow(2, attempt - 1) * 10_000L);
                 }
                 System.out
                         .println("OPENAI 429 (attempt " + attempt + "/" + maxAttempts + ") waiting " + retryMs + "ms");
@@ -251,4 +254,37 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         }
         throw new RuntimeException("OpenAI call failed after retries");
     }
+
+    @Override
+    public String smoothNarrationFromNotes(List<String> chunks) throws Exception {
+        String system = """
+                You are an expert tutor creating a spoken narration script.
+                Output plain text only.
+                """;
+
+        String user = """
+                Create ONE final spoken narration script from these notes.
+
+                Requirements:
+                - Start with a 1–2 sentence overview
+                - Explain clearly with transitions
+                - Include key definitions
+                - Include 1–2 short examples
+                - End with 3 recap questions
+
+                Notes:
+                %s
+                """.formatted(String.join("\n\n", chunks));
+
+        Map<String, Object> payload = Map.of(
+                "model", "gpt-4.1-mini",
+                "temperature", 0.3,
+                "max_tokens", 1200,
+                "messages", List.of(
+                        Map.of("role", "system", "content", system),
+                        Map.of("role", "user", "content", user)));
+
+        return withRateLimit(() -> callAndExtractContent(payload));
+    }
+
 }

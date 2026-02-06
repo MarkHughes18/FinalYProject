@@ -50,4 +50,13 @@ public class MockLlmNarrationClient implements LlmNarrationClient {
                 .replace("\n", " ")
                 .replace("\r", " ");
     }
+
+    @Override
+    public String smoothNarrationFromNotes(List<String> chunks) throws Exception {
+        if (chunks == null || chunks.isEmpty()) {
+            return "No notes provided.";
+        }
+        return "Mock narration:\n\n" + String.join("\n\n", chunks);
+    }
+
 }

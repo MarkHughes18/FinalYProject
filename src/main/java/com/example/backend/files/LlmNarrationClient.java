@@ -7,4 +7,6 @@ public interface LlmNarrationClient {
                                                                 // string
 
     String smoothNarration(String combinedJson) throws Exception; // returns combined JSON & final plain narration
+
+    String smoothNarrationFromNotes(List<String> chunks) throws Exception; // helper that does both steps in one call
 }

@@ -34,12 +34,7 @@ public class NarrationService {
         if (chunks.isEmpty()) {
             return "I couldn't break this document into readable sections. Try a different file or format.";
         }
-        // one openai call for all chunks
-        String jsonArray = llmClient.explainChunks(chunks);
-        if (jsonArray == null || jsonArray.isBlank()) {
-            return "I couldn't generate a narration summary from this file. Try a different document.";
-        }
         // now smooth it into a final narration
-        return llmClient.smoothNarration(jsonArray);
+        return llmClient.smoothNarrationFromNotes(chunks);
     }
 }
