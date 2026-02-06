@@ -215,9 +215,16 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                 }
                 return content;
             } catch (WebClientResponseException.TooManyRequests e) {
+                String body = e.getResponseBodyAsString();
                 System.out.println("OPENAI 429 BODY: " + e.getResponseBodyAsString());
                 System.out.println("OPENAI 429 RETRY-AFTER: " + e.getHeaders().getFirst("Retry-After"));
 
+                if (body != null && body.contains("\"insufficient_quota\"")) {
+                    throw new RuntimeException(
+                            "OpenAI quota exceeded (insufficient_quota). Fix billing/limits for this API key. Body: "
+                                    + body,
+                            e);
+                }
                 // 429 retry with backoff
                 long retryMs = 0;
 
