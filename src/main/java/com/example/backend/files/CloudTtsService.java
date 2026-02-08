@@ -7,26 +7,34 @@ import org.springframework.stereotype.Service;
 @Service
 public class CloudTtsService {
 
-    public byte[] synthesizeMp3(String text, String languageCode, String voiceName, SsmlVoiceGender gender)
+    public byte[] synthesizeMp3(String text, String lang, String voice)
             throws Exception {
-        try (TextToSpeechClient client = TextToSpeechClient.create()) {
-            if (text == null)
-                text = "";
-            if (languageCode == null || languageCode.isBlank())
-                languageCode = "en-GB";
-            if (gender == null)
-                gender = SsmlVoiceGender.NEUTRAL;
+        String resolvedLang = (lang == null || lang.isBlank()) ? "en-GB" : lang.trim();
 
+        String resolvedVoice = (voice == null || voice.isBlank()) ? "female" : voice.trim();
+        String voiceName = null;
+        SsmlVoiceGender gender = SsmlVoiceGender.NEUTRAL;
+
+        String vLower = resolvedVoice.toLowerCase();
+        if (vLower.contains("-")) {
+            voiceName = resolvedVoice;
+        } else if (vLower.equals("female") || vLower.equals("woman")) {
+            gender = SsmlVoiceGender.FEMALE;
+        } else if (vLower.equals("male") || vLower.equals("man")) {
+            gender = SsmlVoiceGender.MALE;
+        } else {
+            gender = SsmlVoiceGender.NEUTRAL;
+        }
+        try (TextToSpeechClient client = TextToSpeechClient.create()) {
             SynthesisInput input = SynthesisInput.newBuilder()
-                    .setText(text)
+                    .setText(text == null ? "" : text)
                     .build();
 
             VoiceSelectionParams.Builder voiceBuilder = VoiceSelectionParams.newBuilder()
-                    .setLanguageCode(languageCode)
+                    .setLanguageCode(resolvedLang)
                     .setSsmlGender(gender);
 
-            // use a specific voice name
-            if (voiceName != null && !voiceName.isBlank()) {
+            if (voiceName != null) {
                 voiceBuilder.setName(voiceName);
             }
 
@@ -41,6 +49,6 @@ public class CloudTtsService {
     }
 
     public byte[] synthesizeMp3(String text) throws Exception {
-        return synthesizeMp3(text, "en-GB", null, SsmlVoiceGender.NEUTRAL);
+        return synthesizeMp3(text, "en-GB", "female");
     }
 }

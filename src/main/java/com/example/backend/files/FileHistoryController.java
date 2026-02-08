@@ -34,7 +34,9 @@ public class FileHistoryController {
                         String userEmail,
                         String fileName,
                         String fileType,
-                        long fileSize) {
+                        long fileSize,
+                        String ttsLanguageCode,
+                        String ttsVoice) {
         }
 
         public record HistoryResponse(
@@ -48,7 +50,9 @@ public class FileHistoryController {
                         String audioStatus,
                         String audioUrl,
                         String updatedAt,
-                        String errorMessage) {
+                        String errorMessage,
+                        String ttsLanguageCode,
+                        String ttsVoice) {
         }
 
         @PostMapping("/history")
@@ -70,6 +74,9 @@ public class FileHistoryController {
                 fh.setUpdatedAt(Instant.now());
                 fh.setNarrationStatus("PENDING");
                 fh.setNarrationText(null);
+                fh.setTtsLanguageCode((req.ttsLanguageCode() == null || req.ttsLanguageCode().isBlank()) ? "en-GB"
+                                : req.ttsLanguageCode().trim());
+                fh.setTtsVoice((req.ttsVoice() == null || req.ttsVoice().isBlank()) ? "female" : req.ttsVoice().trim());
 
                 fh = repo.save(fh);
 
@@ -84,7 +91,9 @@ public class FileHistoryController {
                                 fh.getAudioStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
-                                fh.getErrorMessage());
+                                fh.getErrorMessage(),
+                                fh.getTtsLanguageCode(),
+                                fh.getTtsVoice());
         }
 
         @GetMapping("/history")
@@ -102,19 +111,22 @@ public class FileHistoryController {
                                                 fh.getAudioStatus(),
                                                 fh.getAudioUrl(),
                                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
-                                                fh.getErrorMessage()))
+                                                fh.getErrorMessage(),
+                                                fh.getTtsLanguageCode(),
+                                                fh.getTtsVoice()))
                                 .toList();
         }
 
         @PostMapping("/upload")
-        public ResponseEntity<HistoryResponse> uploadFile(@RequestParam("email") String email,
-                        @RequestParam("file") MultipartFile file,
-                        @RequestParam(value = "voice", required = false) String voice,
-                        @RequestParam(value = "lang", required = false) String lang)
-                        throws IOException {
+        public ResponseEntity<HistoryResponse> uploadFile(@RequestParam("historyId") String historyId,
+                        @RequestParam("file") MultipartFile file) throws IOException {
 
                 if (file.isEmpty()) {
                         return ResponseEntity.badRequest().build();
+                }
+                FileHistory fh = repo.findById(historyId).orElse(null);
+                if (fh == null) {
+                        return ResponseEntity.notFound().build();
                 }
 
                 // choose a storage directory
@@ -130,41 +142,22 @@ public class FileHistoryController {
                 Path storedPath = uploadRoot.resolve(storedName);
                 Files.copy(file.getInputStream(), storedPath);
 
-                // create a FileHistory record
-                FileHistory fh = new FileHistory();
-                fh.setUserEmail(email);
+                // update metedata on existing history record
                 fh.setFileName(safeOriginalName);
                 fh.setFileType(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
                 fh.setFileSize(file.getSize());
-
-                String resolvedLang = (lang == null || lang.isBlank())
-                                ? "en-GB"
-                                : lang.trim();
-
-                String resolvedVoice = (voice == null || voice.isBlank())
-                                ? "female"
-                                : voice.trim().toLowerCase();
-
-                fh.setTtsLanguageCode(resolvedLang);
-                fh.setTtsVoice(resolvedVoice);
-
-                fh.setUploadedAt(Instant.now());
                 fh.setUpdatedAt(Instant.now());
-
                 // disk paths
                 fh.setSourcePath(storedPath.toAbsolutePath().toString());
                 fh.setAudioPath(null);
 
                 // initial status
                 fh.setTextStatus("PENDING");
-                fh.setExtractedText(null);
-
                 fh.setAudioStatus("PENDING");
-                fh.setAudioUrl(null);
-
                 fh.setNarrationStatus("PENDING");
+                fh.setExtractedText(null);
                 fh.setNarrationText(null);
-
+                fh.setAudioUrl(null);
                 fh.setErrorMessage(null);
 
                 fh = repo.save(fh);
@@ -182,7 +175,9 @@ public class FileHistoryController {
                                 fh.getAudioStatus(),
                                 fh.getAudioUrl(),
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
-                                fh.getErrorMessage());
+                                fh.getErrorMessage(),
+                                fh.getTtsLanguageCode(),
+                                fh.getTtsVoice());
 
                 return ResponseEntity.ok(resp);
         }
