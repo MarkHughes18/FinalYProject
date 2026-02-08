@@ -2,10 +2,13 @@ package com.example.finalyearproject.data;
 
 import java.util.List;
 
+import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 import retrofit2.http.Query;
 
 public interface ApiService {
@@ -23,6 +26,13 @@ public interface ApiService {
 
     @GET("api/users/profile")
     Call<UserProfile> getUserProfile(@Query("email") String email);
+
+    @Multipart
+    @POST("api/files/upload")
+    Call<HistoryItem> uploadFile(
+            @Query("historyId") String historyId,
+            @Part MultipartBody.Part file
+    );
 
 
 }

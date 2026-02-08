@@ -20,6 +20,7 @@ import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.HistoryItem;
 import com.example.finalyearproject.data.RetrofitClient;
+import com.example.finalyearproject.ui.HomeFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,9 @@ public class HistoryFragment extends Fragment {
     private TextView historyEmptyTV;
 
     private HistoryAdapter historyAdapter;
+    private android.media.MediaPlayer mediaPlayer;
     private final List<HistoryItem> historyItems = new ArrayList<>();
+    private static final String MEDIA_BASE_URL = "http://10.0.2.2:8080";
 
     private ApiService api;
 
@@ -61,7 +64,7 @@ public class HistoryFragment extends Fragment {
         historyRecyclerView.setLayoutManager(
                 new LinearLayoutManager(requireContext())
         );
-        historyAdapter = new HistoryAdapter(historyItems);
+        historyAdapter = new HistoryAdapter(historyItems, item -> onHistoryItemClicked(item));
         historyRecyclerView.setAdapter(historyAdapter);
 
         // Retrofit
@@ -129,5 +132,68 @@ public class HistoryFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    private void onHistoryItemClicked(HistoryItem item) {
+        if (item == null) return;
+
+        // Always show something so you know click works
+        if (item.audioStatus == null) {
+            toast("No status for this item yet");
+            return;
+        }
+        if (!"READY".equalsIgnoreCase(item.audioStatus)) {
+            toast("Audio not ready yet: " + item.audioStatus);
+            return;
+        }
+        if (item.audioUrl == null || item.audioUrl.isBlank()) {
+            toast("Audio URL missing");
+            return;
+        }
+
+        String fullUrl = item.audioUrl.startsWith("http")
+                ? item.audioUrl
+                : MEDIA_BASE_URL + item.audioUrl;
+
+        playMp3(fullUrl);
+    }
+    private void playMp3(String url) {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+
+            toast("Loading audio...");
+            mediaPlayer = new android.media.MediaPlayer();
+            mediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
+            mediaPlayer.setDataSource(url);
+            mediaPlayer.setOnPreparedListener(mp -> {
+                mp.start();
+                toast("Playing");
+            });
+
+            mediaPlayer.setOnCompletionListener(mp -> toast("Finished"));
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                toast("Playback error");
+                return true;
+            });
+
+            mediaPlayer.prepareAsync();
+        } catch (Exception e) {
+            e.printStackTrace();
+            toast("Failed to play: " + e.getMessage());
+        }
+    }
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+    private void toast(String msg) {
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
     }
 }

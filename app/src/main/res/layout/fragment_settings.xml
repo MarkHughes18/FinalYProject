@@ -90,6 +90,32 @@
                 android:text="Dark" />
         </RadioGroup>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Voice"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp" />
+
+        <RadioGroup
+            android:id="@+id/voiceRadioGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/rbVoiceFemale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Female" />
+
+            <RadioButton
+                android:id="@+id/rbVoiceMale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Male" />
+        </RadioGroup>
+
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

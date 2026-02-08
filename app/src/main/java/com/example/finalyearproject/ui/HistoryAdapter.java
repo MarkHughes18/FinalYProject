@@ -17,9 +17,11 @@ import java.util.List;
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder> {
 
     private final List<HistoryItem> items;
+    private final OnItemClickListener listener;
 
-    public HistoryAdapter(List<HistoryItem> items) {
+    public HistoryAdapter(List<HistoryItem> items, OnItemClickListener listener) {
         this.items = items;
+        this.listener = listener;
     }
 
     @NonNull
@@ -33,6 +35,9 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
     @Override
     public void onBindViewHolder(@NonNull HistoryViewHolder holder, int position) {
         HistoryItem item = items.get(position);
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) listener.onItemClick(item);
+        });
         holder.title.setText(item.fileName);
         holder.subtitle.setText(item.audioStatus != null
                 ? item.audioStatus
@@ -42,6 +47,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public interface OnItemClickListener {
+        void onItemClick(HistoryItem item);
     }
 
     static class HistoryViewHolder extends RecyclerView.ViewHolder {

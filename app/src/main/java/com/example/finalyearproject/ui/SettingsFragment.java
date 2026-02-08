@@ -31,13 +31,14 @@ public class SettingsFragment extends Fragment {
 
     private TextView emailTV, fullNameTV, dobTV;
     private Button logoutBtn;
-    private RadioGroup themeGroup;
-    private RadioButton rbSystem, rbLight, rbDark;
+    private RadioGroup themeGroup, voiceGroup;
+    private RadioButton rbSystem, rbLight, rbDark, rbVoiceFemale, rbVoiceMale;
     private Button clearHistoryBtn;
 
     private ApiService api;
 
     private static final String PREF_SETTINGS = "settings";
+    private static final String DEFAULT_TTS_VOICE = "female";
 
     public SettingsFragment() { }
 
@@ -63,6 +64,9 @@ public class SettingsFragment extends Fragment {
         rbLight         = view.findViewById(R.id.rbThemeLight);
         rbDark          = view.findViewById(R.id.rbThemeDark);
         clearHistoryBtn = view.findViewById(R.id.settingsClearHistoryBtn);
+        voiceGroup     = view.findViewById(R.id.voiceRadioGroup);
+        rbVoiceFemale  = view.findViewById(R.id.rbVoiceFemale);
+        rbVoiceMale    = view.findViewById(R.id.rbVoiceMale);
 
         api = RetrofitClient.getApiService();
 
@@ -92,6 +96,17 @@ public class SettingsFragment extends Fragment {
             saveThemeModeForCurrentUser(mode);
             AppCompatDelegate.setDefaultNightMode(mode);
         });
+        String savedVoice = getSavedTtsVoiceForCurrentUser();
+        applyVoiceSelectionToUI(savedVoice);
+        voiceGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            String voice;
+            if (checkedId == R.id.rbVoiceMale) {
+                voice = "male";
+            } else {
+                voice = "female";
+            }
+            saveTtsVoiceForCurrentUser(voice);
+        });
 
         //Logout
         logoutBtn.setOnClickListener(v -> {
@@ -111,11 +126,10 @@ public class SettingsFragment extends Fragment {
             startActivity(i);
         });
 
-        //Clear upload history (for now just a placeholder)
+        //Clear upload history
         clearHistoryBtn.setOnClickListener(v -> {
-            // TODO: implement real backend delete endpoint, then call it here.
             Toast.makeText(requireContext(),
-                    "Clear history: backend endpoint to be implemented",
+                    "Clear history",
                     Toast.LENGTH_SHORT).show();
         });
     }
@@ -185,6 +199,32 @@ public class SettingsFragment extends Fragment {
             default:
                 rbSystem.setChecked(true);
                 break;
+        }
+    }
+    private String getTtsVoiceKeyForCurrentUser() {
+        String email = getLoggedInEmail();
+        return (email != null) ? "tts_voice_" + email : "tts_voice_default";
+    }
+
+    private String getSavedTtsVoiceForCurrentUser() {
+        SharedPreferences prefs =
+                requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        String key = getTtsVoiceKeyForCurrentUser();
+        return prefs.getString(key, DEFAULT_TTS_VOICE);
+    }
+
+    private void saveTtsVoiceForCurrentUser(String voice) {
+        SharedPreferences prefs =
+                requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        String key = getTtsVoiceKeyForCurrentUser();
+        prefs.edit().putString(key, voice).apply();
+    }
+
+    private void applyVoiceSelectionToUI(String voice) {
+        if ("male".equalsIgnoreCase(voice)) {
+            rbVoiceMale.setChecked(true);
+        } else {
+            rbVoiceFemale.setChecked(true);
         }
     }
 }

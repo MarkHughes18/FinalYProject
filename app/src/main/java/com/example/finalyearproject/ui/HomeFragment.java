@@ -31,9 +31,13 @@ import com.example.finalyearproject.data.CreateHistoryRequest;
 import com.example.finalyearproject.data.HistoryItem;
 import com.example.finalyearproject.data.RetrofitClient;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -44,18 +48,20 @@ public class HomeFragment extends Fragment {
     private Button pickFileBtn, uploadBtn;
     private ProgressBar uploadProgress;
     private RecyclerView previousFilesRV;
-
     // parameters for the file selected by user
     private Uri selectedFileUri = null;
     private String selectedFileName;
-
     // Data for RecyclerView
     private final List<HistoryItem> historyItems = new ArrayList<>();
     private HistoryAdapter historyAdapter;
-
     private ApiService api;
+    private android.media.MediaPlayer mediaPlayer;
 
     private ActivityResultLauncher<Intent> pickFileLauncher;
+    private static final String PREF_SETTINGS = "settings";
+    private static final String KEY_TTS_VOICE_PREFIX = "tts_voice_";
+    private static final String DEFAULT_TTS_VOICE = "female";
+    private static final String BASE_URL_FOR_MEDIA = "http://10.0.2.2:8080";
 
     public HomeFragment() {
         // required empty  constructor
@@ -85,7 +91,8 @@ public class HomeFragment extends Fragment {
 
         previousFilesRV.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
-        historyAdapter = new HistoryAdapter(historyItems);
+        historyAdapter = new HistoryAdapter(historyItems, item -> {
+            onHistoryItemClicked(item);});
         previousFilesRV.setAdapter(historyAdapter);
 
         api = RetrofitClient.getApiService();
@@ -155,9 +162,6 @@ public class HomeFragment extends Fragment {
             toast("Please choose a file first.");
             return;
         }
-
-        // TODO: send selectedFileUri to backend (file upload + audio generation)
-        // For now at least create a history entry:
         createHistory();
     }
 
@@ -222,13 +226,18 @@ public class HomeFragment extends Fragment {
             if (c != null) c.close();
         }
 
-        // ---- Build request object ----
+        String lang = "en-GB";
+        String voice = getSavedTtsVoiceForUser(userEmail);
+        if (voice == null || voice.isBlank()) voice = "female";
+        voice = voice.trim().toLowerCase();
+        //build request object
         CreateHistoryRequest req = new CreateHistoryRequest(
                 userEmail,
                 fileName,
                 fileType,
-                fileSize
-        );
+                fileSize,
+                lang,
+                voice);
 
         uploadProgress.setVisibility(View.VISIBLE);
 
@@ -243,6 +252,7 @@ public class HomeFragment extends Fragment {
                     historyItems.add(0, created);
                     historyAdapter.notifyItemInserted(0);
                     toast("History updated for " + created.fileName);
+                    uploadSelectedFile(created.id);
                 } else {
                     toast("Failed to create history entry");
                 }
@@ -285,6 +295,131 @@ public class HomeFragment extends Fragment {
                 toast("Network error: " + t.getMessage());
             }
         });
+    }
+
+    private String getSavedTtsVoiceForUser(String email) {
+        SharedPreferences prefs =
+                requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
+        String key = (email != null) ? KEY_TTS_VOICE_PREFIX + email : KEY_TTS_VOICE_PREFIX + "default";
+        return prefs.getString(key, DEFAULT_TTS_VOICE);
+    }
+
+    private void uploadSelectedFile(String historyId){
+        if (selectedFileUri == null) {
+            toast("No file selected");
+            return;
+        }
+        try {
+            // Read bytes from Uri
+            ContentResolver cr = requireContext().getContentResolver();
+            String fileName = getFileNameFromUri(selectedFileUri);
+
+            byte[] bytes;
+            try (InputStream in = cr.openInputStream(selectedFileUri)) {
+                if (in == null) {
+                    toast("Failed to read file");
+                    return;
+                }
+                bytes = readAllBytes(in);
+            }
+
+            RequestBody reqBody = RequestBody.create(bytes, okhttp3.MediaType.parse("application/octet-stream"));
+            MultipartBody.Part part = MultipartBody.Part.createFormData("file", fileName, reqBody);
+
+            uploadProgress.setVisibility(View.VISIBLE);
+            api.uploadFile(historyId, part).enqueue(new Callback<HistoryItem>() {
+                @Override
+                public void onResponse(Call<HistoryItem> call, Response<HistoryItem> response) {
+                    uploadProgress.setVisibility(View.GONE);
+                    if (response.isSuccessful() && response.body() != null) {
+                        toast("Upload started. Processing will run in background.");
+                        String email = getLoggedInEmail();
+                        if (email != null) getHistory(email);
+                    } else {
+                        toast("Upload failed");
+                    }
+                }
+                @Override
+                public void onFailure(Call<HistoryItem> call, Throwable t) {
+                    uploadProgress.setVisibility(View.GONE);
+                    toast("Upload error: " + t.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            toast("Upload error: " + e.getMessage());
+        }
+    }
+    private static byte[] readAllBytes(java.io.InputStream in) throws java.io.IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] data = new byte[8192];
+        int nRead;
+        while ((nRead = in.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        return buffer.toByteArray();
+    }
+
+    private void onHistoryItemClicked(HistoryItem item) {
+        if (item == null) return;
+
+        if (!"READY".equalsIgnoreCase(item.audioStatus) || item.audioUrl == null) {
+            toast("Audio not ready yet");
+            return;
+        }
+        playAudioFromUrl(item.audioUrl);
+    }
+    private void playAudioFromUrl(String audioUrlPath) {
+        String fullUrl = audioUrlPath.startsWith("http")
+                ? audioUrlPath
+                : BASE_URL_FOR_MEDIA + audioUrlPath;
+        startMediaPlayer(fullUrl);
+    }
+    private void startMediaPlayer(String url) {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+            uploadProgress.setVisibility(View.VISIBLE);
+            toast("Loading audio...");
+
+            mediaPlayer = new android.media.MediaPlayer();
+            mediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
+            mediaPlayer.setDataSource(url);
+
+            mediaPlayer.setOnPreparedListener(mp -> {
+                uploadProgress.setVisibility(View.GONE);
+                mp.start();
+                toast("Playing");
+            });
+
+            mediaPlayer.setOnCompletionListener(mp -> {
+                toast("Finished");
+            });
+
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                uploadProgress.setVisibility(View.GONE);
+                toast("Audio playback error");
+                return true;
+            });
+
+            mediaPlayer.prepareAsync();
+
+        } catch (Exception e) {
+            uploadProgress.setVisibility(View.GONE);
+            e.printStackTrace();
+            toast("Failed to play audio: " + e.getMessage());
+        }
+    }
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
     }
 
     private void toast(String msg) {
