@@ -31,13 +31,16 @@ public class FileHistory {
     private String narrationText;
     private String narrationStatus; // PENDING/PROCESSING/READY/FAILED
 
+    private String ttsLanguageCode;
+    private String ttsVoice;
+
     public FileHistory() {
     }
 
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
             String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
             String errorMessage, String extractedText, String textStatus, String narrationText,
-            String narrationStatus) {
+            String narrationStatus, String ttsLanguageCode, String ttsVoice) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -53,6 +56,8 @@ public class FileHistory {
         this.textStatus = textStatus;
         this.narrationText = narrationText;
         this.narrationStatus = narrationStatus;
+        this.ttsLanguageCode = ttsLanguageCode;
+        this.ttsVoice = ttsVoice;
     }
 
     public String getId() {
@@ -183,4 +188,19 @@ public class FileHistory {
         this.narrationStatus = narrationStatus;
     }
 
+    public String getTtsLanguageCode() {
+        return ttsLanguageCode;
+    }
+
+    public void setTtsLanguageCode(String ttsLanguageCode) {
+        this.ttsLanguageCode = ttsLanguageCode;
+    }
+
+    public String getTtsVoice() {
+        return ttsVoice;
+    }
+
+    public void setTtsVoice(String ttsVoice) {
+        this.ttsVoice = ttsVoice;
+    }
 }

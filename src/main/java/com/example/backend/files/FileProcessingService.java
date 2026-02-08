@@ -80,7 +80,7 @@ public class FileProcessingService {
             }
             System.out.println("TTS start id=" + historyId + " speakLen=" + toSpeak.length());
 
-            byte[] mp3Bytes = ttsService.synthesizeMp3(toSpeak);
+            byte[] mp3Bytes = ttsService.synthesizeMp3(toSpeak, "en-GB", fh.getTtsVoiceName(), fh.getTtsGender());
             System.out.println("TTS done id=" + historyId + " bytes=" + (mp3Bytes == null ? 0 : mp3Bytes.length));
 
             Path audioDir = Paths.get("audio");

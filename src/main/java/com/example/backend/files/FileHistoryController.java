@@ -108,7 +108,9 @@ public class FileHistoryController {
 
         @PostMapping("/upload")
         public ResponseEntity<HistoryResponse> uploadFile(@RequestParam("email") String email,
-                        @RequestParam("file") MultipartFile file)
+                        @RequestParam("file") MultipartFile file,
+                        @RequestParam(value = "voice", required = false) String voice,
+                        @RequestParam(value = "lang", required = false) String lang)
                         throws IOException {
 
                 if (file.isEmpty()) {
@@ -134,6 +136,17 @@ public class FileHistoryController {
                 fh.setFileName(safeOriginalName);
                 fh.setFileType(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
                 fh.setFileSize(file.getSize());
+
+                String resolvedLang = (lang == null || lang.isBlank())
+                                ? "en-GB"
+                                : lang.trim();
+
+                String resolvedVoice = (voice == null || voice.isBlank())
+                                ? "female"
+                                : voice.trim().toLowerCase();
+
+                fh.setTtsLanguageCode(resolvedLang);
+                fh.setTtsVoice(resolvedVoice);
 
                 fh.setUploadedAt(Instant.now());
                 fh.setUpdatedAt(Instant.now());
