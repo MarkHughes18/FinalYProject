@@ -17,15 +17,30 @@ public class FileHistory {
     private long fileSize;
 
     private Instant uploadedAt;
+    private Instant updatedAt; // last status update time
 
     private String audioStatus; // "PENDING" etc
     private String audioUrl; // URL or path to audio file
+    private String sourcePath; // where uploaded doc is stored on disk
+    private String audioPath; // where generated mp3 is stored on disk
+    private String errorMessage; // for when audioStatus = Failure
+
+    private String extractedText; // extracted text from the document
+    private String textStatus; // "PENDING" etc
+
+    private String narrationText;
+    private String narrationStatus; // PENDING/PROCESSING/READY/FAILED
+
+    private String ttsLanguageCode;
+    private String ttsVoice;
 
     public FileHistory() {
     }
 
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
-            String audioStatus, String audioUrl) {
+            String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
+            String errorMessage, String extractedText, String textStatus, String narrationText,
+            String narrationStatus, String ttsLanguageCode, String ttsVoice) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -33,6 +48,16 @@ public class FileHistory {
         this.uploadedAt = uploadedAt;
         this.audioStatus = audioStatus;
         this.audioUrl = audioUrl;
+        this.sourcePath = sourcePath;
+        this.audioPath = audioPath;
+        this.updatedAt = updatedAt;
+        this.errorMessage = errorMessage;
+        this.extractedText = extractedText;
+        this.textStatus = textStatus;
+        this.narrationText = narrationText;
+        this.narrationStatus = narrationStatus;
+        this.ttsLanguageCode = ttsLanguageCode;
+        this.ttsVoice = ttsVoice;
     }
 
     public String getId() {
@@ -99,4 +124,83 @@ public class FileHistory {
         this.audioUrl = audioUrl;
     }
 
+    public String getSourcePath() {
+        return sourcePath;
+    }
+
+    public void setSourcePath(String sourcePath) {
+        this.sourcePath = sourcePath;
+    }
+
+    public String getAudioPath() {
+        return audioPath;
+    }
+
+    public void setAudioPath(String audioPath) {
+        this.audioPath = audioPath;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
+    }
+
+    public String getTextStatus() {
+        return textStatus;
+    }
+
+    public void setTextStatus(String textStatus) {
+        this.textStatus = textStatus;
+    }
+
+    public String getNarrationText() {
+        return narrationText;
+    }
+
+    public void setNarrationText(String narrationText) {
+        this.narrationText = narrationText;
+    }
+
+    public String getNarrationStatus() {
+        return narrationStatus;
+    }
+
+    public void setNarrationStatus(String narrationStatus) {
+        this.narrationStatus = narrationStatus;
+    }
+
+    public String getTtsLanguageCode() {
+        return ttsLanguageCode;
+    }
+
+    public void setTtsLanguageCode(String ttsLanguageCode) {
+        this.ttsLanguageCode = ttsLanguageCode;
+    }
+
+    public String getTtsVoice() {
+        return ttsVoice;
+    }
+
+    public void setTtsVoice(String ttsVoice) {
+        this.ttsVoice = ttsVoice;
+    }
 }
