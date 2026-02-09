@@ -117,6 +117,60 @@ public class FileHistoryController {
                                 .toList();
         }
 
+        @DeleteMapping("/history")
+        public ResponseEntity<Void> clearHistory(@RequestParam("email") String email) {
+                List<FileHistory> items = repo.findByUserEmail(email);
+                for (FileHistory fh : items) {
+                        try {
+                                // delete uploaded source file
+                                if (fh.getSourcePath() != null) {
+                                        Files.deleteIfExists(Paths.get(fh.getSourcePath()));
+                                }
+                                // delete generated audio file
+                                if (fh.getAudioPath() != null) {
+                                        Files.deleteIfExists(Paths.get(fh.getAudioPath()));
+                                }
+                        } catch (Exception ex) {
+                                System.out.println("Failed deleting file: " + ex.getMessage());
+                        }
+                }
+                // delete records from db
+                repo.deleteByUserEmail(email);
+
+                return ResponseEntity.noContent().build();
+        }
+
+        @DeleteMapping("/history/{id}")
+        public ResponseEntity<Void> deleteHistoryItem(@PathVariable String id) {
+
+                FileHistory fh = repo.findById(id).orElse(null);
+                if (fh == null) {
+                        return ResponseEntity.notFound().build();
+                }
+
+                // delete disk files (safe)
+                try {
+                        if (fh.getSourcePath() != null) {
+                                Files.deleteIfExists(Paths.get(fh.getSourcePath()));
+                        }
+                } catch (Exception ex) {
+                        System.out.println("Failed deleting source file: " + ex.getMessage());
+                }
+
+                try {
+                        if (fh.getAudioPath() != null) {
+                                Files.deleteIfExists(Paths.get(fh.getAudioPath()));
+                        }
+                } catch (Exception ex) {
+                        System.out.println("Failed deleting audio file: " + ex.getMessage());
+                }
+
+                // delete DB record
+                repo.deleteById(id);
+
+                return ResponseEntity.noContent().build();
+        }
+
         @PostMapping("/upload")
         public ResponseEntity<HistoryResponse> uploadFile(@RequestParam("historyId") String historyId,
                         @RequestParam("file") MultipartFile file) throws IOException {
@@ -146,6 +200,7 @@ public class FileHistoryController {
                 fh.setFileName(safeOriginalName);
                 fh.setFileType(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
                 fh.setFileSize(file.getSize());
+                fh.setUploadedAt(Instant.now());
                 fh.setUpdatedAt(Instant.now());
                 // disk paths
                 fh.setSourcePath(storedPath.toAbsolutePath().toString());
