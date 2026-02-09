@@ -3,10 +3,14 @@ package com.example.finalyearproject.ui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,6 +25,7 @@ import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.HistoryItem;
 import com.example.finalyearproject.data.RetrofitClient;
 import com.example.finalyearproject.ui.HomeFragment;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +42,12 @@ public class HistoryFragment extends Fragment {
 
     private HistoryAdapter historyAdapter;
     private android.media.MediaPlayer mediaPlayer;
+    private BottomSheetDialog playerSheet;
+    private Handler playerHandler = new Handler(Looper.getMainLooper());
+    private Runnable playerTick;
+    private SeekBar bsSeekBar;
+    private TextView bsTimeTV;
+    private Button bsPlayPauseBtn;
     private final List<HistoryItem> historyItems = new ArrayList<>();
     private static final String MEDIA_BASE_URL = "http://10.0.2.2:8080";
 
@@ -136,11 +147,6 @@ public class HistoryFragment extends Fragment {
     private void onHistoryItemClicked(HistoryItem item) {
         if (item == null) return;
 
-        // Always show something so you know click works
-        if (item.audioStatus == null) {
-            toast("No status for this item yet");
-            return;
-        }
         if (!"READY".equalsIgnoreCase(item.audioStatus)) {
             toast("Audio not ready yet: " + item.audioStatus);
             return;
@@ -151,47 +157,177 @@ public class HistoryFragment extends Fragment {
         }
 
         String fullUrl = item.audioUrl.startsWith("http")
-                ? item.audioUrl
-                : MEDIA_BASE_URL + item.audioUrl;
+                ? item.audioUrl : MEDIA_BASE_URL + item.audioUrl;
 
-        playMp3(fullUrl);
+        showPlayerBottomSheet(item.fileName, fullUrl);
     }
-    private void playMp3(String url) {
-        try {
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
+    private void showPlayerBottomSheet(String title, String url) {
 
-            toast("Loading audio...");
+        stopPlayer();
+
+        View sheetView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.bottomsheet_audio_player, null, false);
+
+        TextView titleTV = sheetView.findViewById(R.id.bsTitleTV);
+        bsSeekBar = sheetView.findViewById(R.id.bsSeekBar);
+        bsTimeTV = sheetView.findViewById(R.id.bsTimeTV);
+        Button back10 = sheetView.findViewById(R.id.bsBack10Btn);
+        bsPlayPauseBtn = sheetView.findViewById(R.id.bsPlayPauseBtn);
+        Button fwd10 = sheetView.findViewById(R.id.bsFwd10Btn);
+
+        titleTV.setText(title != null ? title : "Now playing");
+
+        bsPlayPauseBtn.setEnabled(false);
+        bsPlayPauseBtn.setText("Loading...");
+
+        playerSheet = new BottomSheetDialog(requireContext());
+        playerSheet.setContentView(sheetView);
+        playerSheet.setOnDismissListener(d -> stopPlayer());
+        playerSheet.show();
+
+        try {
             mediaPlayer = new android.media.MediaPlayer();
             mediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
             mediaPlayer.setDataSource(url);
+
             mediaPlayer.setOnPreparedListener(mp -> {
+
+                int dur = mp.getDuration();
+                bsSeekBar.setMax(dur);
+                bsSeekBar.setProgress(0);
+
+                bsTimeTV.setText(fmtTime(0) + " / " + fmtTime(dur));
+
+                bsPlayPauseBtn.setEnabled(true);
+                bsPlayPauseBtn.setText("Pause");
+
                 mp.start();
-                toast("Playing");
+                startPlayerTick();
             });
 
-            mediaPlayer.setOnCompletionListener(mp -> toast("Finished"));
+            mediaPlayer.setOnCompletionListener(mp -> {
+                bsPlayPauseBtn.setText("Play");
+                stopPlayerTick();
+                bsSeekBar.setProgress(bsSeekBar.getMax());
+            });
+
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 toast("Playback error");
+                stopPlayer();
                 return true;
             });
 
+            bsPlayPauseBtn.setOnClickListener(v -> togglePlayPause());
+
+            back10.setOnClickListener(v -> seekBy(-10_000));
+            fwd10.setOnClickListener(v -> seekBy(10_000));
+
+            bsSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) { }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.seekTo(seekBar.getProgress());
+                    }
+                }
+
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser && mediaPlayer != null) {
+                        bsTimeTV.setText(fmtTime(progress) + " / " + fmtTime(mediaPlayer.getDuration()));
+                    }
+                }
+            });
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
             e.printStackTrace();
             toast("Failed to play: " + e.getMessage());
+            stopPlayer();
         }
     }
-    @Override
-    public void onStop() {
-        super.onStop();
+    private void togglePlayPause() {
+        if (mediaPlayer == null) return;
+
+        if (mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            bsPlayPauseBtn.setText("Play");
+        } else {
+            mediaPlayer.start();
+            bsPlayPauseBtn.setText("Pause");
+            startPlayerTick();
+        }
+    }
+
+    private void seekBy(int deltaMs) {
+        if (mediaPlayer == null) return;
+
+        int pos = mediaPlayer.getCurrentPosition();
+        int target = pos + deltaMs;
+
+        if (target < 0) target = 0;
+
+        int dur = mediaPlayer.getDuration();
+        if (target > dur) target = dur;
+
+        mediaPlayer.seekTo(target);
+        bsSeekBar.setProgress(target);
+    }
+
+    private void startPlayerTick() {
+        stopPlayerTick();
+
+        playerTick = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null) {
+                    int pos = mediaPlayer.getCurrentPosition();
+                    int dur = mediaPlayer.getDuration();
+
+                    bsSeekBar.setProgress(pos);
+                    bsTimeTV.setText(fmtTime(pos) + " / " + fmtTime(dur));
+
+                    playerHandler.postDelayed(this, 500);
+                }
+            }
+        };
+        playerHandler.post(playerTick);
+    }
+
+    private void stopPlayerTick() {
+        if (playerTick != null) {
+            playerHandler.removeCallbacks(playerTick);
+            playerTick = null;
+        }
+    }
+
+    private void stopPlayer() {
+        stopPlayerTick();
+
         if (mediaPlayer != null) {
+            try { mediaPlayer.stop(); } catch (Exception ignored) {}
             mediaPlayer.release();
             mediaPlayer = null;
         }
+        if (playerSheet != null && playerSheet.isShowing()) {
+            playerSheet.dismiss();
+            playerSheet = null;
+        }
+    }
+
+    private static String fmtTime(int ms) {
+        int totalSec = ms / 1000;
+        int min = totalSec / 60;
+        int sec = totalSec % 60;
+        return String.format("%02d:%02d", min, sec);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        stopPlayer();
     }
     private void toast(String msg) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
