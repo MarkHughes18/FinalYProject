@@ -18,10 +18,12 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
 
     private final List<HistoryItem> items;
     private final OnItemClickListener listener;
+    private final OnItemLongClickListener longListener;
 
-    public HistoryAdapter(List<HistoryItem> items, OnItemClickListener listener) {
+    public HistoryAdapter(List<HistoryItem> items, OnItemClickListener listener, OnItemLongClickListener longListener) {
         this.items = items;
         this.listener = listener;
+        this.longListener = longListener;
     }
 
     @NonNull
@@ -38,6 +40,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(item);
         });
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longListener != null) longListener.onItemLongClick(item);
+            return true;
+        });
         holder.title.setText(item.fileName);
         holder.subtitle.setText(item.audioStatus != null
                 ? item.audioStatus
@@ -51,6 +57,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
 
     public interface OnItemClickListener {
         void onItemClick(HistoryItem item);
+    }
+
+    public interface OnItemLongClickListener {
+        void onItemLongClick(HistoryItem item);
     }
 
     static class HistoryViewHolder extends RecyclerView.ViewHolder {

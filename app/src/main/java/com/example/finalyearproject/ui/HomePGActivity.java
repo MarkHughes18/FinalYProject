@@ -10,6 +10,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 
 import com.example.finalyearproject.R;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class HomePGActivity extends AppCompatActivity {
@@ -38,8 +39,9 @@ public class HomePGActivity extends AppCompatActivity {
         setContentView(R.layout.activity_homepg);
 
         // Toolbar
-        Toolbar toolbar = findViewById(R.id.homeToolbar);
+        MaterialToolbar toolbar = findViewById(R.id.homeToolbar);
         setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("Unconventional Learning");
 
         // Bottom navigation
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);

@@ -5,10 +5,12 @@ import java.util.List;
 import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
+import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 public interface ApiService {
@@ -34,5 +36,10 @@ public interface ApiService {
             @Part MultipartBody.Part file
     );
 
+    @DELETE("api/files/history")
+    Call<Void> clearHistory(@Query("email") String email);
+
+    @DELETE("api/files/history/{id}")
+    Call<Void> deleteHistoryItem(@Path("id") String id);
 
 }

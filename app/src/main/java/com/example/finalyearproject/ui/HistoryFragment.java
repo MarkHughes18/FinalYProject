@@ -16,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -48,7 +49,9 @@ public class HistoryFragment extends Fragment {
     private SeekBar bsSeekBar;
     private TextView bsTimeTV;
     private Button bsPlayPauseBtn;
+    private SearchView historySearchView;
     private final List<HistoryItem> historyItems = new ArrayList<>();
+    private final List<HistoryItem> allHistoryItems = new ArrayList<>();
     private static final String MEDIA_BASE_URL = "http://10.0.2.2:8080";
 
     private ApiService api;
@@ -75,8 +78,35 @@ public class HistoryFragment extends Fragment {
         historyRecyclerView.setLayoutManager(
                 new LinearLayoutManager(requireContext())
         );
-        historyAdapter = new HistoryAdapter(historyItems, item -> onHistoryItemClicked(item));
+        historyAdapter = new HistoryAdapter(historyItems, item -> onHistoryItemClicked(item)
+        , item -> confirmDelete(item));
         historyRecyclerView.setAdapter(historyAdapter);
+
+        historySearchView = view.findViewById(R.id.historySearchView);
+        historySearchView.setIconifiedByDefault(false);
+        historySearchView.setIconified(false);
+        historySearchView.setMaxWidth(Integer.MAX_VALUE);
+        historySearchView.clearFocus();
+        historySearchView.setQueryHint("Search uploads...");
+        TextView searchText = historySearchView.findViewById(androidx.appcompat.R.id.search_src_text);
+        if (searchText != null) {
+            searchText.setHint("Search uploads...");
+            searchText.setHintTextColor(getResources().getColor(android.R.color.darker_gray));
+            searchText.setTextColor(getResources().getColor(android.R.color.black));
+            searchText.setTextSize(16);
+        }
+        historySearchView.setOnQueryTextListener(new androidx.appcompat.widget.SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                filterHistory(query);
+                return true;
+            }
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterHistory(newText);
+                return true;
+            }
+        });
 
         // Retrofit
         api = RetrofitClient.getApiService();
@@ -113,6 +143,8 @@ public class HistoryFragment extends Fragment {
                 historyProgress.setVisibility(View.GONE);
 
                 if (response.isSuccessful() && response.body() != null) {
+                    allHistoryItems.clear();
+                    allHistoryItems.addAll(response.body());
                     historyItems.clear();
                     historyItems.addAll(response.body());
                     historyAdapter.notifyDataSetChanged();
@@ -144,6 +176,33 @@ public class HistoryFragment extends Fragment {
             }
         });
     }
+    private void filterHistory(String query) {
+        String q = (query == null) ? "" : query.trim().toLowerCase();
+
+        historyItems.clear();
+        if (q.isEmpty()) {
+            historyItems.addAll(allHistoryItems);
+        } else {
+            for (HistoryItem item : allHistoryItems) {
+                String name = item.fileName == null ? "" : item.fileName.toLowerCase();
+                String type = item.fileType == null ? "" : item.fileType.toLowerCase();
+
+                if (name.contains(q) || type.contains(q)) {
+                    historyItems.add(item);
+                }
+            }
+        }
+
+        historyAdapter.notifyDataSetChanged();
+
+        if (historyItems.isEmpty()) {
+            historyEmptyTV.setVisibility(View.VISIBLE);
+            historyEmptyTV.setText("No matches found.");
+        } else {
+            historyEmptyTV.setVisibility(View.GONE);
+        }
+    }
+
     private void onHistoryItemClicked(HistoryItem item) {
         if (item == null) return;
 
@@ -328,6 +387,54 @@ public class HistoryFragment extends Fragment {
     public void onStop() {
         super.onStop();
         stopPlayer();
+    }
+
+    private void confirmDelete(HistoryItem item) {
+        if (item == null || item.id == null || item.id.isBlank()) {
+            toast("Cannot delete: missing id");
+            return;
+        }
+        String name = (item.fileName != null && !item.fileName.isBlank())
+                ? item.fileName
+                : "this upload";
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Delete upload")
+                .setMessage("Delete \"" + name + "\" and its generated audio? This cannot be undone.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", (dialog, which) -> deleteHistoryItem(item))
+                .show();
+    }
+
+    private void deleteHistoryItem(HistoryItem item) {
+        api.deleteHistoryItem(item.id).enqueue(new retrofit2.Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    toast("Deleted");
+
+                    // remove from BOTH lists so search + list stay consistent
+                    removeById(allHistoryItems, item.id);
+                    removeById(historyItems, item.id);
+                    historyAdapter.notifyDataSetChanged();
+
+                } else {
+                    toast("Delete failed: " + response.code());
+                }
+            }
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                toast("Network error: " + t.getMessage());
+            }
+        });
+    }
+    private static void removeById(List<HistoryItem> list, String id) {
+        for (int i = list.size() - 1; i >= 0; i--) {
+            HistoryItem it = list.get(i);
+            if (it != null && id.equals(it.id)) {
+                list.remove(i);
+            }
+        }
     }
     private void toast(String msg) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();

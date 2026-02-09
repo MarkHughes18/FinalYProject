@@ -66,12 +66,15 @@ public class HomeFragment extends Fragment {
     private SeekBar bsSeekBar;
     private TextView bsTimeTV;
     private Button bsPlayPauseBtn;
-
+    private final Handler pollHandler = new Handler(Looper.getMainLooper());
+    private Runnable pollRunnable;
+    private boolean isPolling = false;
     private ActivityResultLauncher<Intent> pickFileLauncher;
     private static final String PREF_SETTINGS = "settings";
     private static final String KEY_TTS_VOICE_PREFIX = "tts_voice_";
     private static final String DEFAULT_TTS_VOICE = "female";
     private static final String BASE_URL_FOR_MEDIA = "http://10.0.2.2:8080";
+    private static final long POLL_INTERVAL_MS = 2000;
 
     public HomeFragment() {
         // required empty  constructor
@@ -101,8 +104,8 @@ public class HomeFragment extends Fragment {
 
         previousFilesRV.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
-        historyAdapter = new HistoryAdapter(historyItems, item -> {
-            onHistoryItemClicked(item);});
+        historyAdapter = new HistoryAdapter(historyItems, item ->
+            onHistoryItemClicked(item), null);
         previousFilesRV.setAdapter(historyAdapter);
 
         api = RetrofitClient.getApiService();
@@ -276,33 +279,41 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void getHistory(String userEmail) {
+    private void getHistory(String userEmail){
+        getHistory(userEmail, false);
+    }
+    private void getHistory(String userEmail, boolean silent) {
         if (userEmail == null) {
             toast("No logged in user");
             return;
         }
 
-        uploadProgress.setVisibility(View.VISIBLE);
+        if (!silent) uploadProgress.setVisibility(View.VISIBLE);
 
         api.getHistory(userEmail).enqueue(new Callback<List<HistoryItem>>() {
             @Override
             public void onResponse(Call<List<HistoryItem>> call,
                                    Response<List<HistoryItem>> response) {
-                uploadProgress.setVisibility(View.GONE);
+                if (!silent) uploadProgress.setVisibility(View.GONE);
 
                 if (response.isSuccessful() && response.body() != null) {
                     historyItems.clear();
                     historyItems.addAll(response.body());
                     historyAdapter.notifyDataSetChanged();
+                    if (hasInProgressItems()){
+                        startPolling();
+                    }else{
+                        stopPolling();
+                    }
                 } else {
-                    toast("Failed to load history");
+                    if (!silent) toast("Failed to load history");
                 }
             }
-
             @Override
             public void onFailure(Call<List<HistoryItem>> call, Throwable t) {
-                uploadProgress.setVisibility(View.GONE);
-                toast("Network error: " + t.getMessage());
+                if (!silent) uploadProgress.setVisibility(View.GONE);
+                if (!silent) toast("Network error: " + t.getMessage());
+                stopPolling();
             }
         });
     }
@@ -342,9 +353,9 @@ public class HomeFragment extends Fragment {
                 public void onResponse(Call<HistoryItem> call, Response<HistoryItem> response) {
                     uploadProgress.setVisibility(View.GONE);
                     if (response.isSuccessful() && response.body() != null) {
-                        toast("Upload started. Processing will run in background.");
+                        toast("Upload started. Processing will run in the shadows.");
                         String email = getLoggedInEmail();
-                        if (email != null) getHistory(email);
+                        if (email != null) getHistory(email); startPolling();
                     } else {
                         toast("Upload failed");
                     }
@@ -433,6 +444,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onStop() {
         super.onStop();
+        stopPolling();
         stopPlayer();
     }
 
@@ -602,6 +614,48 @@ public class HomeFragment extends Fragment {
         int sec = totalSec % 60;
         return String.format("%02d:%02d", min, sec);
     }
+
+    private void startPolling() {
+        if (isPolling) return;
+
+        String email = getLoggedInEmail();
+        if (email == null) return;
+
+        isPolling = true;
+
+        pollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isAdded()) return;
+
+                getHistory(email, true); // silent refresh
+
+                pollHandler.postDelayed(this, POLL_INTERVAL_MS);
+            }
+        };
+        pollHandler.postDelayed(pollRunnable, POLL_INTERVAL_MS);
+    }
+
+    private void stopPolling() {
+        isPolling = false;
+        if (pollRunnable != null) {
+            pollHandler.removeCallbacks(pollRunnable);
+            pollRunnable = null;
+        }
+    }
+
+    private boolean hasInProgressItems() {
+        for (HistoryItem item : historyItems) {
+            if (item != null && item.audioStatus != null) {
+                String s = item.audioStatus.toUpperCase();
+                if (s.equals("PENDING") || s.equals("PROCESSING")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     private void toast(String msg) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();

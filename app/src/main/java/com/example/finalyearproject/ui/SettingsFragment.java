@@ -55,18 +55,18 @@ public class SettingsFragment extends Fragment {
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        emailTV         = view.findViewById(R.id.settingsEmailTV);
-        fullNameTV      = view.findViewById(R.id.settingsFullNameTV);
-        dobTV           = view.findViewById(R.id.settingsDobTV);
-        logoutBtn       = view.findViewById(R.id.settingsLogoutBtn);
-        themeGroup      = view.findViewById(R.id.themeRadioGroup);
-        rbSystem        = view.findViewById(R.id.rbThemeSystem);
-        rbLight         = view.findViewById(R.id.rbThemeLight);
-        rbDark          = view.findViewById(R.id.rbThemeDark);
+        emailTV = view.findViewById(R.id.settingsEmailTV);
+        fullNameTV = view.findViewById(R.id.settingsFullNameTV);
+        dobTV = view.findViewById(R.id.settingsDobTV);
+        logoutBtn = view.findViewById(R.id.settingsLogoutBtn);
+        themeGroup = view.findViewById(R.id.themeRadioGroup);
+        rbSystem = view.findViewById(R.id.rbThemeSystem);
+        rbLight = view.findViewById(R.id.rbThemeLight);
+        rbDark = view.findViewById(R.id.rbThemeDark);
         clearHistoryBtn = view.findViewById(R.id.settingsClearHistoryBtn);
-        voiceGroup     = view.findViewById(R.id.voiceRadioGroup);
-        rbVoiceFemale  = view.findViewById(R.id.rbVoiceFemale);
-        rbVoiceMale    = view.findViewById(R.id.rbVoiceMale);
+        voiceGroup = view.findViewById(R.id.voiceRadioGroup);
+        rbVoiceFemale = view.findViewById(R.id.rbVoiceFemale);
+        rbVoiceMale = view.findViewById(R.id.rbVoiceMale);
 
         api = RetrofitClient.getApiService();
 
@@ -128,14 +128,45 @@ public class SettingsFragment extends Fragment {
 
         //Clear upload history
         clearHistoryBtn.setOnClickListener(v -> {
-            Toast.makeText(requireContext(),
-                    "Clear history",
-                    Toast.LENGTH_SHORT).show();
+            if (email == null) {
+                Toast.makeText(requireContext(),
+                        "No logged in user",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Clear Upload History")
+                    .setMessage("Are you sure you want to delete all uploaded files? This cannot be undone.")
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        api.clearHistory(email).enqueue(new retrofit2.Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+
+                                if (response.isSuccessful()) {
+                                    Toast.makeText(requireContext(),
+                                            "Upload history cleared!",
+                                            Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(requireContext(),
+                                            "Failed to clear history",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Toast.makeText(requireContext(),
+                                        "Network error: " + t.getMessage(),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
     }
 
     // helpers
-
     private void loadUserProfile(String email) {
         api.getUserProfile(email).enqueue(new retrofit2.Callback<com.example.finalyearproject.data.UserProfile>() {
             @Override

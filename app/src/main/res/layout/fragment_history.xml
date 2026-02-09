@@ -15,6 +15,15 @@
         android:textSize="16sp"
         android:paddingBottom="8dp" />
 
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/historySearchView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:queryHint="Search uploads..."
+        android:iconifiedByDefault="false"
+        android:background="@android:color/transparent"
+        android:layout_marginBottom="8dp" />
+
     <!-- Progress bar while loading -->
     <ProgressBar
         android:id="@+id/historyProgress"
