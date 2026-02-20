@@ -95,6 +95,7 @@ public class SettingsFragment extends Fragment {
 
             saveThemeModeForCurrentUser(mode);
             AppCompatDelegate.setDefaultNightMode(mode);
+            requireActivity().recreate();
         });
         String savedVoice = getSavedTtsVoiceForCurrentUser();
         applyVoiceSelectionToUI(savedVoice);

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="md_primary">#6FB894</color>
+    <color name="md_secondary">#4E8F78</color>
+    <color name="md_tertiary">#B9A6D3</color>
+
+    <color name="md_background">#141816</color>
+    <color name="md_surface">#1C211E</color>
+    <color name="md_outline">#2E3531</color>
+
+    <color name="md_onPrimary">#0F1411</color>
+    <color name="md_onSecondary">#0F1411</color>
+    <color name="md_onBackground">#E7E7E7</color>
+    <color name="md_onSurface">#E7E7E7</color>
+</resources>

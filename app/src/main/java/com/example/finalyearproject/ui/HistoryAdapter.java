@@ -1,5 +1,6 @@
 package com.example.finalyearproject.ui;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.HistoryItem;
 
 import java.util.List;
@@ -30,7 +32,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
     @Override
     public HistoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(android.R.layout.simple_list_item_2, parent, false);
+                .inflate(R.layout.item_history, parent, false);
         return new HistoryViewHolder(v);
     }
 
@@ -48,6 +50,11 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
         holder.subtitle.setText(item.audioStatus != null
                 ? item.audioStatus
                 : "Uploaded");
+        if ("READY".equalsIgnoreCase(item.audioStatus)) {
+            holder.subtitle.setTextColor(Color.parseColor("#5A9C6E"));
+        } else if ("PENDING".equalsIgnoreCase(item.audioStatus)) {
+            holder.subtitle.setTextColor(Color.parseColor("#C2A14A"));
+        }
     }
 
     @Override
@@ -69,8 +76,8 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
 
         HistoryViewHolder(@NonNull View itemView) {
             super(itemView);
-            title = itemView.findViewById(android.R.id.text1);
-            subtitle = itemView.findViewById(android.R.id.text2);
+            title = itemView.findViewById(R.id.itemFileName);
+            subtitle = itemView.findViewById(R.id.itemStatus);
         }
     }
 }

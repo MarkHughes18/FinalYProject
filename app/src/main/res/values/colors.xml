@@ -9,4 +9,14 @@
     <color name="teal_700">#018786</color>
     <color name="orange">#FF9800</color>
     <color name="green">#4CAF50</color>
+    <color name="md_primary">#7FBF9B</color>
+    <color name="md_secondary">#5F9E86</color>
+    <color name="md_tertiary">#B9A6D3</color>
+    <color name="md_background">#F6F1E8</color>
+    <color name="md_surface">#FBF7F0</color>
+    <color name="md_outline">#D7D0C5</color>
+    <color name="md_onPrimary">#FFFFFF</color>
+    <color name="md_onSecondary">#FFFFFF</color>
+    <color name="md_onBackground">#1E1E1E</color>
+    <color name="md_onSurface">#1E1E1E</color>
 </resources>
