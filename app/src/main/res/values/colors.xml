@@ -19,4 +19,10 @@
     <color name="md_onSecondary">#FFFFFF</color>
     <color name="md_onBackground">#1E1E1E</color>
     <color name="md_onSurface">#1E1E1E</color>
+    <color name="status_ready_bg">#D7F0DE</color>
+    <color name="status_pending_bg">#F4E9C9</color>
+    <color name="status_failed_bg">#F7D6D6</color>
+    <color name="status_ready_text">#2E6B3B</color>
+    <color name="status_pending_text">#7A5D12</color>
+    <color name="status_failed_text">#8A1F1F</color>
 </resources>

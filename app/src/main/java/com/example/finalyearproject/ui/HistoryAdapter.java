@@ -1,5 +1,6 @@
 package com.example.finalyearproject.ui;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
@@ -46,14 +48,38 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
             if (longListener != null) longListener.onItemLongClick(item);
             return true;
         });
-        holder.title.setText(item.fileName);
-        holder.subtitle.setText(item.audioStatus != null
-                ? item.audioStatus
-                : "Uploaded");
-        if ("READY".equalsIgnoreCase(item.audioStatus)) {
-            holder.subtitle.setTextColor(Color.parseColor("#5A9C6E"));
-        } else if ("PENDING".equalsIgnoreCase(item.audioStatus)) {
-            holder.subtitle.setTextColor(Color.parseColor("#C2A14A"));
+        holder.title.setText(item.fileName != null ? item.fileName : "Unnamed");
+        String status = (item.audioStatus != null && !item.audioStatus.isBlank())
+                ? item.audioStatus.trim().toUpperCase()
+                : "UPLOADED";
+        holder.subtitle.setText(status);
+
+        applyStatusChipStyle(holder.subtitle, status);
+    }
+
+    private void applyStatusChipStyle(TextView tv, String status) {
+        Context ctx = tv.getContext();
+
+        int bg;
+        int fg;
+        if ("READY".equalsIgnoreCase(status)) {
+            bg = R.color.status_ready_bg;
+            fg = R.color.status_ready_text;
+        } else if ("PENDING".equalsIgnoreCase(status) || "PROCESSING".equalsIgnoreCase(status)) {
+            bg = R.color.status_pending_bg;
+            fg = R.color.status_pending_text;
+        } else if ("FAILED".equalsIgnoreCase(status) || "ERROR".equalsIgnoreCase(status)) {
+            bg = R.color.status_failed_bg;
+            fg = R.color.status_failed_text;
+        } else {
+            bg = R.color.status_pending_bg;
+            fg = R.color.status_pending_text;
+        }
+
+        tv.setTextColor(ContextCompat.getColor(ctx, fg));
+        // Tint the chip background
+        if (tv.getBackground() != null) {
+            tv.getBackground().setTint(ContextCompat.getColor(ctx, bg));
         }
     }
 
