@@ -20,8 +20,7 @@ public class TextCleanupService {
         // Normalize whitespace
         String norm = MULTI_SPACE.matcher(raw).replaceAll(" ").trim();
 
-        // Break into lines using punctuation
-        // (Tika sometimes returns messy blocks; line splitting helps de-dup)
+        // Break into lines using punctuation as natural delimiters
         String[] lines = norm.split("(?<=[.!?])\\s+");
 
         // Remove boilerplate + de-duplicate
