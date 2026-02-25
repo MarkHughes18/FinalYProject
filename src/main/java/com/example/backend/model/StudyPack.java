@@ -54,4 +54,100 @@ public class StudyPack {
         this.trueFalseQuestions = trueFalseQuestions != null ? trueFalseQuestions : new ArrayList<>();
         this.mcqQuestions = mcqQuestions != null ? mcqQuestions : new ArrayList<>();
     }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public String getHistoryId() {
+        return historyId;
+    }
+
+    public void setHistoryId(String historyId) {
+        this.historyId = historyId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getSourceHash() {
+        return sourceHash;
+    }
+
+    public void setSourceHash(String sourceHash) {
+        this.sourceHash = sourceHash;
+    }
+
+    public StudyPackSettings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(StudyPackSettings settings) {
+        this.settings = settings;
+    }
+
+    public List<Flashcard> getFlashcards() {
+        return flashcards;
+    }
+
+    public void setFlashcards(List<Flashcard> flashcards) {
+        this.flashcards = flashcards;
+    }
+
+    public List<MatchingPair> getMatchingPairs() {
+        return matchingPairs;
+    }
+
+    public void setMatchingPairs(List<MatchingPair> matchingPairs) {
+        this.matchingPairs = matchingPairs;
+    }
+
+    public List<ClozeQuestion> getClozeQuestions() {
+        return clozeQuestions;
+    }
+
+    public void setClozeQuestions(List<ClozeQuestion> clozeQuestions) {
+        this.clozeQuestions = clozeQuestions;
+    }
+
+    public List<TrueFalseQuestion> getTrueFalseQuestions() {
+        return trueFalseQuestions;
+    }
+
+    public void setTrueFalseQuestions(List<TrueFalseQuestion> trueFalseQuestions) {
+        this.trueFalseQuestions = trueFalseQuestions;
+    }
+
+    public List<McqQuestion> getMcqQuestions() {
+        return mcqQuestions;
+    }
+
+    public void setMcqQuestions(List<McqQuestion> mcqQuestions) {
+        this.mcqQuestions = mcqQuestions;
+    }
 }
