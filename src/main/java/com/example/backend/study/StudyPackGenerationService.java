@@ -256,4 +256,96 @@ public class StudyPackGenerationService {
         }
         return pairs;
     }
+
+    // Generating Cloze sentences
+    private List<StudyPack.ClozeQuestion> generateClozeQuestions(List<String> sentences,
+            List<StudyPack.Flashcard> flashcards,
+            int count) {
+        List<StudyPack.ClozeQuestion> out = new ArrayList<>();
+        Set<String> used = new HashSet<>();
+
+        for (StudyPack.Flashcard fc : flashcards) {
+            if (out.size() >= count)
+                break;
+
+            String answer = fc.getFront();
+            if (answer == null || answer.isBlank())
+                continue;
+
+            // Use original keyword lowercase for matching
+            String answerLower = answer.toLowerCase(Locale.ROOT);
+            String source = fc.getSourceSnippet() != null ? fc.getSourceSnippet() : fc.getBack();
+
+            if (source == null)
+                continue;
+
+            // avoid duplicates
+            String key = answerLower + "|" + source;
+            if (used.contains(key))
+                continue;
+
+            String sentenceWithBlank = blankOut(source, answerLower);
+            if (sentenceWithBlank == null)
+                continue;
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setAnswer(answer);
+            q.setSentenceWithBlank(sentenceWithBlank);
+            q.setChoices(Collections.emptyList());
+            q.setSourceSnippet(source);
+
+            used.add(key);
+            out.add(q);
+        }
+
+        // fallback, create from random sentences if needed
+        Random r = new Random();
+        while (out.size() < count && !sentences.isEmpty()) {
+            String s = sentences.get(r.nextInt(sentences.size()));
+            String candidate = pickAnyKeywordInSentence(s, flashcards);
+            if (candidate == null)
+                break;
+
+            String sentenceWithBlank = blankOut(s, candidate.toLowerCase(Locale.ROOT));
+            if (sentenceWithBlank == null)
+                continue;
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setAnswer(candidate);
+            q.setSentenceWithBlank(sentenceWithBlank);
+            q.setChoices(Collections.emptyList());
+            q.setSourceSnippet(s);
+            out.add(q);
+        }
+        return out;
+    }
+
+    private String blankOut(String sentence, String answerLower) {
+        // replace first whole-word occurrence caseinsensitive via lower compare
+        String sLower = sentence.toLowerCase(Locale.ROOT);
+        int idx = sLower.indexOf(answerLower);
+        if (idx < 0)
+            return null;
+
+        // Ensure blanking a word boundary occurrence
+        // Replace substring at idx with ____ keeping original casing around it
+        String before = sentence.substring(0, idx);
+        String after = sentence.substring(idx + answerLower.length());
+
+        return before + "____" + after;
+    }
+
+    private String pickAnyKeywordInSentence(String sentence, List<StudyPack.Flashcard> flashcards) {
+        String sLower = sentence.toLowerCase(Locale.ROOT);
+        for (StudyPack.Flashcard fc : flashcards) {
+            if (fc.getFront() == null)
+                continue;
+            String term = fc.getFront().toLowerCase(Locale.ROOT);
+            if (term.length() < 4)
+                continue;
+            if (sLower.contains(term))
+                return fc.getFront();
+        }
+        return null;
+    }
 }
