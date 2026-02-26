@@ -348,4 +348,82 @@ public class StudyPackGenerationService {
         }
         return null;
     }
+
+    // Generating True/False
+    private List<StudyPack.TrueFalseQuestion> generateTrueFalseQuestions(List<String> sentences,
+            List<String> keywords,
+            int count) {
+        List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
+        Random r = new Random();
+
+        // True questions
+        int trueCount = Math.max(1, count / 2);
+        for (int i = 0; i < trueCount && i < sentences.size(); i++) {
+            String s = sentences.get(i);
+            StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
+            q.setStatement(shorten(s, 220));
+            q.setAnswer(true);
+            q.setExplanation("This statement appears in the uploaded document.");
+            q.setSourceSnippet(s);
+            out.add(q);
+        }
+
+        // False questions via keyword swap
+        int attempts = 0;
+        while (out.size() < count && attempts < 500 && !sentences.isEmpty() && keywords.size() >= 5) {
+            attempts++;
+
+            String s = sentences.get(r.nextInt(sentences.size()));
+            String sLower = s.toLowerCase(Locale.ROOT);
+
+            String kwInSentence = null;
+            for (String kw : keywords) {
+                if (sLower.contains(kw)) {
+                    kwInSentence = kw;
+                    break;
+                }
+            }
+            if (kwInSentence == null)
+                continue;
+
+            String replacement = pickDistractor(keywords, kwInSentence, r);
+            if (replacement == null)
+                continue;
+
+            String falseStmt = replaceFirstCaseInsensitive(s, kwInSentence, replacement);
+            if (falseStmt.equals(s))
+                continue;
+
+            StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
+            q.setStatement(shorten(falseStmt, 220));
+            q.setAnswer(false);
+            q.setExplanation("One key term was changed, so this statement does not match the document.");
+            q.setSourceSnippet(s);
+            out.add(q);
+        }
+        return out;
+    }
+
+    private String pickDistractor(List<String> keywords, String original, Random r) {
+        // pick similar length keyword
+        int targetLen = original.length();
+        List<String> candidates = new ArrayList<>();
+        for (String kw : keywords) {
+            if (kw.equals(original))
+                continue;
+            if (Math.abs(kw.length() - targetLen) <= 2)
+                candidates.add(kw);
+        }
+        if (candidates.isEmpty())
+            return null;
+        return candidates.get(r.nextInt(candidates.size()));
+    }
+
+    private String replaceFirstCaseInsensitive(String sentence, String fromLower, String toLower) {
+        String sLower = sentence.toLowerCase(Locale.ROOT);
+        int idx = sLower.indexOf(fromLower);
+        if (idx < 0)
+            return sentence;
+        return sentence.substring(0, idx) + toLower + sentence.substring(idx + fromLower.length());
+    }
 }
