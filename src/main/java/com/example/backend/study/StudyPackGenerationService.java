@@ -162,4 +162,79 @@ public class StudyPackGenerationService {
         }
         return keywords;
     }
+
+    private List<StudyPack.Flashcard> generateFlashcards(List<String> sentences,
+            List<String> keywords,
+            int count) {
+        List<StudyPack.Flashcard> cards = new ArrayList<>();
+        Set<String> usedTerms = new HashSet<>();
+
+        for (String kw : keywords) {
+            if (cards.size() >= count)
+                break;
+            if (usedTerms.contains(kw))
+                continue;
+
+            String bestSentence = findBestSentenceContaining(sentences, kw);
+            if (bestSentence == null)
+                continue;
+
+            // Keep definition shortish for UI
+            String back = shorten(bestSentence, 160);
+
+            StudyPack.Flashcard card = new StudyPack.Flashcard();
+            card.setFront(capitalize(kw));
+            card.setBack(back);
+            card.setSourceSnippet(bestSentence);
+            card.setTags(Collections.emptyList());
+
+            usedTerms.add(kw);
+            cards.add(card);
+        }
+
+        // If fail to make enough, fallback, use random sentences as "front/back"
+        Random r = new Random();
+        while (cards.size() < count && !sentences.isEmpty()) {
+            String s = sentences.get(r.nextInt(sentences.size()));
+            String front = "Key idea";
+            String back = shorten(s, 160);
+
+            StudyPack.Flashcard card = new StudyPack.Flashcard();
+            card.setFront(front);
+            card.setBack(back);
+            card.setSourceSnippet(s);
+            card.setTags(Collections.emptyList());
+            cards.add(card);
+        }
+        return cards;
+    }
+
+    private String findBestSentenceContaining(List<String> sentences, String keyword) {
+        String kwLower = keyword.toLowerCase(Locale.ROOT);
+
+        String best = null;
+        int bestScore = Integer.MIN_VALUE;
+
+        for (int i = 0; i < sentences.size(); i++) {
+            String s = sentences.get(i);
+            String sLower = s.toLowerCase(Locale.ROOT);
+
+            if (!sLower.contains(kwLower))
+                continue;
+
+            int wordCount = countWords(s);
+            if (wordCount < 8 || wordCount > 28)
+                continue;
+
+            // scoring: earlier sentences get a boost
+            int score = 1000 - i; // earlier = higher
+            score -= Math.abs(16 - wordCount) * 10; // closer to ~16 words = better
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = s;
+            }
+        }
+        return best;
+    }
 }
