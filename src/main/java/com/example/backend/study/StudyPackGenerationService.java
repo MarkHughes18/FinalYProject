@@ -108,4 +108,58 @@ public class StudyPackGenerationService {
 
         return studyPackRepository.save(pack);
     }
+
+    // Text helpers
+    private String normalize(String text) {
+        String t = text.replace("\u00A0", " "); // non-breaking spaces
+        t = t.replaceAll("[\\t\\r]+", " ");
+        t = t.replaceAll(" +", " ");
+        t = t.replaceAll("\\n{3,}", "\n\n");
+        return t.trim();
+    }
+
+    private String boundText(String text, int maxChars) {
+        if (text.length() <= maxChars)
+            return text;
+        return text.substring(0, maxChars);
+    }
+
+    private List<String> splitIntoSentences(String text, int maxSentences) {
+        // Simple sentence split
+        String[] raw = text.split("(?<=[.!?])\\s+");
+        List<String> out = new ArrayList<>(Math.min(raw.length, maxSentences));
+        for (String s : raw) {
+            String trimmed = s.trim();
+            if (trimmed.length() < 20)
+                continue; // skip tiny fragments
+            out.add(trimmed);
+            if (out.size() >= maxSentences)
+                break;
+        }
+        return out;
+    }
+
+    private List<String> extractTopKeywords(String text, int maxKeywords) {
+        Map<String, Integer> freq = new HashMap<>();
+        Matcher m = WORD_PATTERN.matcher(text);
+        while (m.find()) {
+            String w = m.group().toLowerCase(Locale.ROOT);
+            if (w.length() < 4)
+                continue;
+            if (STOPWORDS.contains(w))
+                continue;
+            freq.put(w, freq.getOrDefault(w, 0) + 1);
+        }
+
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(freq.entrySet());
+        entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+
+        List<String> keywords = new ArrayList<>(Math.min(entries.size(), maxKeywords));
+        for (Map.Entry<String, Integer> e : entries) {
+            keywords.add(e.getKey());
+            if (keywords.size() >= maxKeywords)
+                break;
+        }
+        return keywords;
+    }
 }
