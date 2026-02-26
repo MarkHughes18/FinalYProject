@@ -8,6 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.regex.Matcher;
 
 @Service
 public class StudyPackGenerationService {
@@ -483,5 +487,57 @@ public class StudyPackGenerationService {
         }
         return out;
     }
+
+    // Helpers
+    private String shorten(String s, int maxLen) {
+        if (s == null)
+            return null;
+        String t = s.trim();
+        if (t.length() <= maxLen)
+            return t;
+        return t.substring(0, maxLen - 3).trim() + "...";
+    }
+
+    private int countWords(String s) {
+        int count = 0;
+        Matcher m = WORD_PATTERN.matcher(s);
+        while (m.find())
+            count++;
+        return count;
+    }
+
+    private String capitalize(String w) {
+        if (w == null || w.isBlank())
+            return w;
+        String t = w.trim();
+        if (t.length() == 1)
+            return t.toUpperCase(Locale.ROOT);
+        return t.substring(0, 1).toUpperCase(Locale.ROOT) + t.substring(1);
+    }
+
+    private String sha256Hex(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            // Worst case no hash
+            return null;
+        }
+    }
+
+    // Minimal stopword set
+    private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
+            "the", "and", "that", "this", "with", "from", "have", "been", "will", "were", "they", "their", "there",
+            "your", "you", "for", "are", "but", "not", "into", "about", "over", "under", "than", "then", "them",
+            "what", "when", "where", "which", "while", "who", "whom", "why", "how", "can", "could", "should",
+            "would", "may", "might", "also", "such", "some", "more", "most", "many", "much", "each", "other",
+            "these", "those", "between", "within", "without", "because", "through", "during", "before", "after",
+            "above", "below", "here", "very", "just", "like", "only", "same", "any", "all", "has", "had", "its",
+            "our", "out", "off", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"));
 
 }
