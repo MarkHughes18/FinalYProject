@@ -163,6 +163,7 @@ public class StudyPackGenerationService {
         return keywords;
     }
 
+    // Generating Flashcards
     private List<StudyPack.Flashcard> generateFlashcards(List<String> sentences,
             List<String> keywords,
             int count) {
@@ -236,5 +237,23 @@ public class StudyPackGenerationService {
             }
         }
         return best;
+    }
+
+    // Generating Matching Pairs using Flashcards
+    private List<StudyPack.MatchingPair> generateMatchingPairs(List<StudyPack.Flashcard> flashcards, int count) {
+        List<StudyPack.MatchingPair> pairs = new ArrayList<>();
+        for (StudyPack.Flashcard fc : flashcards) {
+            if (pairs.size() >= count)
+                break;
+
+            String left = fc.getFront();
+            String right = shorten(fc.getBack(), 120);
+
+            StudyPack.MatchingPair p = new StudyPack.MatchingPair();
+            p.setLeft(left);
+            p.setRight(right);
+            pairs.add(p);
+        }
+        return pairs;
     }
 }
