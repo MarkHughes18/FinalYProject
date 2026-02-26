@@ -426,4 +426,62 @@ public class StudyPackGenerationService {
             return sentence;
         return sentence.substring(0, idx) + toLower + sentence.substring(idx + fromLower.length());
     }
+
+    // Generating MCQ
+    private List<StudyPack.McqQuestion> generateMcqQuestionsFromCloze(List<StudyPack.ClozeQuestion> cloze,
+            List<String> keywords,
+            int count) {
+        List<StudyPack.McqQuestion> out = new ArrayList<>();
+        Random r = new Random();
+
+        for (StudyPack.ClozeQuestion cq : cloze) {
+            if (out.size() >= count)
+                break;
+
+            String answer = cq.getAnswer();
+            if (answer == null || answer.isBlank())
+                continue;
+
+            List<String> options = new ArrayList<>();
+            options.add(answer);
+
+            // add 3 distractors
+            int attempts = 0;
+            while (options.size() < 4 && attempts < 200) {
+                attempts++;
+                String d = keywords.get(r.nextInt(keywords.size()));
+                d = capitalize(d);
+                if (d.equalsIgnoreCase(answer))
+                    continue;
+                if (options.stream().anyMatch(o -> o.equalsIgnoreCase(d)))
+                    continue;
+                options.add(d);
+            }
+
+            // if cant get enough distractors skip
+            if (options.size() < 4)
+                continue;
+
+            Collections.shuffle(options, r);
+            int correctIndex = -1;
+            for (int i = 0; i < options.size(); i++) {
+                if (options.get(i).equalsIgnoreCase(answer)) {
+                    correctIndex = i;
+                    break;
+                }
+            }
+            if (correctIndex < 0)
+                continue;
+
+            StudyPack.McqQuestion q = new StudyPack.McqQuestion();
+            q.setQuestion(cq.getSentenceWithBlank());
+            q.setOptions(options);
+            q.setCorrectIndex(correctIndex);
+            q.setExplanation("Choose the term that best completes the sentence based on the document.");
+            q.setSourceSnippet(cq.getSourceSnippet());
+            out.add(q);
+        }
+        return out;
+    }
+
 }
