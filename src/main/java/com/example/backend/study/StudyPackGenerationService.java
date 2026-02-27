@@ -71,6 +71,10 @@ public class StudyPackGenerationService {
         String bounded = boundText(normalize(text), MAX_TEXT_CHARS);
         String sourceHash = sha256Hex(bounded);
 
+        // Seed randomness so generation is deterministic for the same text
+        int seed = (sourceHash != null) ? sourceHash.hashCode() : Objects.hash(userEmail, historyId);
+        Random random = new Random(seed);
+
         List<String> sentences = splitIntoSentences(bounded, MAX_SENTENCES);
 
         // Keyword extraction
@@ -279,7 +283,6 @@ public class StudyPackGenerationService {
             // Use original keyword lowercase for matching
             String answerLower = answer.toLowerCase(Locale.ROOT);
             String source = fc.getSourceSnippet() != null ? fc.getSourceSnippet() : fc.getBack();
-
             if (source == null)
                 continue;
 
@@ -325,18 +328,16 @@ public class StudyPackGenerationService {
     }
 
     private String blankOut(String sentence, String answerLower) {
-        // replace first whole-word occurrence caseinsensitive via lower compare
-        String sLower = sentence.toLowerCase(Locale.ROOT);
-        int idx = sLower.indexOf(answerLower);
-        if (idx < 0)
+        if (sentence == null || answerLower == null)
             return null;
 
-        // Ensure blanking a word boundary occurrence
-        // Replace substring at idx with ____ keeping original casing around it
-        String before = sentence.substring(0, idx);
-        String after = sentence.substring(idx + answerLower.length());
+        String escaped = Pattern.quote(answerLower);
+        Pattern p = Pattern.compile("\\b" + escaped + "\\b", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(sentence);
+        if (m.find())
+            return null;
 
-        return before + "____" + after;
+        return m.replaceFirst("____");
     }
 
     private String pickAnyKeywordInSentence(String sentence, List<StudyPack.Flashcard> flashcards) {
@@ -457,8 +458,16 @@ public class StudyPackGenerationService {
                 d = capitalize(d);
                 if (d.equalsIgnoreCase(answer))
                     continue;
-                if (options.stream().anyMatch(o -> o.equalsIgnoreCase(d)))
+                boolean alreadyExists = false;
+                for (String o : options) {
+                    if (o.equalsIgnoreCase(d)) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                if (alreadyExists)
                     continue;
+
                 options.add(d);
             }
 
