@@ -268,90 +268,89 @@ public class StudyPackGenerationService {
     // Generating Cloze sentences
     private List<StudyPack.ClozeQuestion> generateClozeQuestions(List<String> sentences,
             List<StudyPack.Flashcard> flashcards,
-            int count) {
+            int count,
+            Random random) {
+
         List<StudyPack.ClozeQuestion> out = new ArrayList<>();
         Set<String> used = new HashSet<>();
 
+        // Prefer flashcard fronts that are not key idea
+        // Fall back to scanning sentences for any keywords-like tokens
+        List<String> answerPool = new ArrayList<>();
         for (StudyPack.Flashcard fc : flashcards) {
-            if (out.size() >= count)
-                break;
-
-            String answer = fc.getFront();
-            if (answer == null || answer.isBlank())
+            if (fc.getFront() == null)
                 continue;
-
-            // Use original keyword lowercase for matching
-            String answerLower = answer.toLowerCase(Locale.ROOT);
-            String source = fc.getSourceSnippet() != null ? fc.getSourceSnippet() : fc.getBack();
-            if (source == null)
+            String front = fc.getFront().trim();
+            if (front.equalsIgnoreCase("Key idea"))
                 continue;
-
-            // avoid duplicates
-            String key = answerLower + "|" + source;
-            if (used.contains(key))
+            if (front.length() < 4)
                 continue;
+            answerPool.add(front);
+        }
 
-            String sentenceWithBlank = blankOut(source, answerLower);
+        // If pool is small, use words from sentences, pick words that look like
+        // keywords
+        if (answerPool.size() < 10) {
+            for (String s : sentences) {
+                Matcher m = WORD_PATTERN.matcher(s);
+                while (m.find()) {
+                    String w = m.group();
+                    if (w.length() < 5)
+                        continue;
+                    // skip common stopwords
+                    String wl = w.toLowerCase(Locale.ROOT);
+                    if (STOPWORDS.contains(wl))
+                        continue;
+                    answerPool.add(toTitleCase(wl));
+                }
+                if (answerPool.size() >= 200)
+                    break;
+            }
+        }
+
+        // Shuffle to avoid pulling early terms
+        Collections.shuffle(answerPool, random);
+
+        int attempts = 0;
+        while (out.size() < count && attempts < 3000 && !sentences.isEmpty() && !answerPool.isEmpty()) {
+            attempts++;
+
+            String sentence = sentences.get(random.nextInt(sentences.size()));
+            String answer = answerPool.get(random.nextInt(answerPool.size()));
+
+            // Try to blank the answer (whole word)
+            String sentenceWithBlank = blankOutWholeWord(sentence, answer);
             if (sentenceWithBlank == null)
+                continue;
+
+            String key = answer.toLowerCase(Locale.ROOT) + "|" + sentence;
+            if (used.contains(key))
                 continue;
 
             StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
             q.setAnswer(answer);
             q.setSentenceWithBlank(sentenceWithBlank);
             q.setChoices(Collections.emptyList());
-            q.setSourceSnippet(source);
+            q.setSourceSnippet(sentence);
 
             used.add(key);
             out.add(q);
         }
 
-        // fallback, create from random sentences if needed
-        Random r = new Random();
-        while (out.size() < count && !sentences.isEmpty()) {
-            String s = sentences.get(r.nextInt(sentences.size()));
-            String candidate = pickAnyKeywordInSentence(s, flashcards);
-            if (candidate == null)
-                break;
-
-            String sentenceWithBlank = blankOut(s, candidate.toLowerCase(Locale.ROOT));
-            if (sentenceWithBlank == null)
-                continue;
-
-            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
-            q.setAnswer(candidate);
-            q.setSentenceWithBlank(sentenceWithBlank);
-            q.setChoices(Collections.emptyList());
-            q.setSourceSnippet(s);
-            out.add(q);
-        }
         return out;
     }
 
-    private String blankOut(String sentence, String answerLower) {
-        if (sentence == null || answerLower == null)
+    private String blankOutWholeWord(String sentence, String answer) {
+        if (sentence == null || answer == null)
             return null;
 
-        String escaped = Pattern.quote(answerLower);
+        String escaped = Pattern.quote(answer);
         Pattern p = Pattern.compile("\\b" + escaped + "\\b", Pattern.CASE_INSENSITIVE);
         Matcher m = p.matcher(sentence);
-        if (m.find())
+        if (!m.find())
             return null;
 
         return m.replaceFirst("____");
-    }
-
-    private String pickAnyKeywordInSentence(String sentence, List<StudyPack.Flashcard> flashcards) {
-        String sLower = sentence.toLowerCase(Locale.ROOT);
-        for (StudyPack.Flashcard fc : flashcards) {
-            if (fc.getFront() == null)
-                continue;
-            String term = fc.getFront().toLowerCase(Locale.ROOT);
-            if (term.length() < 4)
-                continue;
-            if (sLower.contains(term))
-                return fc.getFront();
-        }
-        return null;
     }
 
     // Generating True/False
