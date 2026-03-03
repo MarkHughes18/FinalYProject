@@ -29,6 +29,7 @@ public class StudyPackGenerationService {
     private static final int MAX_KEYWORDS = 200;
 
     private static final Pattern WORD_PATTERN = Pattern.compile("[A-Za-z][A-Za-z\\-']{2,}");
+    private static final Pattern PHRASE_PATTERN = Pattern.compile("\\b([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)+)\\b");
 
     private final FileHistoryRepository fileHistoryRepository;
     private final StudyPackRepository studyPackRepository;
@@ -151,8 +152,9 @@ public class StudyPackGenerationService {
     private List<String> extractTopKeywords(String text, int maxKeywords) {
         Map<String, Integer> freq = new HashMap<>();
         Matcher m = WORD_PATTERN.matcher(text);
-        while (m.find()) {
-            String w = m.group().toLowerCase(Locale.ROOT);
+        Matcher p = PHRASE_PATTERN.matcher(text);
+        while (p.find()) {
+            String w = p.group().toLowerCase(Locale.ROOT);
             if (w.length() < 4)
                 continue;
             if (STOPWORDS.contains(w))
@@ -201,6 +203,12 @@ public class StudyPackGenerationService {
             // Skip if it looks like an intro sentence
             String lower = bestSentence.toLowerCase(Locale.ROOT);
             if (lower.startsWith("today, we’ll explore") || lower.startsWith("today, we'll explore"))
+                continue;
+
+            if (isBadFlashcardTerm(kw))
+                continue;
+
+            if (isBadSentence(bestSentence))
                 continue;
 
             // Keep definition shortish for UI
@@ -553,6 +561,39 @@ public class StudyPackGenerationService {
         }
     }
 
+    private boolean isBadFlashcardTerm(String kw) {
+        if (kw == null)
+            return true;
+        String w = kw.trim().toLowerCase(Locale.ROOT);
+
+        // Too short/ too long
+        if (w.length() < 4 || w.length() > 25)
+            return true;
+
+        // Common weak words, verbs/adjectives/connectors
+        if (WEAK_TERMS.contains(w))
+            return true;
+
+        // Ends with common
+        if (w.endsWith("ing") || w.endsWith("ed") || w.endsWith("ly"))
+            return true;
+
+        return false;
+    }
+
+    private boolean isBadSentence(String s) {
+        if (s == null)
+            return true;
+        String t = s.trim();
+        if (t.length() < 40) // 2 short to be a definition
+            return true;
+        if (!Character.isUpperCase(t.charAt(0)))// Fragment starts lowercase
+            return true;
+        if (t.startsWith("entry "))
+            return true;
+        return false;
+    }
+
     // Minimal stopword set
     private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
             "the", "and", "that", "this", "with", "from", "have", "been", "will", "were", "they", "their", "there",
@@ -562,5 +603,10 @@ public class StudyPackGenerationService {
             "these", "those", "between", "within", "without", "because", "through", "during", "before", "after",
             "above", "below", "here", "very", "just", "like", "only", "same", "any", "all", "has", "had", "its",
             "our", "out", "off", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"));
+
+    private static final Set<String> WEAK_TERMS = new HashSet<>(Arrays.asList(
+            "world", "future", "conflict", "including", "leading", "introduced", "complex", "great",
+            "because", "entry", "helped", "help", "late", "early", "many", "most", "also", "used",
+            "need", "needs", "make", "made", "makes", "caused", "cause", "effects", "effect"));
 
 }
