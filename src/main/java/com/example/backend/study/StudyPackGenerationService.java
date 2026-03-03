@@ -178,6 +178,7 @@ public class StudyPackGenerationService {
             int count) {
         List<StudyPack.Flashcard> cards = new ArrayList<>();
         Set<String> usedTerms = new HashSet<>();
+        Set<String> usedSnippets = new HashSet<>();
 
         for (String kw : keywords) {
             if (cards.size() >= count)
@@ -187,6 +188,19 @@ public class StudyPackGenerationService {
 
             String bestSentence = findBestSentenceContaining(sentences, kw);
             if (bestSentence == null)
+                continue;
+
+            // Don’t reuse the same sentence
+            if (usedSnippets.contains(bestSentence))
+                continue;
+
+            // Skip a sentence if it looks like a question
+            if (bestSentence.trim().endsWith("?"))
+                continue;
+
+            // Skip if it looks like an intro sentence
+            String lower = bestSentence.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("today, we’ll explore") || lower.startsWith("today, we'll explore"))
                 continue;
 
             // Keep definition shortish for UI
