@@ -87,7 +87,8 @@ public class StudyPackGenerationService {
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
         // Cloze from flashcards/sentences
-        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(sentences, flashcards, CLOZE_COUNT);
+        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(sentences, flashcards, CLOZE_COUNT,
+                random);
 
         // True/False from sentences + keyword swapping
         List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(sentences, keywords, TF_COUNT);
@@ -301,7 +302,7 @@ public class StudyPackGenerationService {
                     String wl = w.toLowerCase(Locale.ROOT);
                     if (STOPWORDS.contains(wl))
                         continue;
-                    answerPool.add(toTitleCase(wl));
+                    answerPool.add(capitalize(wl));
                 }
                 if (answerPool.size() >= 200)
                     break;
@@ -517,7 +518,7 @@ public class StudyPackGenerationService {
     private String capitalize(String w) {
         if (w == null || w.isBlank())
             return w;
-        String t = w.trim();
+        String t = w.trim().toLowerCase(Locale.ROOT);
         if (t.length() == 1)
             return t.toUpperCase(Locale.ROOT);
         return t.substring(0, 1).toUpperCase(Locale.ROOT) + t.substring(1);
