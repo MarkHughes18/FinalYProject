@@ -150,20 +150,46 @@ public class StudyPackGenerationService {
     }
 
     private List<String> extractTopKeywords(String text, int maxKeywords) {
-        Map<String, Integer> freq = new HashMap<>();
-        Matcher m = WORD_PATTERN.matcher(text);
+        Map<String, Integer> phraseFreq = new HashMap<>();
+        Map<String, Integer> wordFreq = new HashMap<>();
+
         Matcher p = PHRASE_PATTERN.matcher(text);
         while (p.find()) {
-            String w = p.group().toLowerCase(Locale.ROOT);
+            String phrase = p.group().trim();
+            if (phrase.length() < 6)
+                continue;
+
+            String lower = phrase.toLowerCase(Locale.ROOT);
+
+            // Skip phrases that are basically stopwords-only
+            String[] parts = lower.split("\\s+");
+            if (parts.length < 2)
+                continue;
+            if (STOPWORDS.contains(parts[0]))
+                continue;
+            // Reject phrases with too many words
+            if (parts.length > 5)
+                continue;
+
+            phraseFreq.put(lower, phraseFreq.getOrDefault(lower, 0) + 2); // weight phrases higher
+        }
+
+        Matcher m = WORD_PATTERN.matcher(text);
+        while (m.find()) {
+            String w = m.group().toLowerCase(Locale.ROOT);
             if (w.length() < 4)
                 continue;
             if (STOPWORDS.contains(w))
                 continue;
-            freq.put(w, freq.getOrDefault(w, 0) + 1);
+            if (isBadFlashcardTerm(w))
+                continue;
+            wordFreq.put(w, wordFreq.getOrDefault(w, 0) + 1);
         }
 
-        List<Map.Entry<String, Integer>> entries = new ArrayList<>(freq.entrySet());
-        entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>();
+        entries.addAll(phraseFreq.entrySet());
+        entries.addAll(wordFreq.entrySet());
+        entries.sort((a, b) -> b.getValue().compareTo(a.getValue())); // sort by frequency
 
         List<String> keywords = new ArrayList<>(Math.min(entries.size(), maxKeywords));
         for (Map.Entry<String, Integer> e : entries) {
@@ -185,7 +211,19 @@ public class StudyPackGenerationService {
         for (String kw : keywords) {
             if (cards.size() >= count)
                 break;
-            if (usedTerms.contains(kw))
+            if (kw == null || kw.isBlank())
+                continue;
+
+            String termLower = kw.trim().toLowerCase(Locale.ROOT);
+            if (termLower.isBlank())
+                continue;
+            if (usedTerms.contains(termLower))
+                continue;
+
+            // For single-word terms, apply strong filtering.
+            // For multi-word phrases, allow them through
+            boolean isPhrase = termLower.contains(" ");
+            if (!isPhrase && isBadFlashcardTerm(termLower))
                 continue;
 
             String bestSentence = findBestSentenceContaining(sentences, kw);
@@ -194,6 +232,9 @@ public class StudyPackGenerationService {
 
             // Don’t reuse the same sentence
             if (usedSnippets.contains(bestSentence))
+                continue;
+
+            if (isBadSentence(bestSentence))
                 continue;
 
             // Skip a sentence if it looks like a question
@@ -208,27 +249,35 @@ public class StudyPackGenerationService {
             if (isBadFlashcardTerm(kw))
                 continue;
 
-            if (isBadSentence(bestSentence))
-                continue;
-
             // Keep definition shortish for UI
+            String front = isPhrase ? titleCasePhrase(termLower) : capitalize(termLower);
             String back = shorten(bestSentence, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(capitalize(kw));
+            card.setFront(front);
             card.setBack(back);
             card.setSourceSnippet(bestSentence);
             card.setTags(Collections.emptyList());
 
-            usedTerms.add(kw);
+            usedTerms.add(termLower);
+            usedSnippets.add(bestSentence);
             cards.add(card);
         }
 
         // If fail to make enough, fallback, use random sentences as "front/back"
         Random r = new Random();
-        while (cards.size() < count && !sentences.isEmpty()) {
+        int attempts = 0;
+        while (cards.size() < count && !sentences.isEmpty() && attempts < 5000) {
+            attempts++;
             String s = sentences.get(r.nextInt(sentences.size()));
-            String front = "Key idea";
+            if (usedSnippets.contains(s))
+                continue;
+            if (isBadSentence(s))
+                continue;
+            if (s.trim().endsWith("?"))
+                continue;
+
+            String front = "Concept: " + shorten(s, 40);
             String back = shorten(s, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
@@ -236,9 +285,32 @@ public class StudyPackGenerationService {
             card.setBack(back);
             card.setSourceSnippet(s);
             card.setTags(Collections.emptyList());
+            usedSnippets.add(s);
             cards.add(card);
         }
         return cards;
+    }
+
+    private String titleCasePhrase(String phraseLower) {
+        // "treaty of versailles" -> "Treaty of Versailles"
+        String[] parts = phraseLower.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            String w = parts[i];
+            if (w.isBlank())
+                continue;
+
+            // keep small connector words lowercase unless first word
+            if (i != 0 && (w.equals("of") || w.equals("and") || w.equals("the") || w.equals("to") || w.equals("in"))) {
+                sb.append(w);
+            } else {
+                sb.append(capitalize(w));
+            }
+
+            if (i < parts.length - 1)
+                sb.append(" ");
+        }
+        return sb.toString().trim();
     }
 
     private String findBestSentenceContaining(List<String> sentences, String keyword) {
