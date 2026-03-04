@@ -29,7 +29,8 @@ public class StudyPackGenerationService {
     private static final int MAX_KEYWORDS = 200;
 
     private static final Pattern WORD_PATTERN = Pattern.compile("[A-Za-z][A-Za-z\\-']{2,}");
-    private static final Pattern PHRASE_PATTERN = Pattern.compile("\\b([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)+)\\b");
+    private static final Pattern PHRASE_PATTERN = Pattern.compile(
+            "\\b([A-Z][\\p{L}'-]*(?:\\s+(?:of|the|and|in|to|for|on|at|with|by|from))?\\s+[A-Z][\\p{L}'-]*(?:\\s+[A-Z][\\p{L}'-]*)*)\\b");
 
     private final FileHistoryRepository fileHistoryRepository;
     private final StudyPackRepository studyPackRepository;
@@ -174,12 +175,22 @@ public class StudyPackGenerationService {
             phraseFreq.put(lower, phraseFreq.getOrDefault(lower, 0) + 2); // weight phrases higher
         }
 
+        // Word blacklist
+        Set<String> phraseWords = new HashSet<>();
+        for (String phrase : phraseFreq.keySet()) {
+            for (String part : phrase.split("\\s+")) {
+                phraseWords.add(part.toLowerCase(Locale.ROOT));
+            }
+        }
+
         Matcher m = WORD_PATTERN.matcher(text);
         while (m.find()) {
             String w = m.group().toLowerCase(Locale.ROOT);
             if (w.length() < 4)
                 continue;
             if (STOPWORDS.contains(w))
+                continue;
+            if (phraseWords.contains(w))
                 continue;
             if (isBadFlashcardTerm(w))
                 continue;
@@ -213,7 +224,8 @@ public class StudyPackGenerationService {
                 break;
             if (kw == null || kw.isBlank())
                 continue;
-
+            if (kw.length() < 4)
+                continue;
             String termLower = kw.trim().toLowerCase(Locale.ROOT);
             if (termLower.isBlank())
                 continue;
@@ -254,7 +266,7 @@ public class StudyPackGenerationService {
             String back = shorten(bestSentence, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(front);
+            card.setFront(buildFlashcardFront(kw, bestSentence));
             card.setBack(back);
             card.setSourceSnippet(bestSentence);
             card.setTags(Collections.emptyList());
@@ -281,7 +293,7 @@ public class StudyPackGenerationService {
             String back = shorten(s, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(front);
+            card.setFront(buildFlashcardFront(kw, bestSentence));
             card.setBack(back);
             card.setSourceSnippet(s);
             card.setTags(Collections.emptyList());
@@ -548,7 +560,7 @@ public class StudyPackGenerationService {
             int attempts = 0;
             while (options.size() < 4 && attempts < 200) {
                 attempts++;
-                String d = keywords.get(r.nextInt(keywords.size()));
+                String d = pickSmartDistractor(answer, keywords, r);
                 d = capitalize(d);
                 if (d.equalsIgnoreCase(answer))
                     continue;
@@ -633,6 +645,29 @@ public class StudyPackGenerationService {
         }
     }
 
+    private String buildFlashcardFront(String keyword, String sentence) {
+
+        String lower = sentence.toLowerCase(Locale.ROOT);
+        String kw = keyword.toLowerCase(Locale.ROOT);
+
+        if (lower.startsWith(kw)) {
+            return "What is " + capitalize(keyword) + "?";
+        }
+
+        if (lower.contains("is " + kw) || lower.contains("are " + kw)) {
+            return "What is " + capitalize(keyword) + "?";
+        }
+
+        if (lower.contains("caused by") || lower.contains("led to")) {
+            return "What caused " + capitalize(keyword) + "?";
+        }
+
+        if (lower.contains("introduced") || lower.contains("developed")) {
+            return "What was " + capitalize(keyword) + " used for?";
+        }
+        return "Explain: " + capitalize(keyword);
+    }
+
     private boolean isBadFlashcardTerm(String kw) {
         if (kw == null)
             return true;
@@ -664,6 +699,27 @@ public class StudyPackGenerationService {
         if (t.startsWith("entry "))
             return true;
         return false;
+    }
+
+    private String pickSmartDistractor(String answer, List<String> keywords, Random r) {
+
+        int len = answer.length();
+        List<String> candidates = new ArrayList<>();
+
+        for (String kw : keywords) {
+
+            if (kw.equalsIgnoreCase(answer))
+                continue;
+
+            if (Math.abs(kw.length() - len) <= 3) {
+                candidates.add(capitalize(kw));
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return capitalize(keywords.get(r.nextInt(keywords.size())));
+        }
+        return candidates.get(r.nextInt(candidates.size()));
     }
 
     // Minimal stopword set
