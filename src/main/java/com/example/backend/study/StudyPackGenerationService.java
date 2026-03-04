@@ -226,6 +226,7 @@ public class StudyPackGenerationService {
                 continue;
             if (kw.length() < 4)
                 continue;
+
             String termLower = kw.trim().toLowerCase(Locale.ROOT);
             if (termLower.isBlank())
                 continue;
@@ -238,7 +239,7 @@ public class StudyPackGenerationService {
             if (!isPhrase && isBadFlashcardTerm(termLower))
                 continue;
 
-            String bestSentence = findBestSentenceContaining(sentences, kw);
+            String bestSentence = findBestSentenceContaining(sentences, termLower);
             if (bestSentence == null)
                 continue;
 
@@ -256,6 +257,9 @@ public class StudyPackGenerationService {
             // Skip if it looks like an intro sentence
             String lower = bestSentence.toLowerCase(Locale.ROOT);
             if (lower.startsWith("today, we’ll explore") || lower.startsWith("today, we'll explore"))
+                continue;
+            if (lower.startsWith("in this lesson") || lower.startsWith("in this video")
+                    || lower.startsWith("today we will"))
                 continue;
 
             if (isBadFlashcardTerm(kw))
@@ -289,11 +293,11 @@ public class StudyPackGenerationService {
             if (s.trim().endsWith("?"))
                 continue;
 
-            String front = "Concept: " + shorten(s, 40);
+            String front = buildFlashcardFront(s);
             String back = shorten(s, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(buildFlashcardFront(kw, bestSentence));
+            card.setFront(front);
             card.setBack(back);
             card.setSourceSnippet(s);
             card.setTags(Collections.emptyList());
@@ -333,25 +337,114 @@ public class StudyPackGenerationService {
 
         for (int i = 0; i < sentences.size(); i++) {
             String s = sentences.get(i);
-            String sLower = s.toLowerCase(Locale.ROOT);
+            if (s == null)
+                continue;
 
+            String trimmed = s.trim();
+            if (trimmed.length() < 40)
+                continue; // too short
+            if (trimmed.endsWith("?"))
+                continue; // questions are bad for flashcards
+            if (!Character.isUpperCase(trimmed.charAt(0)))
+                continue; // fragment
+            if (!endsLikeSentence(trimmed))
+                continue; // fragment-ish
+
+            String sLower = s.toLowerCase(Locale.ROOT);
             if (!sLower.contains(kwLower))
                 continue;
 
-            int wordCount = countWords(s);
-            if (wordCount < 8 || wordCount > 28)
-                continue;
+            int score = 0;
 
-            // scoring: earlier sentences get a boost
-            int score = 1000 - i; // earlier = higher
-            score -= Math.abs(16 - wordCount) * 10; // closer to ~16 words = better
+            // Earlier sentences slightly preferred
+            score += (2000 - i);
+
+            // Keyword position, earlier in sentence is better
+            int idx = sLower.indexOf(kwLower);
+            if (idx >= 0) {
+                // strong bonus if appears early
+                if (idx < 20)
+                    score += 400;
+                else if (idx < 50)
+                    score += 200;
+                else
+                    score -= 50;
+            }
+
+            // Prefer "definition/explanation" patterns
+            score += definitionPatternBonus(sLower, kwLower);
+
+            // Word count, too short bad, too long also bad
+            int wc = countWords(trimmed);
+            if (wc < 10)
+                score -= 300;
+            else if (wc <= 26)
+                score += 250;
+            else if (wc <= 35)
+                score += 80;
+            else
+                score -= (wc - 35) * 15; // too long
+
+            // Penalize listy sentences, too many commas / semicolons
+            int commaCount = countChar(trimmed, ',');
+            int semiCount = countChar(trimmed, ';');
+            score -= (commaCount * 25);
+            score -= (semiCount * 40);
+
+            // Bonus if it contains helpful cue words
+            if (sLower.contains("because") || sLower.contains("therefore") || sLower.contains("as a result"))
+                score += 60;
+
+            // Penalize quotes-heavy/citation-heavy
+            int quoteCount = countChar(trimmed, '"') + countChar(trimmed, '“') + countChar(trimmed, '”');
+            if (quoteCount >= 2)
+                score -= 30;
 
             if (score > bestScore) {
                 bestScore = score;
-                best = s;
+                best = trimmed;
             }
         }
+
         return best;
+    }
+
+    private boolean endsLikeSentence(String s) {
+        if (s.isBlank())
+            return false;
+        char c = s.charAt(s.length() - 1);
+        return c == '.' || c == '!' || c == ')' || c == ']' || c == '"'
+                || c == '”' || c == '\''; // allow citations/quotes at end
+    }
+
+    private int definitionPatternBonus(String sentenceLower, String kwLower) {
+        int bonus = 0;
+
+        // Try to detect keyword, is/are/was/were
+        // We'll look for the keyword followed shortly by a linking verb.
+        int idx = sentenceLower.indexOf(kwLower);
+        if (idx < 0)
+            return 0;
+
+        String tail = sentenceLower.substring(idx);
+        if (tail.matches(
+                "^" + Pattern.quote(kwLower) + "\\b.{0,25}\\b(is|are|was|were|means|refers to|defined as)\\b.*"))
+            bonus += 500;
+
+        // Reward patterns
+        if (tail.contains("is known as") || tail.contains("is called"))
+            bonus += 200;
+
+        return bonus;
+    }
+
+    private int countChar(String s, char ch) {
+        int n = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == ch)
+                n++;
+        }
+        return n;
     }
 
     // Generating Matching Pairs using Flashcards
@@ -666,6 +759,26 @@ public class StudyPackGenerationService {
             return "What was " + capitalize(keyword) + " used for?";
         }
         return "Explain: " + capitalize(keyword);
+    }
+
+    private String buildFallbackFlashcardFront(String sentence) {
+
+        String s = sentence.trim();
+
+        // If sentence starts with a named concept
+        String[] words = s.split("\\s+");
+        if (words.length > 0 && Character.isUpperCase(words[0].charAt(0))) {
+
+            String first = words[0];
+
+            if (words.length > 1 && Character.isUpperCase(words[1].charAt(0))) {
+                first += " " + words[1];
+            }
+
+            return "What is " + first + "?";
+        }
+
+        return "What concept is described here?";
     }
 
     private boolean isBadFlashcardTerm(String kw) {
