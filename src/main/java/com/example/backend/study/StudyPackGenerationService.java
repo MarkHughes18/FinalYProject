@@ -27,6 +27,8 @@ public class StudyPackGenerationService {
     private static final int MAX_TEXT_CHARS = 300_000;
     private static final int MAX_SENTENCES = 2_000;
     private static final int MAX_KEYWORDS = 200;
+    private static final int TOPIC_LABELS_COUNT = 6;
+    private static final String TOPIC_GENERAL = "General";
 
     private static final Pattern WORD_PATTERN = Pattern.compile("[A-Za-z][A-Za-z\\-']{2,}");
     private static final Pattern PHRASE_PATTERN = Pattern.compile(
@@ -82,8 +84,11 @@ public class StudyPackGenerationService {
         // Keyword extraction
         List<String> keywords = extractTopKeywords(bounded, MAX_KEYWORDS);
 
+        // Pick some topic labels from keywords
+        List<String> topicLabels = pickTopicLabels(keywords, TOPIC_LABELS_COUNT);
+
         // Build Flashcards first
-        List<StudyPack.Flashcard> flashcards = generateFlashcards(sentences, keywords, FLASHCARDS_COUNT);
+        List<StudyPack.Flashcard> flashcards = generateFlashcards(sentences, keywords, FLASHCARDS_COUNT, topicLabels);
 
         // Matching from flashcards
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
@@ -211,10 +216,81 @@ public class StudyPackGenerationService {
         return keywords;
     }
 
+    private List<String> pickTopicLabels(List<String> keywords, int maxTopics) {
+        List<String> topics = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        for (String kw : keywords) {
+            if (kw == null)
+                continue;
+            String t = kw.trim().toLowerCase(Locale.ROOT);
+            if (t.isBlank())
+                continue;
+
+            // Prefer phrases as topics (more meaningful)
+            boolean isPhrase = t.contains(" ");
+            if (!isPhrase && isBadFlashcardTerm(t))
+                continue;
+
+            // Avoid super-generic single words as topic headers
+            if (!isPhrase && (t.equals("world") || t.equals("future") || t.equals("conflict")))
+                continue;
+
+            if (seen.add(t)) {
+                topics.add(t);
+                if (topics.size() >= maxTopics)
+                    break;
+            }
+        }
+        return topics;
+    }
+
+    private String assignTopicTag(String sentence, String termLower, List<String> topicLabels) {
+        if (sentence == null)
+            return TOPIC_GENERAL;
+
+        String s = sentence.toLowerCase(Locale.ROOT);
+
+        String best = null;
+        int bestScore = 0;
+
+        for (String topic : topicLabels) {
+            if (topic == null)
+                continue;
+            String t = topic.trim().toLowerCase(Locale.ROOT);
+            if (t.isBlank())
+                continue;
+
+            // Don't tag a card with itself as a “topic”
+            if (t.equals(termLower))
+                continue;
+
+            // Simple scoring: does the sentence contain the topic?
+            int score = 0;
+            if (s.contains(t))
+                score += 3;
+
+            // Bonus if it's a phrase (more meaningful)
+            if (t.contains(" "))
+                score += 2;
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = t;
+            }
+        }
+
+        if (best == null)
+            return TOPIC_GENERAL;
+
+        // Format label nicely
+        return best.contains(" ") ? titleCasePhrase(best) : capitalize(best);
+    }
+
     // Generating Flashcards
     private List<StudyPack.Flashcard> generateFlashcards(List<String> sentences,
             List<String> keywords,
-            int count) {
+            int count, List<String> topicLabels) {
         List<StudyPack.Flashcard> cards = new ArrayList<>();
         Set<String> usedTerms = new HashSet<>();
         Set<String> usedSnippets = new HashSet<>();
@@ -266,14 +342,15 @@ public class StudyPackGenerationService {
                 continue;
 
             // Keep definition shortish for UI
-            String front = isPhrase ? titleCasePhrase(termLower) : capitalize(termLower);
             String back = shorten(bestSentence, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
             card.setFront(buildFlashcardFront(kw, bestSentence));
             card.setBack(back);
             card.setSourceSnippet(bestSentence);
-            card.setTags(Collections.emptyList());
+
+            String topicTag = assignTopicTag(bestSentence, termLower, topicLabels);
+            card.setTags(Collections.singletonList(topicTag));
 
             usedTerms.add(termLower);
             usedSnippets.add(bestSentence);
@@ -293,17 +370,21 @@ public class StudyPackGenerationService {
             if (s.trim().endsWith("?"))
                 continue;
 
-            String front = buildFlashcardFront(s);
+            String front = buildFallbackFlashcardFront(s);
             String back = shorten(s, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
             card.setFront(front);
             card.setBack(back);
             card.setSourceSnippet(s);
-            card.setTags(Collections.emptyList());
+            card.setTags(Collections.singletonList(TOPIC_GENERAL));
             usedSnippets.add(s);
             cards.add(card);
         }
+        cards.sort(Comparator.comparing(fc -> {
+            List<String> tags = fc.getTags();
+            return (tags == null || tags.isEmpty()) ? "General" : tags.get(0);
+        }));
         return cards;
     }
 
@@ -654,7 +735,6 @@ public class StudyPackGenerationService {
             while (options.size() < 4 && attempts < 200) {
                 attempts++;
                 String d = pickSmartDistractor(answer, keywords, r);
-                d = capitalize(d);
                 if (d.equalsIgnoreCase(answer))
                     continue;
                 boolean alreadyExists = false;
@@ -683,6 +763,9 @@ public class StudyPackGenerationService {
                 }
             }
             if (correctIndex < 0)
+                continue;
+
+            if (!isGoodQuizAnswer(answer))
                 continue;
 
             StudyPack.McqQuestion q = new StudyPack.McqQuestion();
@@ -736,6 +819,27 @@ public class StudyPackGenerationService {
             // Worst case no hash
             return null;
         }
+    }
+
+    private boolean isGoodQuizAnswer(String answer) {
+        if (answer == null)
+            return false;
+        String a = answer.trim();
+        if (a.length() < 4)
+            return false;
+
+        String lower = a.toLowerCase(Locale.ROOT);
+
+        // Avoid generic/connector/verb answers
+        if (WEAK_TERMS.contains(lower))
+            return false;
+        if (lower.endsWith("ing") || lower.endsWith("ed") || lower.endsWith("ly"))
+            return false;
+        // Avoid common filler words even if not in stopwords
+        if (lower.equals("great") || lower.equals("future") || lower.equals("including") || lower.equals("leading"))
+            return false;
+
+        return true;
     }
 
     private String buildFlashcardFront(String keyword, String sentence) {
@@ -816,23 +920,70 @@ public class StudyPackGenerationService {
 
     private String pickSmartDistractor(String answer, List<String> keywords, Random r) {
 
-        int len = answer.length();
+        String a = answer.trim();
+        int len = a.length();
+        boolean answerIsPhrase = a.contains(" ");
+        boolean answerIsAcronym = a.matches("^[A-Z]{2,}.*");
+        boolean answerIsCapitalized = !a.isEmpty() && Character.isUpperCase(a.charAt(0));
         List<String> candidates = new ArrayList<>();
 
         for (String kw : keywords) {
-
-            if (kw.equalsIgnoreCase(answer))
+            if (kw == null)
                 continue;
 
-            if (Math.abs(kw.length() - len) <= 3) {
-                candidates.add(capitalize(kw));
+            String k = kw.trim();
+            if (k.isBlank())
+                continue;
+            if (k.equalsIgnoreCase(a))
+                continue;
+
+            // filter weak distractors
+            if (!isGoodQuizAnswer(k))
+                continue;
+
+            boolean kIsPhrase = k.contains(" ");
+            boolean kIsAcronym = k.matches("^[A-Z]{2,}.*");
+            boolean kIsCapitalized = !k.isEmpty() && Character.isUpperCase(k.charAt(0));
+
+            // Prefer same "type"
+            if (answerIsPhrase && !kIsPhrase)
+                continue;
+            if (answerIsAcronym && !kIsAcronym)
+                continue;
+            if (answerIsCapitalized && !kIsCapitalized && !kIsPhrase) {
+                // allow phrases, otherwise try to keep capitalization similar
+                continue;
             }
+
+            // Similar length
+            if (Math.abs(k.length() - len) > 6)
+                continue;
+
+            candidates.add(k);
         }
 
         if (candidates.isEmpty()) {
-            return capitalize(keywords.get(r.nextInt(keywords.size())));
+            // fallback, pick any decent keyword
+            for (int tries = 0; tries < 200; tries++) {
+                String k = keywords.get(r.nextInt(keywords.size()));
+                if (k != null && isGoodQuizAnswer(k) && !k.equalsIgnoreCase(a)) {
+                    return formatTerm(k);
+                }
+            }
+            return formatTerm(keywords.get(r.nextInt(keywords.size())));
         }
-        return candidates.get(r.nextInt(candidates.size()));
+
+        String chosen = candidates.get(r.nextInt(candidates.size()));
+        return formatTerm(chosen);
+    }
+
+    private String formatTerm(String term) {
+        if (term == null)
+            return null;
+        String t = term.trim();
+        if (t.contains(" "))
+            return titleCasePhrase(t.toLowerCase(Locale.ROOT));
+        return capitalize(t.toLowerCase(Locale.ROOT));
     }
 
     // Minimal stopword set
