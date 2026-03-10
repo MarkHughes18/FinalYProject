@@ -391,6 +391,140 @@ public class StudyPackGenerationService {
         return score;
     }
 
+    private List<String> extractConceptsFromFacts(List<String> factSentences, int maxConcepts) {
+        List<String> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        for (String s : factSentences) {
+            String concept = extractConceptFromSentence(s);
+            if (concept == null || concept.isBlank()) {
+                continue;
+            }
+
+            String key = concept.toLowerCase(Locale.ROOT);
+            if (seen.add(key)) {
+                out.add(key);
+                if (out.size() >= maxConcepts) {
+                    break;
+                }
+            }
+        }
+
+        return out;
+    }
+
+    private String extractConceptFromSentence(String sentence) {
+        if (sentence == null)
+            return null;
+
+        String s = sentence.trim();
+
+        // Pattern: "X is/are/was/were ..."
+        String[] markers = {
+                " is ", " are ", " was ", " were ",
+                " refers to ", " means ", " states that ",
+                " consists of ", " includes ", " involves ",
+                " occurs when ", " happens when "
+        };
+
+        for (String marker : markers) {
+            int idx = s.toLowerCase(Locale.ROOT).indexOf(marker);
+            if (idx > 0) {
+                String candidate = s.substring(0, idx).trim();
+                candidate = cleanConcept(candidate);
+                if (isUsableConcept(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+
+        // Pattern
+        if (s.startsWith("At ") && s.contains(",")) {
+            String candidate = s.substring(3, s.indexOf(',')).trim();
+            candidate = cleanConcept(candidate);
+            if (isUsableConcept(candidate)) {
+                return candidate;
+            }
+        }
+
+        // Pattern
+        if (s.startsWith("The ") && s.contains(",")) {
+            String candidate = s.substring(0, s.indexOf(',')).trim();
+            candidate = cleanConcept(candidate);
+            if (isUsableConcept(candidate)) {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private String cleanConcept(String concept) {
+        if (concept == null)
+            return null;
+
+        String c = concept.trim();
+
+        c = c.replaceAll("^[\"“”'`]+", "");
+        c = c.replaceAll("[\"“”'`.,:;]+$", "");
+        c = c.replaceAll("^To begin,\\s*", "");
+        c = c.replaceAll("^Another\\s+", "");
+        c = c.replaceAll("^For example,\\s*", "");
+        c = c.replaceAll("^For instance,\\s*", "");
+        c = c.replaceAll("^In summary,\\s*", "");
+
+        return c.trim();
+    }
+
+    private boolean isUsableConcept(String concept) {
+        if (concept == null || concept.isBlank())
+            return false;
+
+        String c = concept.trim();
+        String lower = c.toLowerCase(Locale.ROOT);
+
+        if (c.length() < 4 || c.length() > 60)
+            return false;
+
+        if (lower.equals("it")
+                || lower.equals("this")
+                || lower.equals("that")
+                || lower.equals("these")
+                || lower.equals("those")
+                || lower.equals("theory")
+                || lower.equals("method")
+                || lower.equals("movement")
+                || lower.equals("form")
+                || lower.equals("important")
+                || lower.equals("examples"))
+            return false;
+
+        return true;
+    }
+
+    private String formatConceptLabel(String concept) {
+        if (concept == null)
+            return null;
+
+        String c = concept.trim();
+        if (c.contains(" "))
+            return titleCasePhrase(c.toLowerCase(Locale.ROOT));
+
+        return capitalize(c.toLowerCase(Locale.ROOT));
+    }
+
+    private String buildQuestionFromConcept(String concept) {
+        String clean = formatConceptLabel(concept);
+        if (clean == null || clean.isBlank())
+            return "What concept is described here?";
+
+        String lower = clean.toLowerCase(Locale.ROOT);
+        if (lower.endsWith("s") && !lower.endsWith("ss"))
+            return "What are " + clean + "?";
+
+        return "What is " + clean + "?";
+    }
+
     // Generating Flashcards
     private List<StudyPack.Flashcard> generateFlashcards(List<String> sentences,
             List<String> keywords,
