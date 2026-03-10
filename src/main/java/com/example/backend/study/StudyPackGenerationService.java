@@ -81,27 +81,35 @@ public class StudyPackGenerationService {
 
         List<String> sentences = splitIntoSentences(bounded, MAX_SENTENCES);
 
-        // Keyword extraction
-        List<String> keywords = extractTopKeywords(bounded, MAX_KEYWORDS);
+        // sentence first pipeline
+        List<String> factSentences = extractEducationalSentences(sentences, 120);
+        if (factSentences.isEmpty()) {
+            factSentences = new ArrayList<>(sentences);
+        }
+
+        List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
 
         // Pick some topic labels from keywords
-        List<String> topicLabels = pickTopicLabels(keywords, TOPIC_LABELS_COUNT);
+        List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
 
         // Build Flashcards first
-        List<StudyPack.Flashcard> flashcards = generateFlashcards(sentences, keywords, FLASHCARDS_COUNT, topicLabels);
+        List<StudyPack.Flashcard> flashcards = generateFlashcards(factSentences, factConcepts, FLASHCARDS_COUNT,
+                topicLabels);
 
         // Matching from flashcards
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
         // Cloze from flashcards/sentences
-        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(sentences, flashcards, CLOZE_COUNT,
+        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(factSentences, flashcards, CLOZE_COUNT,
                 random);
 
         // True/False from sentences + keyword swapping
-        List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(sentences, keywords, TF_COUNT);
+        List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(factSentences, factConcepts,
+                TF_COUNT, random);
 
         // MCQ from cloze-style questions
-        List<StudyPack.McqQuestion> mcqQuestions = generateMcqQuestionsFromCloze(clozeQuestions, keywords, MCQ_COUNT);
+        List<StudyPack.McqQuestion> mcqQuestions = generateMcqQuestionsFromCloze(clozeQuestions, factConcepts,
+                MCQ_COUNT);
 
         // Settings metadata
         StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
