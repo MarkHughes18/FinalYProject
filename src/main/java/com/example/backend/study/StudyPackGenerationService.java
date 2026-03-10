@@ -295,6 +295,102 @@ public class StudyPackGenerationService {
         return best.contains(" ") ? titleCasePhrase(best) : capitalize(best);
     }
 
+    private List<String> extractEducationalSentences(List<String> sentences, int maxFacts) {
+        List<String> candidates = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        for (String s : sentences) {
+            if (s == null)
+                continue;
+
+            String trimmed = s.trim();
+            if (trimmed.isBlank())
+                continue;
+
+            if (seen.contains(trimmed))
+                continue;
+
+            if (!isStrongEducationalSentence(trimmed))
+                continue;
+
+            seen.add(trimmed);
+            candidates.add(trimmed);
+        }
+
+        candidates.sort((a, b) -> Integer.compare(scoreEducationalSentence(b), scoreEducationalSentence(a)));
+
+        if (candidates.size() > maxFacts)
+            return new ArrayList<>(candidates.subList(0, maxFacts));
+
+        return candidates;
+    }
+
+    private boolean isStrongEducationalSentence(String s) {
+        if (s == null)
+            return false;
+
+        String t = s.trim();
+        if (t.length() < 35 || t.length() > 320)
+            return false;
+
+        if (t.endsWith("?"))
+            return false;
+
+        if (!Character.isUpperCase(t.charAt(0)))
+            return false;
+
+        String lower = t.toLowerCase(Locale.ROOT);
+
+        if (lower.startsWith("today, we will")
+                || lower.startsWith("today we will")
+                || lower.startsWith("today, we’ll")
+                || lower.startsWith("today we’ll")
+                || lower.startsWith("to recap")
+                || lower.startsWith("let’s consider")
+                || lower.startsWith("let's consider")
+                || lower.startsWith("in summary"))
+            return false;
+
+        if (t.contains("\n"))
+            return false;
+
+        return scoreEducationalSentence(t) >= 2;
+    }
+
+    private int scoreEducationalSentence(String s) {
+        String lower = s.toLowerCase(Locale.ROOT);
+        int score = 0;
+
+        if (lower.contains(" is ") || lower.contains(" are ") || lower.contains(" was ") || lower.contains(" were "))
+            score += 3;
+
+        if (lower.contains(" refers to ")
+                || lower.contains(" means ")
+                || lower.contains(" states that ")
+                || lower.contains(" consists of ")
+                || lower.contains(" is divided into ")
+                || lower.contains(" includes ")
+                || lower.contains(" involves ")
+                || lower.contains(" occurs when ")
+                || lower.contains(" happens when "))
+            score += 3;
+
+        if (lower.startsWith("at ") && lower.contains(","))
+            score += 2;
+
+        if (lower.startsWith("when ") && lower.contains(","))
+            score += 1;
+
+        int wc = countWords(s);
+        if (wc >= 8 && wc <= 32)
+            score += 2;
+
+        if (extractConceptFromSentence(s) != null)
+            score += 3;
+
+        return score;
+    }
+
     // Generating Flashcards
     private List<StudyPack.Flashcard> generateFlashcards(List<String> sentences,
             List<String> keywords,
