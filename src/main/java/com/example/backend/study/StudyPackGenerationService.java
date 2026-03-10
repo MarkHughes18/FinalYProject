@@ -899,7 +899,7 @@ public class StudyPackGenerationService {
             return true;
 
         // Ends with common
-        if (w.endsWith("ing") || w.endsWith("ed") || w.endsWith("ly"))
+        if (w.endsWith("ing") || w.endsWith("ed") || w.endsWith("ly") || w.endsWith("tion"))
             return true;
 
         return false;
@@ -914,6 +914,10 @@ public class StudyPackGenerationService {
         if (!Character.isUpperCase(t.charAt(0)))// Fragment starts lowercase
             return true;
         if (t.startsWith("entry "))
+            return true;
+        if (s.toLowerCase().contains("today, we’ll explore") || s.toLowerCase().contains("today, we'll explore")
+                || s.toLowerCase().contains("in this lesson") || s.toLowerCase().contains("in this video")
+                || s.toLowerCase().contains("today we will"))
             return true;
         return false;
     }
