@@ -300,68 +300,37 @@ public class StudyPackGenerationService {
             List<String> keywords,
             int count, List<String> topicLabels) {
         List<StudyPack.Flashcard> cards = new ArrayList<>();
-        Set<String> usedTerms = new HashSet<>();
+        Set<String> usedConcepts = new HashSet<>();
         Set<String> usedSnippets = new HashSet<>();
 
-        for (String kw : keywords) {
+        for (String sentence : sentences) {
             if (cards.size() >= count)
                 break;
-            if (kw == null || kw.isBlank())
+            if (sentence == null || sentence.isBlank())
                 continue;
-            if (kw.length() < 4)
+            if (usedSnippets.contains(sentence))
                 continue;
-
-            String termLower = kw.trim().toLowerCase(Locale.ROOT);
-            if (termLower.isBlank())
-                continue;
-            if (usedTerms.contains(termLower))
+            if (!isStrongEducationalSentence(sentence))
                 continue;
 
-            // For single-word terms, apply strong filtering.
-            // For multi-word phrases, allow them through
-            boolean isPhrase = termLower.contains(" ");
-            if (!isPhrase && isBadFlashcardTerm(termLower))
+            String concept = extractConceptFromSentence(sentence);
+            if (concept == null || concept.isBlank())
                 continue;
 
-            String bestSentence = findBestSentenceContaining(sentences, termLower);
-            if (bestSentence == null)
+            String conceptKey = concept.toLowerCase(Locale.ROOT);
+            if (usedConcepts.contains(conceptKey))
                 continue;
-
-            // Don’t reuse the same sentence
-            if (usedSnippets.contains(bestSentence))
-                continue;
-
-            if (isBadSentence(bestSentence))
-                continue;
-
-            // Skip a sentence if it looks like a question
-            if (bestSentence.trim().endsWith("?"))
-                continue;
-
-            // Skip if it looks like an intro sentence
-            String lower = bestSentence.toLowerCase(Locale.ROOT);
-            if (lower.startsWith("today, we’ll explore") || lower.startsWith("today, we'll explore"))
-                continue;
-            if (lower.startsWith("in this lesson") || lower.startsWith("in this video")
-                    || lower.startsWith("today we will"))
-                continue;
-
-            if (isBadFlashcardTerm(kw))
-                continue;
-
-            // Keep definition shortish for UI
-            String back = shorten(bestSentence, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(buildFlashcardFront(kw, bestSentence));
-            card.setBack(back);
-            card.setSourceSnippet(bestSentence);
+            card.setFront(buildQuestionFromConcept(concept));
+            card.setBack(shorten(sentence, 160));
+            card.setSourceSnippet(sentence);
 
-            String topicTag = assignTopicTag(bestSentence, termLower, topicLabels);
+            String topicTag = assignTopicTag(sentence, conceptKey, topicLabels);
             card.setTags(Collections.singletonList(topicTag));
 
-            usedTerms.add(termLower);
-            usedSnippets.add(bestSentence);
+            usedTerms.add(conceptKey);
+            usedSnippets.add(sentence);
             cards.add(card);
         }
 
@@ -371,19 +340,16 @@ public class StudyPackGenerationService {
         while (cards.size() < count && !sentences.isEmpty() && attempts < 5000) {
             attempts++;
             String s = sentences.get(r.nextInt(sentences.size()));
+            if (s == null || s.isBlank())
+                continue;
             if (usedSnippets.contains(s))
                 continue;
-            if (isBadSentence(s))
+            if (!isStrongEducationalSentence(s))
                 continue;
-            if (s.trim().endsWith("?"))
-                continue;
-
-            String front = buildFallbackFlashcardFront(s);
-            String back = shorten(s, 160);
 
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(front);
-            card.setBack(back);
+            card.setFront(buildFallbackFlashcardFront(s));
+            card.setBack(shorten(s, 160));
             card.setSourceSnippet(s);
             card.setTags(Collections.singletonList(TOPIC_GENERAL));
             usedSnippets.add(s);
