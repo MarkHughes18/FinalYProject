@@ -529,61 +529,28 @@ public class StudyPackGenerationService {
         List<StudyPack.ClozeQuestion> out = new ArrayList<>();
         Set<String> used = new HashSet<>();
 
-        // Prefer flashcard fronts that are not key idea
-        // Fall back to scanning sentences for any keywords-like tokens
-        List<String> answerPool = new ArrayList<>();
-        for (StudyPack.Flashcard fc : flashcards) {
-            if (fc.getFront() == null)
+        for (String sentence : sentences) {
+            if (out.size() >= count)
+                break;
+
+            if (!isStrongEducationalSentence(sentence))
                 continue;
-            String front = fc.getFront().trim();
-            if (front.equalsIgnoreCase("Key idea"))
+
+            String concept = extractConceptFromSentence(sentence);
+            if (concept == null || concept.isBlank())
                 continue;
-            if (front.length() < 4)
-                continue;
-            answerPool.add(front);
-        }
-
-        // If pool is small, use words from sentences, pick words that look like
-        // keywords
-        if (answerPool.size() < 10) {
-            for (String s : sentences) {
-                Matcher m = WORD_PATTERN.matcher(s);
-                while (m.find()) {
-                    String w = m.group();
-                    if (w.length() < 5)
-                        continue;
-                    // skip common stopwords
-                    String wl = w.toLowerCase(Locale.ROOT);
-                    if (STOPWORDS.contains(wl))
-                        continue;
-                    answerPool.add(capitalize(wl));
-                }
-                if (answerPool.size() >= 200)
-                    break;
-            }
-        }
-
-        // Shuffle to avoid pulling early terms
-        Collections.shuffle(answerPool, random);
-
-        int attempts = 0;
-        while (out.size() < count && attempts < 3000 && !sentences.isEmpty() && !answerPool.isEmpty()) {
-            attempts++;
-
-            String sentence = sentences.get(random.nextInt(sentences.size()));
-            String answer = answerPool.get(random.nextInt(answerPool.size()));
 
             // Try to blank the answer (whole word)
-            String sentenceWithBlank = blankOutWholeWord(sentence, answer);
-            if (sentenceWithBlank == null)
+            String sentenceWithBlank = blankOutWholeWord(sentence, concept);
+            if (sentenceWithBlank == null || sentenceWithBlank.equals(sentence))
                 continue;
 
-            String key = answer.toLowerCase(Locale.ROOT) + "|" + sentence;
+            String key = concept.toLowerCase(Locale.ROOT) + "|" + sentence;
             if (used.contains(key))
                 continue;
 
             StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
-            q.setAnswer(answer);
+            q.setAnswer(formatConceptLabel(concept));
             q.setSentenceWithBlank(sentenceWithBlank);
             q.setChoices(Collections.emptyList());
             q.setSourceSnippet(sentence);
@@ -701,14 +668,19 @@ public class StudyPackGenerationService {
             if (answer == null || answer.isBlank())
                 continue;
 
+            if (!isGoodQuizAnswer(answer))
+                continue;
+
             List<String> options = new ArrayList<>();
-            options.add(answer);
+            options.add(formatConceptLabel(answer));
 
             // add 3 distractors
             int attempts = 0;
             while (options.size() < 4 && attempts < 200) {
                 attempts++;
-                String d = pickSmartDistractor(answer, keywords, r);
+                String d = pickSmartDistractorFromConcepts(answer, keywords, r);
+                if (d == null || d.isBlank())
+                    continue;
                 if (d.equalsIgnoreCase(answer))
                     continue;
                 boolean alreadyExists = false;
@@ -721,7 +693,7 @@ public class StudyPackGenerationService {
                 if (alreadyExists)
                     continue;
 
-                options.add(d);
+                options.add(formatConceptLabel(d));
             }
 
             // if cant get enough distractors skip
@@ -737,9 +709,6 @@ public class StudyPackGenerationService {
                 }
             }
             if (correctIndex < 0)
-                continue;
-
-            if (!isGoodQuizAnswer(answer))
                 continue;
 
             StudyPack.McqQuestion q = new StudyPack.McqQuestion();
