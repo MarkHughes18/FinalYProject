@@ -414,6 +414,10 @@ public class StudyPackGenerationService {
     }
 
     private String extractConceptFromSentence(String sentence) {
+        String strip = stripLeadingPhrases(sentence);
+        if (strip == null || strip.isBlank())
+            return null;
+
         if (sentence == null)
             return null;
 
@@ -472,6 +476,10 @@ public class StudyPackGenerationService {
         c = c.replaceAll("^For example,\\s*", "");
         c = c.replaceAll("^For instance,\\s*", "");
         c = c.replaceAll("^In summary,\\s*", "");
+        c = c.replaceAll("(?i)^in organizations,\\s*", "");
+        c = c.replaceAll("(?i)^whether in [^,]+,\\s*", "");
+        c = c.replaceAll("(?i)^the context—whether [^—]+—", "context");
+        c = c.replaceAll("(?i)^the context-whether [^-]+-", "context");
 
         return c.trim();
     }
@@ -496,9 +504,23 @@ public class StudyPackGenerationService {
                 || lower.equals("movement")
                 || lower.equals("form")
                 || lower.equals("important")
-                || lower.equals("examples"))
+                || lower.equals("examples")
+                || lower.equals("for")
+                || lower.equals("to")
+                || lower.equals("whether")
+                || lower.equals("in")
+                || lower.equals("on")
+                || lower.equals("at"))
             return false;
-
+        if (lowerStartsWith("for ")
+                || lowerStartsWith("to ")
+                || lowerStartsWith("whether ")
+                || lowerStartsWith("these ")
+                || lowerStartsWith("those ")
+                || lowerStartsWith("this ")
+                || lowerStartsWith("in organisations")
+                || lowerStartsWith("in organizations"))
+            return false;
         return true;
     }
 
@@ -730,6 +752,23 @@ public class StudyPackGenerationService {
                 n++;
         }
         return n;
+    }
+
+    private String stripLeadingPhrases(String sentence) {
+        if (sentence == null)
+            return null;
+
+        String s = sentence.trim();
+
+        s = s.replaceFirst("(?i)^to begin,\\s*", "");
+        s = s.replaceFirst("(?i)^for example,\\s*", "");
+        s = s.replaceFirst("(?i)^for instance,\\s*", "");
+        s = s.replaceFirst("(?i)^in organizations,\\s*", "");
+        s = s.replaceFirst("(?i)^in summary,\\s*", "");
+        s = s.replaceFirst("(?i)^whether in [^,]+,\\s*", "");
+        s = s.replaceFirst("(?i)^on the other hand,\\s*", "");
+
+        return s.trim();
     }
 
     // Generating Matching Pairs using Flashcards
