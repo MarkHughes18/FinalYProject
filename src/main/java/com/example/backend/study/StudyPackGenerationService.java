@@ -806,16 +806,15 @@ public class StudyPackGenerationService {
     }
 
     // Generating True/False
-    private List<StudyPack.TrueFalseQuestion> generateTrueFalseQuestions(List<String> sentences,
-            List<String> keywords,
-            int count) {
+    private List<StudyPack.TrueFalseQuestion> generateTrueFalseQuestions(List<String> factSentences,
+            List<String> factConcepts,
+            int count, Random r) {
         List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
-        Random r = new Random();
 
         // True questions
         int trueCount = Math.max(1, count / 2);
-        for (int i = 0; i < trueCount && i < sentences.size(); i++) {
-            String s = sentences.get(i);
+        for (int i = 0; i < trueCount && i < factSentences.size(); i++) {
+            String s = factSentences.get(i);
             StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
             q.setStatement(shorten(s, 220));
             q.setAnswer(true);
@@ -826,27 +825,21 @@ public class StudyPackGenerationService {
 
         // False questions via keyword swap
         int attempts = 0;
-        while (out.size() < count && attempts < 500 && !sentences.isEmpty() && keywords.size() >= 5) {
+        while (out.size() < count && attempts < 500) {
             attempts++;
+            if (factSentences.isEmpty() || factConcepts.size() < 2)
+                break;
+            String s = factSentences.get(r.nextInt(factSentences.size()));
+            String concept = extractConceptFromSentence(s);
 
-            String s = sentences.get(r.nextInt(sentences.size()));
-            String sLower = s.toLowerCase(Locale.ROOT);
-
-            String kwInSentence = null;
-            for (String kw : keywords) {
-                if (sLower.contains(kw)) {
-                    kwInSentence = kw;
-                    break;
-                }
-            }
-            if (kwInSentence == null)
+            if (concept == null || concept.isBlank())
                 continue;
 
-            String replacement = pickDistractor(keywords, kwInSentence, r);
-            if (replacement == null)
+            String replacement = pickDistractorFromConcepts(factConcepts, concept, r);
+            if (replacement == null || replacement.isBlank())
                 continue;
 
-            String falseStmt = replaceFirstCaseInsensitive(s, kwInSentence, replacement);
+            String falseStmt = replaceFirstWholePhraseCaseInsensitive(s, concept, replacement);
             if (falseStmt.equals(s))
                 continue;
 
@@ -858,6 +851,55 @@ public class StudyPackGenerationService {
             out.add(q);
         }
         return out;
+    }
+
+    private String pickSmartDistractorFromConcepts(String answer, List<String> concepts, Random random) {
+        if (answer == null || concepts == null || concepts.isEmpty())
+            return null;
+
+        String a = answer.trim().toLowerCase(Locale.ROOT);
+        int targetWords = a.split("\\s+").length;
+        int targetLen = a.length();
+
+        List<String> candidates = new ArrayList<>();
+
+        for (String c : concepts) {
+            if (c == null || c.isBlank()) {
+                continue;
+            }
+
+            String lower = c.trim().toLowerCase(Locale.ROOT);
+            if (lower.equals(a)) {
+                continue;
+            }
+
+            int wordCount = lower.split("\\s+").length;
+            if (Math.abs(wordCount - targetWords) > 1) {
+                continue;
+            }
+            if (Math.abs(lower.length() - targetLen) > 20) {
+                continue;
+            }
+
+            candidates.add(lower);
+        }
+
+        if (candidates.isEmpty())
+            return null;
+
+        return formatConceptLabel(candidates.get(random.nextInt(candidates.size())));
+    }
+
+    private String replaceFirstWholePhraseCaseInsensitive(String sentence, String from, String to) {
+        if (sentence == null || from == null || to == null)
+            return null;
+
+        Pattern p = Pattern.compile("\\b" + Pattern.quote(from) + "\\b", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(sentence);
+        if (!m.find())
+            return sentence;
+
+        return m.replaceFirst(Matcher.quoteReplacement(formatConceptLabel(to)));
     }
 
     private String pickDistractor(List<String> keywords, String original, Random r) {
