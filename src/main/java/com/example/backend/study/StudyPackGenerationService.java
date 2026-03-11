@@ -348,7 +348,19 @@ public class StudyPackGenerationService {
                 || lower.startsWith("to recap")
                 || lower.startsWith("let’s consider")
                 || lower.startsWith("let's consider")
-                || lower.startsWith("in summary"))
+                || lower.startsWith("in summary")
+                || lower.startsWith("for example,")
+                || lower.startsWith("for example ")
+                || lower.startsWith("for instance,")
+                || lower.startsWith("for instance ")
+                || lower.startsWith("whether ")
+                || lower.startsWith("whether in ")
+                || lower.startsWith("it ")
+                || lower.startsWith("this ")
+                || lower.startsWith("that ")
+                || lower.startsWith("these ")
+                || lower.startsWith("to begin, ")
+                || lower.startsWith("to begin "))
             return false;
 
         if (t.contains("\n"))
@@ -418,10 +430,7 @@ public class StudyPackGenerationService {
         if (strip == null || strip.isBlank())
             return null;
 
-        if (sentence == null)
-            return null;
-
-        String s = sentence.trim();
+        String s = strip.trim();
 
         // Pattern: "X is/are/was/were ..."
         String[] markers = {
@@ -436,6 +445,9 @@ public class StudyPackGenerationService {
             if (idx > 0) {
                 String candidate = s.substring(0, idx).trim();
                 candidate = cleanConcept(candidate);
+                if (candidate.split("\\s+").length > 6) {
+                    return null;
+                }
                 if (isUsableConcept(candidate)) {
                     return candidate;
                 }
@@ -446,6 +458,9 @@ public class StudyPackGenerationService {
         if (s.startsWith("At ") && s.contains(",")) {
             String candidate = s.substring(3, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
+            if (candidate.split("\\s+").length > 6) {
+                return null;
+            }
             if (isUsableConcept(candidate)) {
                 return candidate;
             }
@@ -455,6 +470,9 @@ public class StudyPackGenerationService {
         if (s.startsWith("The ") && s.contains(",")) {
             String candidate = s.substring(0, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
+            if (candidate.split("\\s+").length > 6) {
+                return null;
+            }
             if (isUsableConcept(candidate)) {
                 return candidate;
             }
@@ -476,7 +494,7 @@ public class StudyPackGenerationService {
         c = c.replaceAll("^For example,\\s*", "");
         c = c.replaceAll("^For instance,\\s*", "");
         c = c.replaceAll("^In summary,\\s*", "");
-        c = c.replaceAll("(?i)^in organizations,\\s*", "");
+        c = c.replaceAll("(?i)^in organizations\\s*,?\\s*", "");
         c = c.replaceAll("(?i)^whether in [^,]+,\\s*", "");
         c = c.replaceAll("(?i)^the context—whether [^—]+—", "context");
         c = c.replaceAll("(?i)^the context-whether [^-]+-", "context");
@@ -512,14 +530,15 @@ public class StudyPackGenerationService {
                 || lower.equals("on")
                 || lower.equals("at"))
             return false;
-        if (lowerStartsWith("for ")
-                || lowerStartsWith("to ")
-                || lowerStartsWith("whether ")
-                || lowerStartsWith("these ")
-                || lowerStartsWith("those ")
-                || lowerStartsWith("this ")
-                || lowerStartsWith("in organisations")
-                || lowerStartsWith("in organizations"))
+        if (lower.startsWith("for ")
+                || lower.startsWith("to ")
+                || lower.startsWith("whether ")
+                || lower.startsWith("these ")
+                || lower.startsWith("those ")
+                || lower.startsWith("this ")
+                || lower.startsWith("in organisations")
+                || lower.startsWith("in organizations")
+                || lower.startsWith("it"))
             return false;
         return true;
     }
