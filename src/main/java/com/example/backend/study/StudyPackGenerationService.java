@@ -559,7 +559,7 @@ public class StudyPackGenerationService {
             String topicTag = assignTopicTag(sentence, conceptKey, topicLabels);
             card.setTags(Collections.singletonList(topicTag));
 
-            usedTerms.add(conceptKey);
+            usedConcepts.add(conceptKey);
             usedSnippets.add(sentence);
             cards.add(card);
         }
@@ -835,7 +835,7 @@ public class StudyPackGenerationService {
             if (concept == null || concept.isBlank())
                 continue;
 
-            String replacement = pickDistractorFromConcepts(factConcepts, concept, r);
+            String replacement = pickSmartDistractorFromConcepts(concept, factConcepts, r);
             if (replacement == null || replacement.isBlank())
                 continue;
 
