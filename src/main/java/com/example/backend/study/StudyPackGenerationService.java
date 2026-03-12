@@ -427,7 +427,7 @@ public class StudyPackGenerationService {
 
     private String extractConceptFromSentence(String sentence) {
         String strip = stripLeadingPhrases(sentence);
-        if (strip == null || strip.isBlank())
+        if (strip == null)
             return null;
 
         String s = strip.trim();
@@ -445,12 +445,17 @@ public class StudyPackGenerationService {
             if (idx > 0) {
                 String candidate = s.substring(0, idx).trim();
                 candidate = cleanConcept(candidate);
-                if (candidate.split("\\s+").length > 6) {
-                    return null;
-                }
-                if (isUsableConcept(candidate)) {
+                candidate = candidate.replaceAll("[—–-].*$", "").trim();
+
+                if (candidate.isBlank())
+                    continue;
+                if (countWords(candidate) > 4)
+                    continue;
+                if (looksLikeClauseNotConcept(candidate))
+                    continue;
+                if (isUsableConcept(candidate))
                     return candidate;
-                }
+
             }
         }
 
@@ -458,10 +463,10 @@ public class StudyPackGenerationService {
         if (s.startsWith("At ") && s.contains(",")) {
             String candidate = s.substring(3, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
-            if (candidate.split("\\s+").length > 6) {
-                return null;
-            }
-            if (isUsableConcept(candidate)) {
+            candidate = candidate.replaceAll("[—–-].*$", "").trim();
+
+            if (!candidate.isBlank() && countWords(candidate) <= 4 && !looksLikeClauseNotConcept(candidate)
+                    && isUsableConcept(candidate)) {
                 return candidate;
             }
         }
@@ -470,15 +475,59 @@ public class StudyPackGenerationService {
         if (s.startsWith("The ") && s.contains(",")) {
             String candidate = s.substring(0, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
-            if (candidate.split("\\s+").length > 6) {
-                return null;
-            }
-            if (isUsableConcept(candidate)) {
+            candidate = candidate.replaceAll("[—–-].*$", "").trim();
+
+            if (!candidate.isBlank()
+                    && countWords(candidate) <= 4
+                    && !looksLikeClauseNotConcept(candidate)
+                    && isUsableConcept(candidate)) {
                 return candidate;
             }
         }
 
         return null;
+    }
+
+    private boolean looksLikeClauseNotConcept(String candidate) {
+        if (candidate == null || candidate.isBlank())
+            return true;
+
+        String lower = candidate.toLowerCase(Locale.ROOT).trim();
+
+        if (lower.equals("both types")
+                || lower.equals("understanding")
+                || lower.equals("similarly")
+                || lower.equals("first")
+                || lower.equals("next")
+                || lower.equals("then")
+                || lower.equals("finally"))
+            return true;
+
+        if (lower.startsWith("first")
+                || lower.startsWith("next")
+                || lower.startsWith("then")
+                || lower.startsWith("finally")
+                || lower.startsWith("similarly")
+                || lower.startsWith("understanding")
+                || lower.startsWith("both "))
+            return true;
+
+        if (lower.contains(" ensures ")
+                || lower.contains(" follows ")
+                || lower.contains(" decodes ")
+                || lower.contains(" helps ")
+                || lower.contains(" improves ")
+                || lower.contains(" allows ")
+                || lower.contains(" creates ")
+                || lower.contains(" requires ")
+                || lower.contains(" completes "))
+            return true;
+
+        if (lower.contains(" that ")
+                || lower.contains(" and "))
+            return true;
+
+        return false;
     }
 
     private String cleanConcept(String concept) {
@@ -512,6 +561,9 @@ public class StudyPackGenerationService {
         if (c.length() < 4 || c.length() > 60)
             return false;
 
+        if (countWords(c) > 4)
+            return false;
+
         if (lower.equals("it")
                 || lower.equals("this")
                 || lower.equals("that")
@@ -528,8 +580,16 @@ public class StudyPackGenerationService {
                 || lower.equals("whether")
                 || lower.equals("in")
                 || lower.equals("on")
-                || lower.equals("at"))
+                || lower.equals("at")
+                || lower.equals("both types")
+                || lower.equals("understanding")
+                || lower.equals("similarly")
+                || lower.equals("first")
+                || lower.equals("next")
+                || lower.equals("then")
+                || lower.equals("finally"))
             return false;
+
         if (lower.startsWith("for ")
                 || lower.startsWith("to ")
                 || lower.startsWith("whether ")
