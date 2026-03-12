@@ -666,26 +666,28 @@ public class StudyPackGenerationService {
         }
 
         // If fail to make enough, fallback, use random sentences as "front/back"
-        Random r = new Random();
-        int attempts = 0;
-        while (cards.size() < count && !sentences.isEmpty() && attempts < 5000) {
-            attempts++;
-            String s = sentences.get(r.nextInt(sentences.size()));
-            if (s == null || s.isBlank())
-                continue;
-            if (usedSnippets.contains(s))
-                continue;
-            if (!isStrongEducationalSentence(s))
-                continue;
-
-            StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(buildFallbackFlashcardFront(s));
-            card.setBack(shorten(s, 160));
-            card.setSourceSnippet(s);
-            card.setTags(Collections.singletonList(TOPIC_GENERAL));
-            usedSnippets.add(s);
-            cards.add(card);
-        }
+        /**
+         * Random r = new Random();
+         * int attempts = 0;
+         * while (cards.size() < count && !sentences.isEmpty() && attempts < 5000) {
+         * attempts++;
+         * String s = sentences.get(r.nextInt(sentences.size()));
+         * if (s == null || s.isBlank())
+         * continue;
+         * if (usedSnippets.contains(s))
+         * continue;
+         * if (!isStrongEducationalSentence(s))
+         * continue;
+         * 
+         * StudyPack.Flashcard card = new StudyPack.Flashcard();
+         * card.setFront(buildFallbackFlashcardFront(s));
+         * card.setBack(shorten(s, 160));
+         * card.setSourceSnippet(s);
+         * card.setTags(Collections.singletonList(TOPIC_GENERAL));
+         * usedSnippets.add(s);
+         * cards.add(card);
+         * }
+         **/
         cards.sort(Comparator.comparing(fc -> {
             List<String> tags = fc.getTags();
             return (tags == null || tags.isEmpty()) ? "General" : tags.get(0);
@@ -850,6 +852,43 @@ public class StudyPackGenerationService {
         return s.trim();
     }
 
+    private boolean isGoodFlashcardFront(String front) {
+        if (front == null || front.isBlank())
+            return false;
+
+        String f = front.trim().toLowerCase(Locale.ROOT);
+
+        if (f.equals("what is the?")
+                || f.equals("what is in?")
+                || f.equals("what is though?")
+                || f.equals("what is despite?")
+                || f.equals("what is with?")
+                || f.equals("what is on?")
+                || f.equals("what is at?")
+                || f.equals("what is for?")
+                || f.equals("what is to?")
+                || f.equals("what is the?")
+                || f.equals("what is similarly,?")
+                || f.equals("what is whether?")
+                || f.equals("what is next,?")
+                || f.equals("what is then,?")
+                || f.equals("what is finally,?")
+                || f.equals("what is first,?")
+                || f.equals("what is it?")
+                || f.equals("what is this?")
+                || f.equals("what is next,?")) {
+            return false;
+        }
+
+        if (f.matches("what is (the|in|on|at|for|to|though|despite|with)\\??"))
+            return false;
+
+        if (f.matches("what is [a-z]+,\\??"))
+            return false;
+
+        return true;
+    }
+
     // Generating Matching Pairs using Flashcards
     private List<StudyPack.MatchingPair> generateMatchingPairs(List<StudyPack.Flashcard> flashcards, int count) {
         List<StudyPack.MatchingPair> pairs = new ArrayList<>();
@@ -857,9 +896,16 @@ public class StudyPackGenerationService {
             if (pairs.size() >= count)
                 break;
 
+            if (fc == null)
+                continue;
             String left = fc.getFront();
             String right = shorten(fc.getBack(), 120);
 
+            if (!isGoodFlashcardFront(left))
+                continue;
+
+            if (right == null || right.isBlank())
+                continue;
             StudyPack.MatchingPair p = new StudyPack.MatchingPair();
             p.setLeft(left);
             p.setRight(right);
