@@ -469,11 +469,12 @@ public class StudyPackGenerationService {
 
         for (String s : factSentences) {
             String concept = extractConceptFromSentence(s);
-            if (concept == null || concept.isBlank()) {
+            if (!isValidStudyConcept(concept)) {
                 continue;
             }
 
-            String key = concept.toLowerCase(Locale.ROOT);
+            String cleaned = cleanConcept(concept)
+            String key = cleaned.toLowerCase(Locale.ROOT);
             if (seen.add(key)) {
                 out.add(key);
                 if (out.size() >= maxConcepts) {
@@ -596,19 +597,75 @@ public class StudyPackGenerationService {
 
         String c = concept.trim();
 
-        c = c.replaceAll("^[\"“”'`]+", "");
-        c = c.replaceAll("[\"“”'`.,:;]+$", "");
-        c = c.replaceAll("^To begin,\\s*", "");
-        c = c.replaceAll("^Another\\s+", "");
-        c = c.replaceAll("^For example,\\s*", "");
-        c = c.replaceAll("^For instance,\\s*", "");
-        c = c.replaceAll("^In summary,\\s*", "");
-        c = c.replaceAll("(?i)^in organizations\\s*,?\\s*", "");
-        c = c.replaceAll("(?i)^whether in [^,]+,\\s*", "");
-        c = c.replaceAll("(?i)^the context—whether [^—]+—", "context");
-        c = c.replaceAll("(?i)^the context-whether [^-]+-", "context");
+        c = c.replaceAll("^[^A-Za-z0-9]+", "");
+        c = c.replaceAll("[^A-Za-z0-9]+$", "");
+        c = c.replaceAll("\\s{2,}", "").trim();
 
-        return c.trim();
+        return c;
+    }
+
+    private boolean isValidStudyConcept(String concept) {
+        if (concept == null) {
+            return false;
+        }
+
+        String c = cleanConcept(concept);
+        if (c == null || c.isBlank()) {
+            return false;
+        }
+
+        String lower = c.toLowerCase(Locale.ROOT);
+
+        // Too short/too long
+        if (c.length() < 3 || c.length() > 40) {
+            return false;
+        }
+
+        // Too many words usually means clause, not concept
+        String[] words = c.split("\\s+");
+        if (words.length < 1 || words.length > 4) {
+            return false;
+        }
+
+        // Bad sentence opener concepts
+        Set<String> badStarts = Set.of(
+                "although", "because", "during", "following", "after", "before",
+                "when", "while", "since", "if", "then", "however", "therefore");
+
+        if (badStarts.contains(words[0].toLowerCase(Locale.ROOT))) {
+            return false;
+        }
+
+        // Overly generic concepts
+        Set<String> bannedExact = Set.of(
+                "the country", "country", "the government", "government",
+                "the people", "people", "the state", "state", "the war", "war");
+
+        if (bannedExact.contains(lower)) {
+            return false;
+        }
+
+        // Looks too clauselike
+        if (lower.contains(" caused ")
+                || lower.contains(" led to ")
+                || lower.contains(" resulted in ")
+                || lower.contains(" was ")
+                || lower.contains(" were ")
+                || lower.contains(" is ")
+                || lower.contains(" are ")) {
+            return false;
+        }
+
+        // Avoid incomplete phrases like "The Pro"
+        if (words.length == 2
+                && (words[0].equalsIgnoreCase("the")
+                        || words[0].equalsIgnoreCase("a")
+                        || words[0].equalsIgnoreCase("an"))
+                && words[1].length() <= 3) {
+            return false;
+        }
+
+        return true;
     }
 
     private boolean isUsableConcept(String concept) {
@@ -998,25 +1055,33 @@ public class StudyPackGenerationService {
                 continue;
 
             String concept = extractConceptFromSentence(sentence);
-            if (concept == null || concept.isBlank())
+            if (!isValidStudyConcept(concept))
                 continue;
 
+            String cleanedConcept = cleanConcept(concept)
             // Try to blank the answer (whole word)
-            String sentenceWithBlank = blankOutWholeWord(sentence, concept);
+            String sentenceWithBlank = blankOutWholeWord(sentence, cleanedConcept);
             if (sentenceWithBlank == null || sentenceWithBlank.equals(sentence))
                 continue;
 
-            String key = concept.toLowerCase(Locale.ROOT) + "|" + sentence;
-            if (used.contains(key))
+            // Reject ugly blanks at the start that break grammar
+            if (sentenceWithBlank.startsWith("____ was quickly suppressed")
+                || sentenceWithBlank.startsWith("____,")
+                || sentenceWithBlank.startsWith("____ was governed")) {
+            // allow some start blanks later if needed, but reject the current ugly cases
+                continue;
+            }
+
+            String key = cleanedConcept.toLowerCase(Locale.ROOT) + "|" + sentence;
+            if (!used.add(key))
                 continue;
 
             StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
-            q.setAnswer(formatConceptLabel(concept));
+            q.setAnswer(formatConceptLabel(cleanedConcept));
             q.setSentenceWithBlank(sentenceWithBlank);
             q.setChoices(Collections.emptyList());
             q.setSourceSnippet(sentence);
 
-            used.add(key);
             out.add(q);
         }
 
