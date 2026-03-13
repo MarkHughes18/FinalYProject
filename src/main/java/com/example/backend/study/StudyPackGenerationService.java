@@ -87,24 +87,44 @@ public class StudyPackGenerationService {
             factSentences = new ArrayList<>(sentences);
         }
 
+        // Build sentence pools for different features to pull from
+        Map<String, List<String>> pools = buildSentencePools(factSentences);
+        List<String> definitionSentences = pools.getOrDefault("definitions", Collections.emptyList());
+        List<String> processSentences = pools.getOrDefault("processes", Collections.emptyList());
+        List<String> detailSentences = pools.getOrDefault("details", Collections.emptyList());
+
+        List<String> flashcardPool = new ArrayList<>(definitionSentences);
+        List<String> clozePool = new ArrayList<>(definitionSentences);
+        clozePool.addAll(processSentences);
+        List<String> tfPool = new ArrayList<>(processSentences);
+        tfPool.addAll(detailSentences);
+
+        // Fallback in case one pool is too small/ empty
+        if (flashcardPool.isEmpty())
+            flashcardPool = new ArrayList<>(factSentences);
+        if (clozePool.isEmpty())
+            clozePool = new ArrayList<>(factSentences);
+        if (tfPool.isEmpty())
+            tfPool = new ArrayList<>(factSentences);
+
         List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
 
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
 
         // Build Flashcards first
-        List<StudyPack.Flashcard> flashcards = generateFlashcards(factSentences, factConcepts, FLASHCARDS_COUNT,
+        List<StudyPack.Flashcard> flashcards = generateFlashcards(flashcardPool, factConcepts, FLASHCARDS_COUNT,
                 topicLabels);
 
         // Matching from flashcards
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
         // Cloze from flashcards/sentences
-        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(factSentences, flashcards, CLOZE_COUNT,
+        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(clozePool, flashcards, CLOZE_COUNT,
                 random);
 
         // True/False from sentences + keyword swapping
-        List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(factSentences, factConcepts,
+        List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(tfPool, factConcepts,
                 TF_COUNT, random);
 
         // MCQ from cloze-style questions
@@ -131,6 +151,46 @@ public class StudyPackGenerationService {
         pack.setMcqQuestions(mcqQuestions);
 
         return studyPackRepository.save(pack);
+    }
+
+    // Building sentence pools for fetures to pull from
+    private Map<String, List<String>> buildSentencePools(List<String> factSentences) {
+        List<String> definitionSentences = new ArrayList<>();
+        List<String> processSentences = new ArrayList<>();
+        List<String> detailSentences = new ArrayList<>();
+
+        for (String s : factSentences) {
+            if (s == null)
+                continue;
+
+            String lower = s.toLowerCase(Locale.ROOT);
+
+            boolean isDefinition = lower.contains(" is ") || lower.contains(" are ") || lower.contains(" was ")
+                    || lower.contains(" were ")
+                    || lower.contains(" refers to ") || lower.contains(" means ") || lower.contains(" states that ")
+                    || lower.contains(" consists of ") || lower.contains(" includes ") || lower.contains(" involves ")
+                    || lower.contains(" occurs when ") || lower.contains(" is defined as ");
+
+            boolean isProcess = lower.contains(" when ") || lower.contains(" because ") || lower.contains(" led to ")
+                    || lower.contains(" resulted in ") || lower.contains(" caused ")
+                    || lower.contains(" brought about ") || lower.contains(" during ")
+                    || lower.contains(" after ") || lower.contains(" before ") || lower.contains(" following ");
+
+            if (isDefinition) {
+                definitionSentences.add(s);
+            } else if (isProcess) {
+                processSentences.add(s);
+            } else {
+                detailSentences.add(s);
+            }
+        }
+
+        Map<String, List<String>> pools = new HashMap<>();
+        pools.put("definitions", definitionSentences);
+        pools.put("processes", processSentences);
+        pools.put("details", detailSentences);
+
+        return pools;
     }
 
     // Text helpers
@@ -652,8 +712,15 @@ public class StudyPackGenerationService {
             if (usedConcepts.contains(conceptKey))
                 continue;
 
+            String front = buildQuestionFromConcept(concept);
+            if (!isGoodFlashcardFront(front))
+                continue;
+
+            if (countWords(concept) > 4)
+                continue;
+
             StudyPack.Flashcard card = new StudyPack.Flashcard();
-            card.setFront(buildQuestionFromConcept(concept));
+            card.setFront(front);
             card.setBack(shorten(sentence, 160));
             card.setSourceSnippet(sentence);
 
