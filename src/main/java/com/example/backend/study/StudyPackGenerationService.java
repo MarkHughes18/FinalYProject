@@ -473,7 +473,7 @@ public class StudyPackGenerationService {
                 continue;
             }
 
-            String cleaned = cleanConcept(concept)
+            String cleaned = cleanConcept(concept);
             String key = cleaned.toLowerCase(Locale.ROOT);
             if (seen.add(key)) {
                 out.add(key);
@@ -506,17 +506,9 @@ public class StudyPackGenerationService {
             if (idx > 0) {
                 String candidate = s.substring(0, idx).trim();
                 candidate = cleanConcept(candidate);
-                candidate = candidate.replaceAll("[—–-].*$", "").trim();
 
-                if (candidate.isBlank())
-                    continue;
-                if (countWords(candidate) > 4)
-                    continue;
-                if (looksLikeClauseNotConcept(candidate))
-                    continue;
-                if (isUsableConcept(candidate))
+                if (isGoodExtractConcept(candidate))
                     return candidate;
-
             }
         }
 
@@ -524,26 +516,18 @@ public class StudyPackGenerationService {
         if (s.startsWith("At ") && s.contains(",")) {
             String candidate = s.substring(3, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
-            candidate = candidate.replaceAll("[—–-].*$", "").trim();
 
-            if (!candidate.isBlank() && countWords(candidate) <= 4 && !looksLikeClauseNotConcept(candidate)
-                    && isUsableConcept(candidate)) {
+            if (isGoodExtractConcept(candidate))
                 return candidate;
-            }
         }
 
         // Pattern
         if (s.startsWith("The ") && s.contains(",")) {
             String candidate = s.substring(0, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
-            candidate = candidate.replaceAll("[—–-].*$", "").trim();
 
-            if (!candidate.isBlank()
-                    && countWords(candidate) <= 4
-                    && !looksLikeClauseNotConcept(candidate)
-                    && isUsableConcept(candidate)) {
+            if (isSpecificThePhrase(candidate) && isGoodExtractedConcept(candidate))
                 return candidate;
-            }
         }
 
         return null;
@@ -1058,7 +1042,7 @@ public class StudyPackGenerationService {
             if (!isValidStudyConcept(concept))
                 continue;
 
-            String cleanedConcept = cleanConcept(concept)
+            String cleanedConcept = cleanConcept(concept);
             // Try to blank the answer (whole word)
             String sentenceWithBlank = blankOutWholeWord(sentence, cleanedConcept);
             if (sentenceWithBlank == null || sentenceWithBlank.equals(sentence))
@@ -1066,9 +1050,9 @@ public class StudyPackGenerationService {
 
             // Reject ugly blanks at the start that break grammar
             if (sentenceWithBlank.startsWith("____ was quickly suppressed")
-                || sentenceWithBlank.startsWith("____,")
-                || sentenceWithBlank.startsWith("____ was governed")) {
-            // allow some start blanks later if needed, but reject the current ugly cases
+                    || sentenceWithBlank.startsWith("____,")
+                    || sentenceWithBlank.startsWith("____ was governed")) {
+                // allow some start blanks later if needed, but reject the current ugly cases
                 continue;
             }
 
@@ -1106,13 +1090,19 @@ public class StudyPackGenerationService {
             List<String> factConcepts,
             int count, Random r) {
         List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
+        Set<String> usedStatements = new HasSet<>();
 
         // True questions
         int trueCount = Math.max(1, count / 2);
         for (int i = 0; i < trueCount && i < factSentences.size(); i++) {
             String s = factSentences.get(i);
+            String shortened = shorten(s, 220);
+            if (!usedStatements.add(shortened.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+
             StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
-            q.setStatement(shorten(s, 220));
+            q.setStatement(shortened);
             q.setAnswer(true);
             q.setExplanation("This statement appears in the uploaded document.");
             q.setSourceSnippet(s);
@@ -1128,19 +1118,32 @@ public class StudyPackGenerationService {
             String s = factSentences.get(r.nextInt(factSentences.size()));
             String concept = extractConceptFromSentence(s);
 
-            if (concept == null || concept.isBlank())
+            if (!isValidStudyConcept(concept))
                 continue;
 
-            String replacement = pickSmartDistractorFromConcepts(concept, factConcepts, r);
-            if (replacement == null || replacement.isBlank())
+            String cleanedConcept = cleanConcept(concept);
+            String replacement = pickSmartDistractorFromConcepts(cleanedConcept, factConcepts, r);
+            if (!isValidStudyConcept(replacement))
                 continue;
 
-            String falseStmt = replaceFirstWholePhraseCaseInsensitive(s, concept, replacement);
-            if (falseStmt.equals(s))
+            replacement = cleanConcept(replacement);
+            if (replacement.equalsIgnoreCase(cleanedConcept))
+                continue;
+
+            String falseStmt = replaceFirstWholePhraseCaseInsensitive(s, cleanedConcept, replacement);
+            if (falseStmt.equals(s) || falseStmt == null)
+                continue;
+
+            String lowerFalse = falseStmt.toLowerCase(Locale.ROOT);
+            if (lowerFalse.contains("although ") || lowerFalse.contains("because "))
+                continue;
+
+            String shortened = shorten(falseStmt, 220);
+            if (!usedStatements.add(shortened.toLowerCase(locale.ROOT)))
                 continue;
 
             StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
-            q.setStatement(shorten(falseStmt, 220));
+            q.setStatement(shortened);
             q.setAnswer(false);
             q.setExplanation("One key term was changed, so this statement does not match the document.");
             q.setSourceSnippet(s);
