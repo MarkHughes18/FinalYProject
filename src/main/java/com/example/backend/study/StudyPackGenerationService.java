@@ -533,6 +533,40 @@ public class StudyPackGenerationService {
         return null;
     }
 
+    private boolean isGoodExtractedConcept(String candidate) {
+        if (candidate == null)
+            return false;
+
+        candidate = cleanConcept(candidate);
+        if (candidate == null || candidate.isBlank())
+            return false;
+
+        if (countWords(candidate) > 4)
+            return false;
+
+        if (looksLikeClauseNotConcept(candidate))
+            return false;
+
+        if (!isUsableConcept(candidate))
+            return false;
+
+        String lower = candidate.toLowerCase(Locale.ROOT);
+
+        // Reject conjunction/opening leftovers
+        if (startsWithBadConceptWord(lower))
+            return false;
+
+        // Reject generic phrases
+        if (isGenericConcept(lower))
+            return false;
+
+        // Reject clause-like concepts that contain verb structures
+        if (containsConceptBreakingVerb(lower))
+            return false;
+
+        return true;
+    }
+
     private boolean looksLikeClauseNotConcept(String candidate) {
         if (candidate == null || candidate.isBlank())
             return true;
@@ -573,6 +607,69 @@ public class StudyPackGenerationService {
             return true;
 
         return false;
+    }
+
+    private boolean startsWithBadConceptWord(String lower) {
+        return lower.startsWith("although ")
+                || lower.startsWith("because ")
+                || lower.startsWith("during ")
+                || lower.startsWith("following ")
+                || lower.startsWith("after ")
+                || lower.startsWith("before ")
+                || lower.startsWith("when ")
+                || lower.startsWith("while ")
+                || lower.startsWith("since ")
+                || lower.startsWith("if ")
+                || lower.startsWith("however ")
+                || lower.startsWith("therefore ");
+    }
+
+    private boolean isGenericConcept(String lower) {
+        Set<String> generic = Set.of(
+                "the country", "country",
+                "the government", "government",
+                "the state", "state",
+                "the people", "people",
+                "the law", "law",
+                "the war", "war",
+                "the system", "system",
+                "the process", "process",
+                "the event", "event");
+
+        return generic.contains(lower);
+    }
+
+    private boolean containsConceptBreakingVerb(String lower) {
+        return lower.contains(" caused ")
+                || lower.contains(" led to ")
+                || lower.contains(" resulted in ")
+                || lower.contains(" brought about ")
+                || lower.contains(" occurred ")
+                || lower.contains(" happened ")
+                || lower.contains(" was ")
+                || lower.contains(" were ")
+                || lower.contains(" is ")
+                || lower.contains(" are ");
+    }
+
+    private boolean isSpecificThePhrase(String candidate) {
+        if (candidate == null || candidate.isBlank())
+            return false;
+
+        String[] words = candidate.trim().split("\\s+");
+        if (words.length < 2 || !words[0].equalsIgnoreCase("The"))
+            return false;
+
+        // Reject short/generic phrases like "The country"
+        if (words.length == 2) {
+            String second = words[1].toLowerCase(Locale.ROOT);
+            Set<String> genericSecondWords = Set.of(
+                    "country", "government", "state", "people", "war", "system", "process", "event");
+            if (genericSecondWords.contains(second))
+                return false;
+        }
+
+        return true;
     }
 
     private String cleanConcept(String concept) {
