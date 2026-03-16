@@ -507,7 +507,7 @@ public class StudyPackGenerationService {
                 String candidate = s.substring(0, idx).trim();
                 candidate = cleanConcept(candidate);
 
-                if (isGoodExtractConcept(candidate))
+                if (isGoodExtractedConcept(candidate))
                     return candidate;
             }
         }
@@ -517,7 +517,7 @@ public class StudyPackGenerationService {
             String candidate = s.substring(3, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
 
-            if (isGoodExtractConcept(candidate))
+            if (isGoodExtractedConcept(candidate))
                 return candidate;
         }
 
@@ -1187,11 +1187,12 @@ public class StudyPackGenerationService {
             List<String> factConcepts,
             int count, Random r) {
         List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
-        Set<String> usedStatements = new HasSet<>();
+        Set<String> usedStatements = new HashSet<>();
 
-        // True questions
         int trueCount = Math.max(1, count / 2);
-        for (int i = 0; i < trueCount && i < factSentences.size(); i++) {
+        int falseCount = Math.max(1, count - trueCount);
+        // True questions
+        for (int i = 0; out.size() < trueCount && i < factSentences.size(); i++) {
             String s = factSentences.get(i);
             String shortened = shorten(s, 220);
             if (!usedStatements.add(shortened.toLowerCase(Locale.ROOT))) {
@@ -1208,13 +1209,16 @@ public class StudyPackGenerationService {
 
         // False questions via keyword swap
         int attempts = 0;
-        while (out.size() < count && attempts < 500) {
+        int falseAdded = 0;
+        while (falseAdded < falseCount && attempts < 600) {
             attempts++;
             if (factSentences.isEmpty() || factConcepts.size() < 2)
                 break;
             String s = factSentences.get(r.nextInt(factSentences.size()));
-            String concept = extractConceptFromSentence(s);
+            if (!isGoodFalseQuestionSentence(s))
+                continue;
 
+            String concept = extractConceptFromSentence(s);
             if (!isValidStudyConcept(concept))
                 continue;
 
@@ -1227,6 +1231,9 @@ public class StudyPackGenerationService {
             if (replacement.equalsIgnoreCase(cleanedConcept))
                 continue;
 
+            if (!isReasonableReplacementPair(cleanedConcept, replacement))
+                continue;
+
             String falseStmt = replaceFirstWholePhraseCaseInsensitive(s, cleanedConcept, replacement);
             if (falseStmt.equals(s) || falseStmt == null)
                 continue;
@@ -1236,7 +1243,7 @@ public class StudyPackGenerationService {
                 continue;
 
             String shortened = shorten(falseStmt, 220);
-            if (!usedStatements.add(shortened.toLowerCase(locale.ROOT)))
+            if (!usedStatements.add(shortened.toLowerCase(Locale.ROOT)))
                 continue;
 
             StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
@@ -1247,6 +1254,77 @@ public class StudyPackGenerationService {
             out.add(q);
         }
         return out;
+    }
+
+    private boolean isGoodFalseQuestionSourceSentence(String sentence) {
+        if (sentence == null || sentence.isBlank())
+            return false;
+
+        String lower = sentence.toLowerCase(Locale.ROOT).trim();
+
+        // Avoid opening connector sentences
+        if (lower.startsWith("next,")
+                || lower.startsWith("then,")
+                || lower.startsWith("finally,")
+                || lower.startsWith("after ")
+                || lower.startsWith("during ")
+                || lower.startsWith("because ")
+                || lower.startsWith("although ")
+                || lower.startsWith("when ")) {
+            return false;
+        }
+
+        // Prefer definition/structured sentences
+        return lower.contains(" is ")
+                || lower.contains(" are ")
+                || lower.contains(" was ")
+                || lower.contains(" were ")
+                || lower.contains(" involves ")
+                || lower.contains(" includes ")
+                || lower.contains(" consists of ")
+                || lower.contains(" refers to ");
+    }
+
+    private boolean isReasonableReplacementPair(String original, String replacement) {
+        if (original == null || replacement == null)
+            return false;
+
+        int originalWords = countWords(original);
+        int replacementWords = countWords(replacement);
+
+        // Do not swap a 1-word term with a 4-word phrase unless necessary
+        if (Math.abs(originalWords - replacementWords) > 2)
+            return false;
+
+        // Avoid huge length mismatch
+        if (Math.abs(original.length() - replacement.length()) > 20)
+            return false;
+
+        return true;
+    }
+
+    private boolean isNaturalFalseStatement(String statement) {
+        if (statement == null || statement.isBlank())
+            return false;
+
+        String lower = statement.toLowerCase(Locale.ROOT).trim();
+
+        // Generic bad starts
+        if (lower.startsWith("although ")
+                || lower.startsWith("because ")
+                || lower.startsWith("when ")
+                || lower.startsWith("while "))
+            return false;
+
+        // Reject obviously broken punctuation
+        if (lower.contains("____"))
+            return false;
+
+        // Reject shortness
+        if (statement.length() < 20)
+            return false;
+
+        return true;
     }
 
     private String pickSmartDistractorFromConcepts(String answer, List<String> concepts, Random random) {
