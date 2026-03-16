@@ -223,67 +223,6 @@ public class StudyPackGenerationService {
         return out;
     }
 
-    private List<String> extractTopKeywords(String text, int maxKeywords) {
-        Map<String, Integer> phraseFreq = new HashMap<>();
-        Map<String, Integer> wordFreq = new HashMap<>();
-
-        Matcher p = PHRASE_PATTERN.matcher(text);
-        while (p.find()) {
-            String phrase = p.group().trim();
-            if (phrase.length() < 6)
-                continue;
-
-            String lower = phrase.toLowerCase(Locale.ROOT);
-
-            // Skip phrases that are basically stopwords-only
-            String[] parts = lower.split("\\s+");
-            if (parts.length < 2)
-                continue;
-            if (STOPWORDS.contains(parts[0]))
-                continue;
-            // Reject phrases with too many words
-            if (parts.length > 5)
-                continue;
-
-            phraseFreq.put(lower, phraseFreq.getOrDefault(lower, 0) + 2); // weight phrases higher
-        }
-
-        // Word blacklist
-        Set<String> phraseWords = new HashSet<>();
-        for (String phrase : phraseFreq.keySet()) {
-            for (String part : phrase.split("\\s+")) {
-                phraseWords.add(part.toLowerCase(Locale.ROOT));
-            }
-        }
-
-        Matcher m = WORD_PATTERN.matcher(text);
-        while (m.find()) {
-            String w = m.group().toLowerCase(Locale.ROOT);
-            if (w.length() < 4)
-                continue;
-            if (STOPWORDS.contains(w))
-                continue;
-            if (phraseWords.contains(w))
-                continue;
-            if (isBadFlashcardTerm(w))
-                continue;
-            wordFreq.put(w, wordFreq.getOrDefault(w, 0) + 1);
-        }
-
-        List<Map.Entry<String, Integer>> entries = new ArrayList<>();
-        entries.addAll(phraseFreq.entrySet());
-        entries.addAll(wordFreq.entrySet());
-        entries.sort((a, b) -> b.getValue().compareTo(a.getValue())); // sort by frequency
-
-        List<String> keywords = new ArrayList<>(Math.min(entries.size(), maxKeywords));
-        for (Map.Entry<String, Integer> e : entries) {
-            keywords.add(e.getKey());
-            if (keywords.size() >= maxKeywords)
-                break;
-        }
-        return keywords;
-    }
-
     private List<String> pickTopicLabels(List<String> keywords, int maxTopics) {
         List<String> topics = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -333,12 +272,12 @@ public class StudyPackGenerationService {
             if (t.equals(termLower))
                 continue;
 
-            // Simple scoring: does the sentence contain the topic?
+            // Does the sentence contain the topic?
             int score = 0;
             if (s.contains(t))
                 score += 3;
 
-            // Bonus if it's a phrase (more meaningful)
+            // Bonus if it's a phrase
             if (t.contains(" "))
                 score += 2;
 
@@ -922,124 +861,6 @@ public class StudyPackGenerationService {
         return sb.toString().trim();
     }
 
-    private String findBestSentenceContaining(List<String> sentences, String keyword) {
-        String kwLower = keyword.toLowerCase(Locale.ROOT);
-
-        String best = null;
-        int bestScore = Integer.MIN_VALUE;
-
-        for (int i = 0; i < sentences.size(); i++) {
-            String s = sentences.get(i);
-            if (s == null)
-                continue;
-
-            String trimmed = s.trim();
-            if (trimmed.length() < 40)
-                continue; // too short
-            if (trimmed.endsWith("?"))
-                continue; // questions are bad for flashcards
-            if (!Character.isUpperCase(trimmed.charAt(0)))
-                continue; // fragment
-            if (!endsLikeSentence(trimmed))
-                continue; // fragment-ish
-
-            String sLower = s.toLowerCase(Locale.ROOT);
-            if (!sLower.contains(kwLower))
-                continue;
-
-            int score = 0;
-
-            // Earlier sentences slightly preferred
-            score += (2000 - i);
-
-            // Keyword position, earlier in sentence is better
-            int idx = sLower.indexOf(kwLower);
-            if (idx >= 0) {
-                // strong bonus if appears early
-                if (idx < 20)
-                    score += 400;
-                else if (idx < 50)
-                    score += 200;
-                else
-                    score -= 50;
-            }
-
-            // Prefer "definition/explanation" patterns
-            score += definitionPatternBonus(sLower, kwLower);
-
-            // Word count, too short bad, too long also bad
-            int wc = countWords(trimmed);
-            if (wc < 10)
-                score -= 300;
-            else if (wc <= 26)
-                score += 250;
-            else if (wc <= 35)
-                score += 80;
-            else
-                score -= (wc - 35) * 15; // too long
-
-            // Penalize listy sentences, too many commas / semicolons
-            int commaCount = countChar(trimmed, ',');
-            int semiCount = countChar(trimmed, ';');
-            score -= (commaCount * 25);
-            score -= (semiCount * 40);
-
-            // Bonus if it contains helpful cue words
-            if (sLower.contains("because") || sLower.contains("therefore") || sLower.contains("as a result"))
-                score += 60;
-
-            // Penalize quotes-heavy/citation-heavy
-            int quoteCount = countChar(trimmed, '"') + countChar(trimmed, '“') + countChar(trimmed, '”');
-            if (quoteCount >= 2)
-                score -= 30;
-
-            if (score > bestScore) {
-                bestScore = score;
-                best = trimmed;
-            }
-        }
-
-        return best;
-    }
-
-    private boolean endsLikeSentence(String s) {
-        if (s.isBlank())
-            return false;
-        char c = s.charAt(s.length() - 1);
-        return c == '.' || c == '!' || c == ')' || c == ']' || c == '"'
-                || c == '”' || c == '\''; // allow citations/quotes at end
-    }
-
-    private int definitionPatternBonus(String sentenceLower, String kwLower) {
-        int bonus = 0;
-
-        // Try to detect keyword, is/are/was/were
-        // We'll look for the keyword followed shortly by a linking verb.
-        int idx = sentenceLower.indexOf(kwLower);
-        if (idx < 0)
-            return 0;
-
-        String tail = sentenceLower.substring(idx);
-        if (tail.matches(
-                "^" + Pattern.quote(kwLower) + "\\b.{0,25}\\b(is|are|was|were|means|refers to|defined as)\\b.*"))
-            bonus += 500;
-
-        // Reward patterns
-        if (tail.contains("is known as") || tail.contains("is called"))
-            bonus += 200;
-
-        return bonus;
-    }
-
-    private int countChar(String s, char ch) {
-        int n = 0;
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) == ch)
-                n++;
-        }
-        return n;
-    }
-
     private String stripLeadingPhrases(String sentence) {
         if (sentence == null)
             return null;
@@ -1256,7 +1077,7 @@ public class StudyPackGenerationService {
         return out;
     }
 
-    private boolean isGoodFalseQuestionSourceSentence(String sentence) {
+    private boolean isGoodFalseQuestionSentence(String sentence) {
         if (sentence == null || sentence.isBlank())
             return false;
 
@@ -1374,29 +1195,6 @@ public class StudyPackGenerationService {
             return sentence;
 
         return m.replaceFirst(Matcher.quoteReplacement(formatConceptLabel(to)));
-    }
-
-    private String pickDistractor(List<String> keywords, String original, Random r) {
-        // pick similar length keyword
-        int targetLen = original.length();
-        List<String> candidates = new ArrayList<>();
-        for (String kw : keywords) {
-            if (kw.equals(original))
-                continue;
-            if (Math.abs(kw.length() - targetLen) <= 2)
-                candidates.add(kw);
-        }
-        if (candidates.isEmpty())
-            return null;
-        return candidates.get(r.nextInt(candidates.size()));
-    }
-
-    private String replaceFirstCaseInsensitive(String sentence, String fromLower, String toLower) {
-        String sLower = sentence.toLowerCase(Locale.ROOT);
-        int idx = sLower.indexOf(fromLower);
-        if (idx < 0)
-            return sentence;
-        return sentence.substring(0, idx) + toLower + sentence.substring(idx + fromLower.length());
     }
 
     // Generating MCQ
@@ -1531,49 +1329,6 @@ public class StudyPackGenerationService {
         return true;
     }
 
-    private String buildFlashcardFront(String keyword, String sentence) {
-
-        String lower = sentence.toLowerCase(Locale.ROOT);
-        String kw = keyword.toLowerCase(Locale.ROOT);
-
-        if (lower.startsWith(kw)) {
-            return "What is " + capitalize(keyword) + "?";
-        }
-
-        if (lower.contains("is " + kw) || lower.contains("are " + kw)) {
-            return "What is " + capitalize(keyword) + "?";
-        }
-
-        if (lower.contains("caused by") || lower.contains("led to")) {
-            return "What caused " + capitalize(keyword) + "?";
-        }
-
-        if (lower.contains("introduced") || lower.contains("developed")) {
-            return "What was " + capitalize(keyword) + " used for?";
-        }
-        return "Explain: " + capitalize(keyword);
-    }
-
-    private String buildFallbackFlashcardFront(String sentence) {
-
-        String s = sentence.trim();
-
-        // If sentence starts with a named concept
-        String[] words = s.split("\\s+");
-        if (words.length > 0 && Character.isUpperCase(words[0].charAt(0))) {
-
-            String first = words[0];
-
-            if (words.length > 1 && Character.isUpperCase(words[1].charAt(0))) {
-                first += " " + words[1];
-            }
-
-            return "What is " + first + "?";
-        }
-
-        return "What concept is described here?";
-    }
-
     private boolean isBadFlashcardTerm(String kw) {
         if (kw == null)
             return true;
@@ -1592,91 +1347,6 @@ public class StudyPackGenerationService {
             return true;
 
         return false;
-    }
-
-    private boolean isBadSentence(String s) {
-        if (s == null)
-            return true;
-        String t = s.trim();
-        if (t.length() < 40) // 2 short to be a definition
-            return true;
-        if (!Character.isUpperCase(t.charAt(0)))// Fragment starts lowercase
-            return true;
-        if (t.startsWith("entry "))
-            return true;
-        if (s.toLowerCase().contains("today, we’ll explore") || s.toLowerCase().contains("today, we'll explore")
-                || s.toLowerCase().contains("in this lesson") || s.toLowerCase().contains("in this video")
-                || s.toLowerCase().contains("today we will"))
-            return true;
-        return false;
-    }
-
-    private String pickSmartDistractor(String answer, List<String> keywords, Random r) {
-
-        String a = answer.trim();
-        int len = a.length();
-        boolean answerIsPhrase = a.contains(" ");
-        boolean answerIsAcronym = a.matches("^[A-Z]{2,}.*");
-        boolean answerIsCapitalized = !a.isEmpty() && Character.isUpperCase(a.charAt(0));
-        List<String> candidates = new ArrayList<>();
-
-        for (String kw : keywords) {
-            if (kw == null)
-                continue;
-
-            String k = kw.trim();
-            if (k.isBlank())
-                continue;
-            if (k.equalsIgnoreCase(a))
-                continue;
-
-            // filter weak distractors
-            if (!isGoodQuizAnswer(k))
-                continue;
-
-            boolean kIsPhrase = k.contains(" ");
-            boolean kIsAcronym = k.matches("^[A-Z]{2,}.*");
-            boolean kIsCapitalized = !k.isEmpty() && Character.isUpperCase(k.charAt(0));
-
-            // Prefer same "type"
-            if (answerIsPhrase && !kIsPhrase)
-                continue;
-            if (answerIsAcronym && !kIsAcronym)
-                continue;
-            if (answerIsCapitalized && !kIsCapitalized && !kIsPhrase) {
-                // allow phrases, otherwise try to keep capitalization similar
-                continue;
-            }
-
-            // Similar length
-            if (Math.abs(k.length() - len) > 6)
-                continue;
-
-            candidates.add(k);
-        }
-
-        if (candidates.isEmpty()) {
-            // fallback, pick any decent keyword
-            for (int tries = 0; tries < 200; tries++) {
-                String k = keywords.get(r.nextInt(keywords.size()));
-                if (k != null && isGoodQuizAnswer(k) && !k.equalsIgnoreCase(a)) {
-                    return formatTerm(k);
-                }
-            }
-            return formatTerm(keywords.get(r.nextInt(keywords.size())));
-        }
-
-        String chosen = candidates.get(r.nextInt(candidates.size()));
-        return formatTerm(chosen);
-    }
-
-    private String formatTerm(String term) {
-        if (term == null)
-            return null;
-        String t = term.trim();
-        if (t.contains(" "))
-            return titleCasePhrase(t.toLowerCase(Locale.ROOT));
-        return capitalize(t.toLowerCase(Locale.ROOT));
     }
 
     // Minimal stopword set
