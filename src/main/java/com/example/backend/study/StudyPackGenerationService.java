@@ -724,7 +724,11 @@ public class StudyPackGenerationService {
                 || lower.equals("first")
                 || lower.equals("next")
                 || lower.equals("then")
-                || lower.equals("finally"))
+                || lower.equals("finally")
+                || lower.equals("another example")
+                || lower.equals("one example")
+                || lower.equals("this example")
+                || lower.equals("an example"))
             return false;
 
         if (lower.startsWith("for ")
@@ -735,8 +739,13 @@ public class StudyPackGenerationService {
                 || lower.startsWith("this ")
                 || lower.startsWith("in organisations")
                 || lower.startsWith("in organizations")
-                || lower.startsWith("it"))
+                || lower.startsWith("it")
+                || lower.startsWith("another example")
+                || lower.startsWith("one example")
+                || lower.startsWith("an example")
+                || lower.startsWith("example "))
             return false;
+
         return true;
     }
 
@@ -874,6 +883,13 @@ public class StudyPackGenerationService {
         s = s.replaceFirst("(?i)^in summary,\\s*", "");
         s = s.replaceFirst("(?i)^whether in [^,]+,\\s*", "");
         s = s.replaceFirst("(?i)^on the other hand,\\s*", "");
+
+        s = s.replaceFirst("(?i)^another example is\\s+", "");
+        s = s.replaceFirst("(?i)^another example of [^,]+ is\\s+", "");
+        s = s.replaceFirst("(?i)^one example is\\s+", "");
+        s = s.replaceFirst("(?i)^this example is\\s+", "");
+        s = s.replaceFirst("(?i)^an example is\\s+", "");
+        s = s.replaceFirst("(?i)^in organisations,\\s*", "");
 
         return s.trim();
     }
