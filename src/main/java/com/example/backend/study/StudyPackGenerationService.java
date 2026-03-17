@@ -1151,24 +1151,39 @@ public class StudyPackGenerationService {
     private String pickSmartDistractorFromConcepts(String answer, List<String> concepts, Random random) {
         if (answer == null || concepts == null || concepts.isEmpty())
             return null;
+        String cleanedAnswer = cleanConcept(answer);
+        if (!isValidStudyConcept(cleanedAnswer))
+            return null;
 
         String a = answer.trim().toLowerCase(Locale.ROOT);
-        int targetWords = a.split("\\s+").length;
-        int targetLen = a.length();
+        int targetWords = countWords(cleanedAnswer);
+        int targetLen = cleanedAnswer.length();
+        boolean answerLooksPlural = looksPluralConcept(cleanedAnswer);
+        boolean asnwerStartsWithArticle = startsWithArticle(cleanedAnswer);
 
         List<String> candidates = new ArrayList<>();
+        List<String> fallbackCandidates = new ArrayList<>();
 
         for (String c : concepts) {
             if (c == null || c.isBlank()) {
                 continue;
             }
 
-            String lower = c.trim().toLowerCase(Locale.ROOT);
+            String cleaned = cleanConcept(c);
+            if (!isValidStudyConcept(cleaned)) {
+                continue;
+            }
+
+            String lower = cleaned.trim().toLowerCase(Locale.ROOT);
             if (lower.equals(a)) {
                 continue;
             }
 
-            int wordCount = lower.split("\\s+").length;
+            int wordCount = countWords(cleaned);
+            int len = cleaned.length();
+            boolean candidateLooksPlural = looksPluralConcept(cleaned);
+            boolean candidateStartsWithArticle = startsWithArticle(cleaned);
+
             if (Math.abs(wordCount - targetWords) > 1) {
                 continue;
             }
@@ -1176,13 +1191,49 @@ public class StudyPackGenerationService {
                 continue;
             }
 
-            candidates.add(lower);
+            boolean similarPlurality = (answerLooksPlural == candidateLooksPlural);
+            boolean similarArticleStyle = (asnwerStartsWithArticle == candidateStartsWithArticle);
+            if (similarPlurality && similarArticleStyle) {
+                candidates.add(cleaned);
+            } else {
+                fallbackCandidates.add(cleaned);
+            }
         }
 
-        if (candidates.isEmpty())
+        List<String> pool = !candidates.isEmpty() ? candidates : fallbackCandidates;
+        if (pool.isEmpty())
             return null;
 
         return formatConceptLabel(candidates.get(random.nextInt(candidates.size())));
+    }
+
+    private boolean startsWithArticle(String text) {
+        if (text == null || text.isBlank())
+            return false;
+
+        String lower = text.trim().toLowerCase(Locale.ROOT);
+        return lower.startsWith("a ")
+                || lower.startsWith("an ")
+                || lower.startsWith("the ");
+    }
+
+    private boolean looksPluralConcept(String text) {
+        if (text == null || text.isBlank())
+            return false;
+
+        String lower = text.trim().toLowerCase(Locale.ROOT);
+
+        if (lower.contains(" and "))
+            return true;
+
+        String[] words = lower.split("\\s+");
+        if (words.length == 0)
+            return false;
+
+        String last = words[words.length - 1];
+
+        // crude but useful heuristic
+        return last.endsWith("s") && !last.endsWith("ss");
     }
 
     private String replaceFirstWholePhraseCaseInsensitive(String sentence, String from, String to) {
