@@ -431,6 +431,8 @@ public class StudyPackGenerationService {
             return null;
 
         String s = strip.trim();
+        if (s.isBlank())
+            return null;
 
         // Pattern: "X is/are/was/were ..."
         String[] markers = {
@@ -469,7 +471,132 @@ public class StudyPackGenerationService {
                 return candidate;
         }
 
+        String fallback = extractFallbackNounPhrase(s);
+        if (isGoodExtractedConcept(fallback)) {
+            return fallback;
+        }
+
         return null;
+    }
+
+    private String extractFallbackNounPhrase(String sentence) {
+        if (sentence == null || sentence.isBlank()) {
+            return null;
+        }
+
+        String s = sentence.trim();
+
+        // Remove opening markers that remain
+        s = s.replaceFirst("(?i)^another example is\\s+", "");
+        s = s.replaceFirst("(?i)^one example is\\s+", "");
+        s = s.replaceFirst("(?i)^an example is\\s+", "");
+        s = s.replaceFirst("(?i)^this example is\\s+", "");
+        s = s.replaceFirst("(?i)^moving into the [^,]+,\\s*", "");
+        s = s.replaceFirst("(?i)^at the [^,]+,\\s*", "");
+        s = s.replaceFirst("(?i)^in the [^,]+,\\s*", "");
+
+        // Try "X such as Y"
+        int suchAsIdx = s.toLowerCase(Locale.ROOT).indexOf(" such as ");
+        if (suchAsIdx > 0) {
+            String candidate = s.substring(0, suchAsIdx).trim();
+            candidate = cleanConcept(candidate);
+            if (looksLikeGoodFallbackConcept(candidate)) {
+                return candidate;
+            }
+        }
+
+        // Try "X including Y"
+        int includingIdx = s.toLowerCase(Locale.ROOT).indexOf(" including ");
+        if (includingIdx > 0) {
+            String candidate = s.substring(0, includingIdx).trim();
+            candidate = cleanConcept(candidate);
+            if (looksLikeGoodFallbackConcept(candidate)) {
+                return candidate;
+            }
+        }
+
+        // Try taking the first short noun-like phrase before comma
+        if (s.contains(",")) {
+            String candidate = s.substring(0, s.indexOf(',')).trim();
+            candidate = cleanConcept(candidate);
+            if (looksLikeGoodFallbackConcept(candidate)) {
+                return candidate;
+            }
+        }
+
+        // Try taking the first 1–4 words as fallback phrase
+        String[] words = s.split("\\s+");
+        if (words.length >= 2) {
+            int take = Math.min(4, words.length);
+            for (int n = take; n >= 2; n--) {
+                String candidate = String.join(" ", Arrays.copyOfRange(words, 0, n));
+                candidate = cleanConcept(candidate);
+                if (looksLikeGoodFallbackConcept(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private boolean looksLikeGoodFallbackConcept(String candidate) {
+        if (candidate == null || candidate.isBlank())
+            return false;
+
+        String cleaned = cleanConcept(candidate);
+        if (cleaned == null || cleaned.isBlank())
+            return false;
+
+        String lower = cleaned.toLowerCase(Locale.ROOT);
+
+        if (countWords(cleaned) < 1 || countWords(cleaned) > 4)
+            return false;
+
+        if (cleaned.length() < 4 || cleaned.length() > 50)
+            return false;
+
+        // Reject obvious sentence openers / discourse phrases
+        if (lower.startsWith("another example")
+                || lower.startsWith("one example")
+                || lower.startsWith("an example")
+                || lower.startsWith("this example")
+                || lower.startsWith("for example")
+                || lower.startsWith("for instance")
+                || lower.startsWith("moving into")
+                || lower.startsWith("at the same time")
+                || lower.startsWith("in this session")
+                || lower.startsWith("on the other hand"))
+            return false;
+
+        // Reject clause-like starts
+        if (lower.startsWith("although ")
+                || lower.startsWith("because ")
+                || lower.startsWith("during ")
+                || lower.startsWith("following ")
+                || lower.startsWith("after ")
+                || lower.startsWith("before ")
+                || lower.startsWith("when ")
+                || lower.startsWith("while ")
+                || lower.startsWith("since "))
+            return false;
+
+        // Reject phrases with clear verb
+        if (lower.contains(" is ")
+                || lower.contains(" are ")
+                || lower.contains(" was ")
+                || lower.contains(" were ")
+                || lower.contains(" means ")
+                || lower.contains(" refers to ")
+                || lower.contains(" involves ")
+                || lower.contains(" caused ")
+                || lower.contains(" brought ")
+                || lower.contains(" described ")
+                || lower.contains(" emphasized ")
+                || lower.contains(" highlighted "))
+            return false;
+
+        return isUsableConcept(cleaned);
     }
 
     private boolean isGoodExtractedConcept(String candidate) {
@@ -1217,7 +1344,7 @@ public class StudyPackGenerationService {
         }
 
         List<String> pool = !candidates.isEmpty() ? candidates : fallbackCandidates;
-        if (pool.isEmpty())
+        if (pool == null || pool.isEmpty())
             return null;
 
         return formatConceptLabel(candidates.get(random.nextInt(candidates.size())));
