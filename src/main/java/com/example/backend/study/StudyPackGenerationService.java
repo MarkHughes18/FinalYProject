@@ -454,15 +454,6 @@ public class StudyPackGenerationService {
         }
 
         // Pattern
-        if (s.startsWith("At ") && s.contains(",")) {
-            String candidate = s.substring(3, s.indexOf(',')).trim();
-            candidate = cleanConcept(candidate);
-
-            if (isGoodExtractedConcept(candidate))
-                return candidate;
-        }
-
-        // Pattern
         if (s.startsWith("The ") && s.contains(",")) {
             String candidate = s.substring(0, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
@@ -515,25 +506,17 @@ public class StudyPackGenerationService {
             }
         }
 
+        String properName = extractLeadingProperName(s);
+        if (looksLikeGoodFallbackConcept(properName)) {
+            return properName;
+        }
+
         // Try taking the first short noun-like phrase before comma
         if (s.contains(",")) {
             String candidate = s.substring(0, s.indexOf(',')).trim();
             candidate = cleanConcept(candidate);
             if (looksLikeGoodFallbackConcept(candidate)) {
                 return candidate;
-            }
-        }
-
-        // Try taking the first 1–4 words as fallback phrase
-        String[] words = s.split("\\s+");
-        if (words.length >= 2) {
-            int take = Math.min(4, words.length);
-            for (int n = take; n >= 2; n--) {
-                String candidate = String.join(" ", Arrays.copyOfRange(words, 0, n));
-                candidate = cleanConcept(candidate);
-                if (looksLikeGoodFallbackConcept(candidate)) {
-                    return candidate;
-                }
             }
         }
 
@@ -566,22 +549,52 @@ public class StudyPackGenerationService {
                 || lower.startsWith("moving into")
                 || lower.startsWith("at the same time")
                 || lower.startsWith("in this session")
-                || lower.startsWith("on the other hand"))
+                || lower.startsWith("on the other hand")
+                || lower.startsWith("on the other hand")
+                || lower.startsWith("yet ")
+                || lower.startsWith("but "))
             return false;
 
-        // Reject clause-like starts
-        if (lower.startsWith("although ")
-                || lower.startsWith("because ")
+        // Reject time/location/opening markers
+        if (lower.startsWith("at ")
+                || lower.startsWith("in ")
+                || lower.startsWith("on ")
+                || lower.startsWith("by ")
+                || lower.startsWith("from ")
                 || lower.startsWith("during ")
-                || lower.startsWith("following ")
                 || lower.startsWith("after ")
                 || lower.startsWith("before ")
-                || lower.startsWith("when ")
+                || lower.startsWith("following ")
                 || lower.startsWith("while ")
-                || lower.startsWith("since "))
+                || lower.startsWith("when ")
+                || lower.startsWith("since ")) {
             return false;
+        }
 
-        // Reject phrases with clear verb
+        // Reject pronoun phrases
+        if (lower.startsWith("his ")
+                || lower.startsWith("her ")
+                || lower.startsWith("their ")
+                || lower.startsWith("its ")
+                || lower.startsWith("he ")
+                || lower.startsWith("she ")
+                || lower.startsWith("they ")
+                || lower.startsWith("it ")) {
+            return false;
+        }
+
+        // Reject opening starts
+        if (lower.startsWith("born ")
+                || lower.startsWith("using ")
+                || lower.startsWith("called ")
+                || lower.startsWith("named ")
+                || lower.startsWith("led ")
+                || lower.startsWith("made ")
+                || lower.startsWith("set ")) {
+            return false;
+        }
+
+        // Reject clause phrases
         if (lower.contains(" is ")
                 || lower.contains(" are ")
                 || lower.contains(" was ")
@@ -593,10 +606,55 @@ public class StudyPackGenerationService {
                 || lower.contains(" brought ")
                 || lower.contains(" described ")
                 || lower.contains(" emphasized ")
-                || lower.contains(" highlighted "))
+                || lower.contains(" highlighted ")
+                || lower.contains(" believed ")
+                || lower.contains(" proved ")
+                || lower.contains(" made ")
+                || lower.contains(" had ")
+                || lower.contains(" set ")
+                || lower.contains(" led ")
+                || lower.contains(" called ")) {
             return false;
+        }
+
+        // Reject comma heavy fragments
+        if (cleaned.contains(",") || cleaned.contains(";") || cleaned.contains(":")) {
+            return false;
+        }
+        ;
 
         return isUsableConcept(cleaned);
+    }
+
+    private String extractLeadingProperName(String sentence) {
+        if (sentence == null || sentence.isBlank()) {
+            return null;
+        }
+
+        String[] words = sentence.trim().split("\\s+");
+        List<String> parts = new ArrayList<>();
+
+        for (String word : words) {
+            String cleaned = word.replaceAll("^[^A-Za-z]+|[^A-Za-z]+$", "");
+            if (cleaned.isBlank()) {
+                break;
+            }
+
+            if (Character.isUpperCase(cleaned.charAt(0))) {
+                parts.add(cleaned);
+                if (parts.size() == 4) {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if (parts.isEmpty()) {
+            return null;
+        }
+
+        return String.join(" ", parts);
     }
 
     private boolean isGoodExtractedConcept(String candidate) {
@@ -839,6 +897,7 @@ public class StudyPackGenerationService {
                 || lower.equals("form")
                 || lower.equals("important")
                 || lower.equals("examples")
+                || lower.equals("example")
                 || lower.equals("for")
                 || lower.equals("to")
                 || lower.equals("whether")
@@ -855,7 +914,19 @@ public class StudyPackGenerationService {
                 || lower.equals("another example")
                 || lower.equals("one example")
                 || lower.equals("this example")
-                || lower.equals("an example"))
+                || lower.equals("an example")
+                || lower.equals("although")
+                || lower.equals("however")
+                || lower.equals("therefore")
+                || lower.equals("yet")
+                || lower.equals("but")
+                || lower.equals("that time")
+                || lower.equals("this time")
+                || lower.equals("that day")
+                || lower.equals("this day")
+                || lower.equals("today")
+                || lower.equals("yesterday")
+                || lower.equals("tomorrow"))
             return false;
 
         if (lower.startsWith("for ")
@@ -866,11 +937,32 @@ public class StudyPackGenerationService {
                 || lower.startsWith("this ")
                 || lower.startsWith("in organisations")
                 || lower.startsWith("in organizations")
-                || lower.startsWith("it")
+                || lower.startsWith("it ")
                 || lower.startsWith("another example")
                 || lower.startsWith("one example")
                 || lower.startsWith("an example")
-                || lower.startsWith("example "))
+                || lower.startsWith("example ")
+                || lower.startsWith("his ")
+                || lower.startsWith("her ")
+                || lower.startsWith("their ")
+                || lower.startsWith("its ")
+                || lower.startsWith("he ")
+                || lower.startsWith("she ")
+                || lower.startsWith("they ")
+                || lower.startsWith("although ")
+                || lower.startsWith("however ")
+                || lower.startsWith("therefore ")
+                || lower.startsWith("yet ")
+                || lower.startsWith("but ")
+                || lower.startsWith("at that time")
+                || lower.startsWith("at this time")
+                || lower.startsWith("on that day")
+                || lower.startsWith("in 1")
+                || lower.startsWith("born ")
+                || lower.startsWith("after ")
+                || lower.startsWith("before ")
+                || lower.startsWith("during ")
+                || lower.startsWith("following "))
             return false;
 
         return true;
@@ -1430,7 +1522,7 @@ public class StudyPackGenerationService {
 
             // add 3 distractors
             int attempts = 0;
-            while (optionSEt.size() < 4 && attempts < 200) {
+            while (optionSet.size() < 4 && attempts < 200) {
                 attempts++;
                 String d = pickSmartDistractorFromConcepts(answer, keywords, r);
                 if (d == null || d.isBlank())
@@ -1442,7 +1534,7 @@ public class StudyPackGenerationService {
             }
 
             // if cant get enough distractors skip
-            if (options.size() < 4)
+            if (optionSet.size() < 4)
                 continue;
 
             List<String> options = new ArrayList<>(optionSet);
