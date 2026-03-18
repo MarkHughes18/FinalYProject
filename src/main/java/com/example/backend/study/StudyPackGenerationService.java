@@ -1292,13 +1292,13 @@ public class StudyPackGenerationService {
     }
 
     private String pickSmartDistractorFromConcepts(String answer, List<String> concepts, Random random) {
-        if (answer == null || concepts == null || concepts.isEmpty())
+        if (answer == null || concepts == null || concepts.isEmpty() || answer.isBlank() || random == null)
             return null;
         String cleanedAnswer = cleanConcept(answer);
         if (!isValidStudyConcept(cleanedAnswer))
             return null;
 
-        String a = answer.trim().toLowerCase(Locale.ROOT);
+        String a = cleanedAnswer.toLowerCase(Locale.ROOT);
         int targetWords = countWords(cleanedAnswer);
         int targetLen = cleanedAnswer.length();
         boolean answerLooksPlural = looksPluralConcept(cleanedAnswer);
@@ -1343,11 +1343,17 @@ public class StudyPackGenerationService {
             }
         }
 
-        List<String> pool = !candidates.isEmpty() ? candidates : fallbackCandidates;
-        if (pool == null || pool.isEmpty())
-            return null;
+        if (!candidates.isEmpty()) {
+            int idx = random.nextInt(candidates.size());
+            return formatConceptLabel(candidates.get(idx));
+        }
 
-        return formatConceptLabel(candidates.get(random.nextInt(candidates.size())));
+        if (!fallbackCandidates.isEmpty()) {
+            int idx = random.nextInt(fallbackCandidates.size());
+            return formatConceptLabel(fallbackCandidates.get(idx));
+        }
+
+        return null;
     }
 
     private boolean startsWithArticle(String text) {
@@ -1396,61 +1402,57 @@ public class StudyPackGenerationService {
             List<String> keywords,
             int count) {
         List<StudyPack.McqQuestion> out = new ArrayList<>();
-        Random r = new Random();
+        Set<String> usedQuestions = new HashSet<>();
+
+        long seed = Objects.hash(cloze != null ? cloze.size() : 0,
+                keywords != null ? keywords.size() : 0,
+                count);
+        Random r = new Random(seed);
+
+        if (cloze == null || cloze.isEmpty() || keywords == null || keywords.isEmpty()) {
+            return out;
+        }
 
         for (StudyPack.ClozeQuestion cq : cloze) {
-            if (out.size() >= count)
+            if (out.size() >= count || cq == null)
                 break;
 
+            String question = cq.getSentenceWithBlank();
             String answer = cq.getAnswer();
-            if (answer == null || answer.isBlank())
+            if (answer == null || answer.isBlank() || question == null || question.isEmpty())
                 continue;
 
-            if (!isGoodQuizAnswer(answer))
+            if (!usedQuestions.add(question.toLowerCase(Locale.ROOT)))
                 continue;
 
-            List<String> options = new ArrayList<>();
-            options.add(formatConceptLabel(answer));
+            LinkedHashSet<String> optionSet = new LinkedHashSet<>();
+            optionSet.add(answer);
 
             // add 3 distractors
             int attempts = 0;
-            while (options.size() < 4 && attempts < 200) {
+            while (optionSEt.size() < 4 && attempts < 200) {
                 attempts++;
                 String d = pickSmartDistractorFromConcepts(answer, keywords, r);
                 if (d == null || d.isBlank())
                     continue;
                 if (d.equalsIgnoreCase(answer))
                     continue;
-                boolean alreadyExists = false;
-                for (String o : options) {
-                    if (o.equalsIgnoreCase(d)) {
-                        alreadyExists = true;
-                        break;
-                    }
-                }
-                if (alreadyExists)
-                    continue;
 
-                options.add(formatConceptLabel(d));
+                optionSet.add(d);
             }
 
             // if cant get enough distractors skip
             if (options.size() < 4)
                 continue;
 
+            List<String> options = new ArrayList<>(optionSet);
             Collections.shuffle(options, r);
-            int correctIndex = -1;
-            for (int i = 0; i < options.size(); i++) {
-                if (options.get(i).equalsIgnoreCase(answer)) {
-                    correctIndex = i;
-                    break;
-                }
-            }
+            int correctIndex = options.indexOf(answer);
             if (correctIndex < 0)
                 continue;
 
             StudyPack.McqQuestion q = new StudyPack.McqQuestion();
-            q.setQuestion(cq.getSentenceWithBlank());
+            q.setQuestion(question);
             q.setOptions(options);
             q.setCorrectIndex(correctIndex);
             q.setExplanation("Choose the term that best completes the sentence based on the document.");
