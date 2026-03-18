@@ -513,10 +513,27 @@ public class StudyPackGenerationService {
 
         // Try taking the first short noun-like phrase before comma
         if (s.contains(",")) {
-            String candidate = s.substring(0, s.indexOf(',')).trim();
-            candidate = cleanConcept(candidate);
-            if (looksLikeGoodFallbackConcept(candidate)) {
-                return candidate;
+            String beforeComma = s.substring(0, s.indexOf(',')).trim();
+            String lowerBeforeComma = beforeComma.toLowerCase(Locale.ROOT);
+
+            if (!(lowerBeforeComma.startsWith("born")
+                    || lowerBeforeComma.startsWith("driven")
+                    || lowerBeforeComma.startsWith("yet")
+                    || lowerBeforeComma.startsWith("although")
+                    || lowerBeforeComma.startsWith("after")
+                    || lowerBeforeComma.startsWith("before")
+                    || lowerBeforeComma.startsWith("during")
+                    || lowerBeforeComma.startsWith("in ")
+                    || lowerBeforeComma.startsWith("at ")
+                    || lowerBeforeComma.startsWith("his ")
+                    || lowerBeforeComma.startsWith("her ")
+                    || lowerBeforeComma.startsWith("their "))) {
+
+                String candidate = s.substring(0, s.indexOf(',')).trim();
+                candidate = cleanConcept(candidate);
+                if (looksLikeGoodFallbackConcept(candidate)) {
+                    return candidate;
+                }
             }
         }
 
@@ -616,6 +633,20 @@ public class StudyPackGenerationService {
                 || lower.contains(" called ")) {
             return false;
         }
+
+        if (lower.equals("yet")
+                || lower.equals("but")
+                || lower.equals("although")
+                || lower.equals("however")
+                || lower.equals("therefore")
+                || lower.equals("born")
+                || lower.equals("driven")
+                || lower.equals("named")
+                || lower.equals("called")
+                || lower.equals("made")
+                || lower.equals("set")
+                || lower.equals("led"))
+            return false;
 
         // Reject comma heavy fragments
         if (cleaned.contains(",") || cleaned.contains(";") || cleaned.contains(":")) {
@@ -980,15 +1011,47 @@ public class StudyPackGenerationService {
     }
 
     private String buildQuestionFromConcept(String concept) {
-        String clean = formatConceptLabel(concept);
-        if (clean == null || clean.isBlank())
-            return "What concept is described here?";
+        if (concept == null || concept.isBlank())
+            return "what is this concept";
 
-        String lower = clean.toLowerCase(Locale.ROOT);
-        if (lower.endsWith("s") && !lower.endsWith("ss"))
-            return "What are " + clean + "?";
+        String clean = cleanConcept(concept);
+        if (clean == null || clean.isBlank())
+            return "what is this concept";
+
+        if (looksLikePersonName(cleaned))
+            return "Who was " + cleaned + "?";
+
+        if (looksPluralConcept(cleaned))
+            return "What are " + cleaned + "?";
 
         return "What is " + clean + "?";
+    }
+
+    private boolean looksLikePersonName(String concept) {
+        if (concept == null || concept.isBlank())
+            return false;
+
+        String cleaned = cleanConcept(concept);
+        if (cleaned == null || cleaned.isBlank())
+            return false;
+
+        String[] words = cleaned.split("\\s+");
+        if (words.length < 2 || words.length > 4)
+            return false;
+
+        int capitalizedWords = 0;
+        for (String word : words) {
+            String w = word.replaceAll("^[^A-Za-z]+|[^A-Za-z]+$", "");
+            if (w.isBlank()) {
+                continue;
+            }
+
+            if (Character.isUpperCase(w.charAt(0))) {
+                capitalizedWords++;
+            }
+        }
+
+        return capitalizedWords >= 2;
     }
 
     // Generating Flashcards
