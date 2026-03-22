@@ -957,7 +957,17 @@ public class StudyPackGenerationService {
                 || lower.equals("this day")
                 || lower.equals("today")
                 || lower.equals("yesterday")
-                || lower.equals("tomorrow"))
+                || lower.equals("tomorrow")
+                || lower.equals("during")
+                || lower.equals("throughout")
+                || lower.equals("they")
+                || lower.equals("them")
+                || lower.equals("their")
+                || lower.equals("this phase")
+                || lower.equals("these phases")
+                || lower.equals("those phases")
+                || lower.equals("phase")
+                || lower.equals("phases"))
             return false;
 
         if (lower.startsWith("for ")
@@ -993,7 +1003,9 @@ public class StudyPackGenerationService {
                 || lower.startsWith("after ")
                 || lower.startsWith("before ")
                 || lower.startsWith("during ")
-                || lower.startsWith("following "))
+                || lower.startsWith("following ")
+                || lower.startsWith("throughout ")
+                || lower.startsWith("this "))
             return false;
 
         return true;
@@ -1018,11 +1030,11 @@ public class StudyPackGenerationService {
         if (clean == null || clean.isBlank())
             return "what is this concept";
 
-        if (looksLikePersonName(cleaned))
-            return "Who was " + cleaned + "?";
+        if (looksLikePersonName(clean))
+            return "Who was " + clean + "?";
 
-        if (looksPluralConcept(cleaned))
-            return "What are " + cleaned + "?";
+        if (looksPluralConcept(clean))
+            return "What are " + clean + "?";
 
         return "What is " + clean + "?";
     }
