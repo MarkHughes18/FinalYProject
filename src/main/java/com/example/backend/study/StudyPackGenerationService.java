@@ -13,6 +13,13 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.regex.Matcher;
 
+import com.example.backend.study.dto.ConceptPackResponse;
+import com.example.backend.study.dto.TrueFalsePackResponse;
+import com.example.backend.study.dto.FlashcardDto;
+import com.example.backend.study.dto.ClozeQuestionDto;
+import com.example.backend.study.dto.McqQuestionDto;
+import com.example.backend.study.dto.TrueFalseQuestionDto;
+
 @Service
 public class StudyPackGenerationService {
 
@@ -36,9 +43,10 @@ public class StudyPackGenerationService {
 
     private final FileHistoryRepository fileHistoryRepository;
     private final StudyPackRepository studyPackRepository;
+    private final StudyPackLlmService studyPackLlmService;
 
     public StudyPackGenerationService(FileHistoryRepository fileHistoryRepository,
-            StudyPackRepository studyPackRepository) {
+            StudyPackRepository studyPackRepository, StudyPackLlmService studyPackLlmService) {
         this.fileHistoryRepository = fileHistoryRepository;
         this.studyPackRepository = studyPackRepository;
     }
@@ -112,28 +120,35 @@ public class StudyPackGenerationService {
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
 
-        // Build Flashcards first
-        List<StudyPack.Flashcard> flashcards = generateFlashcards(flashcardPool, factConcepts, FLASHCARDS_COUNT,
-                topicLabels);
-
-        // Matching from flashcards
-        List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
-
-        // Cloze from flashcards/sentences
-        List<StudyPack.ClozeQuestion> clozeQuestions = generateClozeQuestions(clozePool, flashcards, CLOZE_COUNT,
-                random);
-
-        // True/False from sentences + keyword swapping
-        List<StudyPack.TrueFalseQuestion> tfQuestions = generateTrueFalseQuestions(tfPool, factConcepts,
-                TF_COUNT, random);
-
-        // MCQ from cloze-style questions
-        List<StudyPack.McqQuestion> mcqQuestions = generateMcqQuestionsFromCloze(clozeQuestions, factConcepts,
-                MCQ_COUNT);
-
         // Settings metadata
         StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
                 FLASHCARDS_COUNT, MATCHING_COUNT, CLOZE_COUNT, TF_COUNT, MCQ_COUNT, "EASY");
+
+        ConceptPackResponse conceptPack;
+        TrueFalsePackResponse tfPack;
+
+        try {
+            conceptPack = studyPackLlmService.generateConceptPack(
+                    flashcardPool,
+                    clozePool,
+                    topicLabels,
+                    settings);
+
+            tfPack = studyPackLlmService.generateTrueFalsePack(
+                    processSentences,
+                    detailSentences,
+                    settings);
+        } catch (Exception e) {
+            throw new RuntimeException("Study pack generation failed: " + e.getMessage(), e);
+        }
+
+        List<StudyPack.Flashcard> flashcards = mapFlashcards(conceptPack);
+        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestions(conceptPack);
+        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(conceptPack);
+        List<StudyPack.TrueFalseQuestion> tfQuestions = mapTrueFalseQuestions(tfPack);
+
+        // Keep matching derived from flashcards
+        List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
         Instant now = Instant.now();
         StudyPack pack = new StudyPack();
@@ -415,7 +430,7 @@ public class StudyPackGenerationService {
             String cleaned = cleanConcept(concept);
             String key = cleaned.toLowerCase(Locale.ROOT);
             if (seen.add(key)) {
-                out.add(key);
+                out.add(cleaned);
                 if (out.size() >= maxConcepts) {
                     break;
                 }
@@ -835,7 +850,7 @@ public class StudyPackGenerationService {
 
         c = c.replaceAll("^[^A-Za-z0-9]+", "");
         c = c.replaceAll("[^A-Za-z0-9]+$", "");
-        c = c.replaceAll("\\s{2,}", "").trim();
+        c = c.replaceAll("\\s{2,}", " ").trim();
 
         return c;
     }
@@ -1710,6 +1725,95 @@ public class StudyPackGenerationService {
             return true;
 
         return false;
+    }
+
+    private List<StudyPack.Flashcard> mapFlashcards(ConceptPackResponse response) {
+        List<StudyPack.Flashcard> out = new ArrayList<>();
+        if (response == null || response.getFlashcards() == null) {
+            return out;
+        }
+
+        for (FlashcardDto dto : response.getFlashcards()) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.Flashcard card = new StudyPack.Flashcard();
+            card.setFront(dto.getFront());
+            card.setBack(dto.getBack());
+            card.setSourceSnippet(dto.getSourceSnippet());
+            card.setTags(Collections.singletonList(TOPIC_GENERAL));
+            out.add(card);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.ClozeQuestion> mapClozeQuestions(ConceptPackResponse response) {
+        List<StudyPack.ClozeQuestion> out = new ArrayList<>();
+        if (response == null || response.getClozeQuestions() == null) {
+            return out;
+        }
+
+        for (ClozeQuestionDto dto : response.getClozeQuestions()) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setSentenceWithBlank(dto.getSentenceWithBlank());
+            q.setAnswer(dto.getAnswer());
+            q.setChoices(Collections.emptyList());
+            q.setSourceSnippet(dto.getSourceSnippet());
+            out.add(q);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.McqQuestion> mapMcqQuestions(ConceptPackResponse response) {
+        List<StudyPack.McqQuestion> out = new ArrayList<>();
+        if (response == null || response.getMcqQuestions() == null) {
+            return out;
+        }
+
+        for (McqQuestionDto dto : response.getMcqQuestions()) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.McqQuestion q = new StudyPack.McqQuestion();
+            q.setQuestion(dto.getQuestion());
+            q.setOptions(dto.getOptions() != null ? dto.getOptions() : Collections.emptyList());
+            q.setCorrectIndex(dto.getCorrectIndex() != null ? dto.getCorrectIndex() : 0);
+            q.setExplanation(dto.getExplanation());
+            q.setSourceSnippet(dto.getSourceSnippet());
+            out.add(q);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.TrueFalseQuestion> mapTrueFalseQuestions(TrueFalsePackResponse response) {
+        List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
+        if (response == null || response.getTrueFalseQuestions() == null) {
+            return out;
+        }
+
+        for (TrueFalseQuestionDto dto : response.getTrueFalseQuestions()) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
+            q.setStatement(dto.getStatement());
+            q.setAnswer(Boolean.TRUE.equals(dto.getAnswer()));
+            q.setExplanation(dto.getExplanation());
+            q.setSourceSnippet(dto.getSourceSnippet());
+            out.add(q);
+        }
+
+        return out;
     }
 
     // Minimal stopword set
