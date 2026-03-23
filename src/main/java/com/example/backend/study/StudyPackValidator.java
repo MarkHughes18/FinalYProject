@@ -1,6 +1,7 @@
 package com.example.backend.study;
 
 import com.example.backend.study.dto.*;
+import com.example.backend.model.*;
 import org.springframework.stereotype.Component;
 
 import java.util.*;

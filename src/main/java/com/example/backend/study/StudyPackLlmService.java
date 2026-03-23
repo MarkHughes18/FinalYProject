@@ -3,6 +3,7 @@ package com.example.backend.study;
 import com.example.backend.study.dto.ConceptPackResponse;
 import com.example.backend.study.dto.TrueFalsePackResponse;
 import org.springframework.stereotype.Service;
+import com.example.backend.model.StudyPack;
 
 import java.util.List;
 

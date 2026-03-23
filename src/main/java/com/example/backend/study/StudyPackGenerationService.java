@@ -49,6 +49,7 @@ public class StudyPackGenerationService {
             StudyPackRepository studyPackRepository, StudyPackLlmService studyPackLlmService) {
         this.fileHistoryRepository = fileHistoryRepository;
         this.studyPackRepository = studyPackRepository;
+        this.studyPackLlmService = studyPackLlmService;
     }
 
     // Returns the stored StudyPack if it exists, otherwise generates and returns it
