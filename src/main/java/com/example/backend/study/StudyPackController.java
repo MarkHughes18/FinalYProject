@@ -7,6 +7,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.backend.repository.StudyPackRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import com.example.backend.study.dto.ConceptPackResponse;
+import com.example.backend.study.dto.TrueFalsePackResponse;
 
 @RestController
 @RequestMapping("/api/study")
@@ -15,12 +20,15 @@ public class StudyPackController {
     private final StudyPackGenerationService generationService;
     private final FileHistoryRepository fileHistoryRepository;
     private final StudyPackRepository studyPackRepository;
+    private final StudyPackLlmService studyPackLlmService;
 
     public StudyPackController(StudyPackGenerationService generationService,
-            FileHistoryRepository fileHistoryRepository, StudyPackRepository studyPackRepository) {
+            FileHistoryRepository fileHistoryRepository, StudyPackRepository studyPackRepository,
+            StudyPackLlmService studyPackLlmService) {
         this.generationService = generationService;
         this.fileHistoryRepository = fileHistoryRepository;
         this.studyPackRepository = studyPackRepository;
+        this.studyPackLlmService = studyPackLlmService;
     }
 
     public record StudyPackSummaryResponse(
@@ -126,5 +134,51 @@ public class StudyPackController {
                             null);
                     return ResponseEntity.ok(resp);
                 });
+    }
+
+    @GetMapping("/test-llm")
+    public Map<String, Object> testLlm() throws Exception {
+        List<String> definitionPool = List.of(
+                "Project management is the application of knowledge, skills, tools, and techniques to meet project requirements.",
+                "A project is a temporary endeavor undertaken to create a unique product, service, or result.",
+                "Planning involves defining the scope, schedule, resources, and risks.",
+                "Execution is where the project plan is put into action.",
+                "Control involves monitoring progress and making adjustments as needed.",
+                "Closeout occurs when the project is formally completed.");
+
+        List<String> processPool = List.of(
+                "Planning involves defining the scope, schedule, resources, and risks.",
+                "Execution is where the project plan is put into action.",
+                "Control involves monitoring progress and making adjustments as needed.",
+                "Closeout occurs when the project is formally completed.");
+
+        List<String> detailPool = List.of(
+                "Stakeholders include anyone affected by the project, such as team members, customers, suppliers, and management.",
+                "Key skills in project management include communication, leadership, problem-solving, negotiation, and risk management.");
+
+        List<String> topicLabels = List.of(
+                "Project Management",
+                "Planning",
+                "Execution",
+                "Control");
+
+        StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
+                5, 3, 5, 5, 5, "EASY");
+
+        ConceptPackResponse conceptPack = studyPackLlmService.generateConceptPack(
+                definitionPool,
+                processPool,
+                topicLabels,
+                settings);
+
+        TrueFalsePackResponse tfPack = studyPackLlmService.generateTrueFalsePack(
+                processPool,
+                detailPool,
+                settings);
+
+        Map<String, Object> out = new HashMap<>();
+        out.put("conceptPack", conceptPack);
+        out.put("trueFalsePack", tfPack);
+        return out;
     }
 }
