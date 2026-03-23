@@ -41,7 +41,7 @@ public class FileProcessingService {
             repo.save(fh);
 
             // text extraction
-            Path source = Paths.get(fh.getSourcePath()); // ✅ declare BEFORE using/logging
+            Path source = Paths.get(fh.getSourcePath());
             System.out.println("TEXT extract start id=" + historyId + " source=" + source);
             String extracted = textExtractService.extractText(source);
             final int MAX_EXTRACTED_CHARS = 50_000;

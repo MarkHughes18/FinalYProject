@@ -147,8 +147,7 @@ public class FileHistoryController {
                 if (fh == null) {
                         return ResponseEntity.notFound().build();
                 }
-
-                // delete disk files (safe)
+                // delete files
                 try {
                         if (fh.getSourcePath() != null) {
                                 Files.deleteIfExists(Paths.get(fh.getSourcePath()));
@@ -156,7 +155,6 @@ public class FileHistoryController {
                 } catch (Exception ex) {
                         System.out.println("Failed deleting source file: " + ex.getMessage());
                 }
-
                 try {
                         if (fh.getAudioPath() != null) {
                                 Files.deleteIfExists(Paths.get(fh.getAudioPath()));
@@ -164,7 +162,6 @@ public class FileHistoryController {
                 } catch (Exception ex) {
                         System.out.println("Failed deleting audio file: " + ex.getMessage());
                 }
-
                 // delete DB record
                 repo.deleteById(id);
 
