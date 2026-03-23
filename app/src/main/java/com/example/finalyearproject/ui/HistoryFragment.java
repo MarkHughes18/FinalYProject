@@ -206,6 +206,41 @@ public class HistoryFragment extends Fragment {
     private void onHistoryItemClicked(HistoryItem item) {
         if (item == null) return;
 
+        showHistoryActionSheet(item);
+    }
+
+    private void showHistoryActionSheet(HistoryItem item) {
+        View sheetView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.bottomsheet_history_actions, null, false);
+
+        TextView titleTv = sheetView.findViewById(R.id.actionTitleTV);
+        View playAudioBtn = sheetView.findViewById(R.id.actionPlayAudio);
+        View openStudyPackBtn = sheetView.findViewById(R.id.actionOpenStudyPack);
+        View cancelBtn = sheetView.findViewById(R.id.actionCancel);
+
+        titleTv.setText(item.fileName != null ? item.fileName : "Choose action");
+
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        dialog.setContentView(sheetView);
+
+        playAudioBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            handlePlayAudio(item);
+        });
+
+        openStudyPackBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            handleOpenStudyPack(item);
+        });
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+    private void handlePlayAudio(HistoryItem item) {
+        if (item == null) return;
+
         if (!"READY".equalsIgnoreCase(item.audioStatus)) {
             toast("Audio not ready yet: " + item.audioStatus);
             return;
@@ -216,9 +251,22 @@ public class HistoryFragment extends Fragment {
         }
 
         String fullUrl = item.audioUrl.startsWith("http")
-                ? item.audioUrl : MEDIA_BASE_URL + item.audioUrl;
+                ? item.audioUrl
+                : MEDIA_BASE_URL + item.audioUrl;
 
         showPlayerBottomSheet(item.fileName, fullUrl);
+    }
+
+    private void handleOpenStudyPack(HistoryItem item) {
+        if (item == null || item.id == null || item.id.isBlank()) {
+            toast("Study pack unavailable: missing history id");
+            return;
+        }
+
+        android.content.Intent intent = new android.content.Intent(requireContext(), StudyPackActivity.class);
+        intent.putExtra("historyId", item.id);
+        intent.putExtra("fileName", item.fileName);
+        startActivity(intent);
     }
     private void showPlayerBottomSheet(String title, String url) {
 

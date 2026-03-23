@@ -42,4 +42,7 @@ public interface ApiService {
     @DELETE("api/files/history/{id}")
     Call<Void> deleteHistoryItem(@Path("id") String id);
 
+    @GET("api/study/packs/{historyId}")
+    Call<StudyPackResponse> getStudyPack( @Path("historyId") String historyId, @Query("email") String email);
+
 }
