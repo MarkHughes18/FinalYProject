@@ -33,81 +33,81 @@ public class StudyPackPromptFactory {
       int mcqCount) {
 
     return """
-                        Generate study-pack content from the source material below.
+        Generate study-pack content from the source material below.
 
-                        Requested counts:
-                        - flashcards: %d
-                        - clozeQuestions: %d
-                        - mcqQuestions: %d
+        Requested counts:
+        - flashcards: %d
+        - clozeQuestions: %d
+        - mcqQuestions: %d
 
-                        Topic labels:
-                        %s
+        Topic labels:
+        %s
 
-                        Definition pool:
-                        %s
+        Definition pool:
+        %s
 
-                        Process pool:
-                        %s
+        Process pool:
+        %s
 
-                        Flashcard rules:
-                        - Prefer direct definition-style cards.
-                        - For a person, use "Who was ...?"
-                        - For a singular concept, use "What is ...?"
-                        - For a plural concept, use "What are ...?"
-                        - Keep the front short and natural.
-                        - Do NOT create indirect questions like "Who undertakes a project?"
-                        - Do NOT ask about generic actions if the sentence is defining a concept.
-                        - The back should be a concise definition or explanation based on the source sentence.
+        Flashcard rules:
+        - Prefer direct definition-style cards.
+        - For a person, use "Who was ...?"
+        - For a singular concept, use "What is ...?"
+        - For a plural concept, use "What are ...?"
+        - Keep the front short and natural.
+        - Do NOT create indirect questions like "Who undertakes a project?"
+        - Do NOT ask about generic actions if the sentence is defining a concept.
+        - The back should be a concise definition or explanation based on the source sentence.
 
-                        Cloze rules:
-                        - Blank exactly one important concept or term.
-                        - Prefer blanking the main defined concept, named term, phase, or key topic.
-                        - Do NOT blank generic nouns like "thing", "product", "result", "people", "way" unless they are the actual target concept.
-                        - Keep the sentence grammatical after blanking.
-                        - The answer should be short and meaningful.
+        Cloze rules:
+        - Blank exactly one important concept or term.
+        - Prefer blanking the main defined concept, named term, phase, or key topic.
+        - Do NOT blank generic nouns like "thing", "product", "result", "people", "way" unless they are the actual target concept.
+        - Keep the sentence grammatical after blanking.
+        - The answer should be short and meaningful.
 
-                        MCQ rules:
-                        - Write exactly 4 options.
-                        - Exactly 1 option must be correct.
-                        - The question must be a normal multiple-choice question.
-                        - The options must be short answer choices, not full questions.
-                        - Do NOT start any option with "What", "Who", "Which", "When", or "Where".
-                        - Prefer concept terms or short noun phrases as options.
-                        - Each option should usually be between 1 and 5 words where possible.
-                        - Distractors must be plausible and same-topic.
-                        - Do NOT use "all of the above" or "none of the above".
-                        - Do NOT use joke or obviously wrong distractors.
-                        - Do NOT make the options long sentence definitions.
-                        - Prefer concept-based questions where the answer options are terms such as phases, concepts, roles, or definitions in short form.
+        MCQ rules:
+        - Write exactly 4 options.
+        - Exactly 1 option must be correct.
+        - The question must be a normal multiple-choice question.
+        - The options must be short answer choices, not full questions.
+        - Do NOT start any option with "What", "Who", "Which", "When", or "Where".
+        - Prefer concept terms or short noun phrases as options.
+        - Each option should usually be between 1 and 5 words where possible.
+        - Distractors must be plausible and same-topic.
+        - Do NOT use "all of the above" or "none of the above".
+        - Do NOT use joke or obviously wrong distractors.
+        - Do NOT make the options long sentence definitions.
+        - Prefer concept-based questions where the answer options are terms such as phases, concepts, roles, or definitions in short form.
 
-                        Example good MCQ:
+        Example good MCQ:
         question: "Which phase involves defining scope, schedule, resources, and risks?"
         options: ["Planning", "Execution", "Control", "Closeout"]
 
         Example bad MCQ:
         options: ["What is planning?", "What is execution?", "What is control?", "What is closeout?"]
 
-                        For mcqQuestions, "options" must contain answer choices only, not question sentences.
+        For mcqQuestions, "options" must contain answer choices only, not question sentences.
 
-                        Return JSON matching this structure:
-                        {
-                          "flashcards": [
-                            {"front":"...","back":"...","sourceSnippet":"..."}
-                          ],
-                          "clozeQuestions": [
-                            {"sentenceWithBlank":"...","answer":"...","sourceSnippet":"..."}
-                          ],
-                          "mcqQuestions": [
-                            {
-                              "question":"...",
-                              "options":["...","...","...","..."],
-                              "correctIndex":0,
-                              "explanation":"...",
-                              "sourceSnippet":"..."
-                            }
-                          ]
-                        }
-                        """
+        Return JSON matching this structure:
+        {
+          "flashcards": [
+            {"front":"...","back":"...","sourceSnippet":"..."}
+          ],
+          "clozeQuestions": [
+            {"sentenceWithBlank":"...","answer":"...","sourceSnippet":"..."}
+          ],
+          "mcqQuestions": [
+            {
+              "question":"...",
+              "options":["...","...","...","..."],
+              "correctIndex":0,
+              "explanation":"...",
+              "sourceSnippet":"..."
+            }
+          ]
+        }
+        """
         .formatted(
             flashcardCount,
             clozeCount,

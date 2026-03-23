@@ -84,10 +84,6 @@ public class StudyPackGenerationService {
         String bounded = boundText(normalize(text), MAX_TEXT_CHARS);
         String sourceHash = sha256Hex(bounded);
 
-        // Seed randomness so generation is deterministic for the same text
-        int seed = (sourceHash != null) ? sourceHash.hashCode() : Objects.hash(userEmail, historyId);
-        Random random = new Random(seed);
-
         List<String> sentences = splitIntoSentences(bounded, MAX_SENTENCES);
 
         // sentence first pipeline
@@ -115,6 +111,9 @@ public class StudyPackGenerationService {
             clozePool = new ArrayList<>(factSentences);
         if (tfPool.isEmpty())
             tfPool = new ArrayList<>(factSentences);
+
+        List<String> safeProcessPool = processSentences.isEmpty() ? tfPool : processSentences;
+        List<String> safeDetailPool = detailSentences.isEmpty() ? tfPool : detailSentences;
 
         List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
 
