@@ -4,12 +4,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
@@ -25,10 +28,16 @@ public class StudyPackActivity extends AppCompatActivity {
     private TextView titleTv;
     private TextView statusTv;
     private ProgressBar progressBar;
-
+    private RecyclerView recyclerView;
+    private Button btnFlashcards;
+    private Button btnCloze;
+    private Button btnTrueFalse;
+    private Button btnMcq;
+    private Button btnMatching;
     private ApiService api;
     private String historyId;
     private String fileName;
+    private StudyPackResponse currentPack;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -38,6 +47,14 @@ public class StudyPackActivity extends AppCompatActivity {
         titleTv = findViewById(R.id.studyPackTitleTV);
         statusTv = findViewById(R.id.studyPackStatusTV);
         progressBar = findViewById(R.id.studyPackProgress);
+        recyclerView = findViewById(R.id.studyPackRecyclerView);
+        btnFlashcards = findViewById(R.id.btnFlashcards);
+        btnCloze = findViewById(R.id.btnCloze);
+        btnTrueFalse = findViewById(R.id.btnTrueFalse);
+        btnMcq = findViewById(R.id.btnMcq);
+        btnMatching = findViewById(R.id.btnMatching);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         api = RetrofitClient.getApiService();
 
@@ -45,6 +62,15 @@ public class StudyPackActivity extends AppCompatActivity {
         fileName = getIntent().getStringExtra("fileName");
 
         titleTv.setText(fileName != null ? fileName : "Study Pack");
+
+        setButtonsEnabled(false);
+
+        btnFlashcards.setOnClickListener(v -> showFlashcards());
+        btnCloze.setOnClickListener(v -> showCloze());
+        btnTrueFalse.setOnClickListener(v -> showTrueFalse());
+        btnMcq.setOnClickListener(v -> showMcq());
+        btnMatching.setOnClickListener(v -> showMatching());
+
 
         if (historyId == null || historyId.isBlank()) {
             statusTv.setText("Missing history id.");
@@ -58,7 +84,6 @@ public class StudyPackActivity extends AppCompatActivity {
     private void loadStudyPack() {
         String email = getLoggedInEmail();
         if (email == null) {
-            progressBar.setVisibility(View.GONE);
             statusTv.setText("No logged in user found.");
             return;
         }
@@ -72,22 +97,10 @@ public class StudyPackActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
 
                 if (response.isSuccessful() && response.body() != null) {
-                    StudyPackResponse pack = response.body();
-
-                    int flashcards = pack.flashcards != null ? pack.flashcards.size() : 0;
-                    int cloze = pack.clozeQuestions != null ? pack.clozeQuestions.size() : 0;
-                    int tf = pack.trueFalseQuestions != null ? pack.trueFalseQuestions.size() : 0;
-                    int mcq = pack.mcqQuestions != null ? pack.mcqQuestions.size() : 0;
-                    int matching = pack.matchingPairs != null ? pack.matchingPairs.size() : 0;
-
-                    statusTv.setText(
-                            "Study pack loaded.\n\n" +
-                                    "Flashcards: " + flashcards + "\n" +
-                                    "Cloze: " + cloze + "\n" +
-                                    "True/False: " + tf + "\n" +
-                                    "MCQ: " + mcq + "\n" +
-                                    "Matching: " + matching
-                    );
+                    currentPack = response.body();
+                    statusTv.setText("Study Pack Loaded");
+                    setButtonsEnabled(true);
+                    showFlashcards();
                 } else if (response.code() == 202) {
                     statusTv.setText("Study pack is not ready yet.\nNarration is still processing.");
                 } else if (response.code() == 403) {
@@ -106,6 +119,64 @@ public class StudyPackActivity extends AppCompatActivity {
                 Toast.makeText(StudyPackActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void showFlashcards() {
+        if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
+            statusTv.setText("No flashcards available.");
+            recyclerView.setAdapter(null);
+            return;
+        }
+        statusTv.setText("Flashcards: " + currentPack.flashcards.size());
+        recyclerView.setAdapter(new FlashcardAdapter(currentPack.flashcards));
+    }
+
+    private void showCloze() {
+        if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
+            statusTv.setText("No cloze questions available.");
+            recyclerView.setAdapter(null);
+            return;
+        }
+        statusTv.setText("Cloze: " + currentPack.clozeQuestions.size());
+        recyclerView.setAdapter(new ClozeAdapter(currentPack.clozeQuestions));
+    }
+
+    private void showTrueFalse() {
+        if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
+            statusTv.setText("No true/false questions available.");
+            recyclerView.setAdapter(null);
+            return;
+        }
+        statusTv.setText("True/False: " + currentPack.trueFalseQuestions.size());
+        recyclerView.setAdapter(new TrueFalseAdapter(currentPack.trueFalseQuestions));
+    }
+
+    private void showMcq() {
+        if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
+            statusTv.setText("No MCQ questions available.");
+            recyclerView.setAdapter(null);
+            return;
+        }
+        statusTv.setText("MCQ: " + currentPack.mcqQuestions.size());
+        recyclerView.setAdapter(new McqAdapter(currentPack.mcqQuestions));
+    }
+
+    private void showMatching() {
+        if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
+            statusTv.setText("No matching pairs available.");
+            recyclerView.setAdapter(null);
+            return;
+        }
+        statusTv.setText("Matching: " + currentPack.matchingPairs.size());
+        recyclerView.setAdapter(new MatchingAdapter(currentPack.matchingPairs));
+    }
+
+    private void setButtonsEnabled(boolean enabled) {
+        btnFlashcards.setEnabled(enabled);
+        btnCloze.setEnabled(enabled);
+        btnTrueFalse.setEnabled(enabled);
+        btnMcq.setEnabled(enabled);
+        btnMatching.setEnabled(enabled);
     }
 
     private String getLoggedInEmail() {

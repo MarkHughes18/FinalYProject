@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/studyPackTitleTV"
@@ -12,19 +12,76 @@
         android:text="Study Pack"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:paddingBottom="16dp" />
-
-    <ProgressBar
-        android:id="@+id/studyPackProgress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal" />
+        android:paddingBottom="6dp" />
 
     <TextView
         android:id="@+id/studyPackStatusTV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
         android:text="Loading..."
-        android:textSize="16sp" />
+        android:textSize="14sp"
+        android:paddingBottom="12dp" />
+
+    <ProgressBar
+        android:id="@+id/studyPackProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone" />
+
+    <HorizontalScrollView
+        android:id="@+id/studyPackTabsScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:fillViewport="false"
+        android:layout_marginBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnFlashcards"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flashcards" />
+
+            <Button
+                android:id="@+id/btnCloze"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Cloze" />
+
+            <Button
+                android:id="@+id/btnTrueFalse"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="True/False" />
+
+            <Button
+                android:id="@+id/btnMcq"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="MCQ" />
+
+            <Button
+                android:id="@+id/btnMatching"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Matching" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/studyPackRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
 </LinearLayout>
