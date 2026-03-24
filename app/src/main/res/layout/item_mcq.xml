@@ -15,12 +15,42 @@
         android:textSize="16sp"
         android:paddingBottom="8dp" />
 
-    <TextView
-        android:id="@+id/mcqOptionsTV"
+    <Button
+        android:id="@+id/mcqOption1Btn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="Option 1"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/mcqOption2Btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Option 2"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/mcqOption3Btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Option 3"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/mcqOption4Btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Option 4"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/mcqResultTV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
         android:textSize="15sp"
-        android:paddingBottom="8dp" />
+        android:paddingTop="8dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/mcqAnswerTV"

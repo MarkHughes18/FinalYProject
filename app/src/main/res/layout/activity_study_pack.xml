@@ -46,35 +46,49 @@
                 android:id="@+id/btnFlashcards"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Flashcards" />
+                android:text="Flashcards"
+                android:backgroundTint="@color/study_blue"
+                android:textColor="@android:color/white"/>
 
             <Button
                 android:id="@+id/btnCloze"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Cloze" />
+                android:text="Cloze"
+                android:backgroundTint="@color/study_blue"
+                android:textColor="@android:color/white"/>
+            />
 
             <Button
                 android:id="@+id/btnTrueFalse"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="True/False" />
+                android:text="True/False"
+                android:backgroundTint="@color/study_blue"
+                android:textColor="@android:color/white"/>
+            />
 
             <Button
                 android:id="@+id/btnMcq"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="MCQ" />
+                android:text="MCQ"
+                android:backgroundTint="@color/study_blue"
+                android:textColor="@android:color/white"/>
+            />
 
             <Button
                 android:id="@+id/btnMatching"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Matching" />
+                android:text="Matching"
+                android:backgroundTint="@color/study_blue"
+                android:textColor="@android:color/white"/>
+            />
         </LinearLayout>
     </HorizontalScrollView>
 

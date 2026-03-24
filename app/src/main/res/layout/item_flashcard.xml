@@ -8,11 +8,27 @@
     android:background="@android:color/white">
 
     <TextView
+        android:id="@+id/flashcardLabelTV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap to reveal answer"
+        android:textSize="13sp"
+        android:paddingBottom="8dp" />
+
+    <TextView
         android:id="@+id/flashcardFrontTV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textStyle="bold"
         android:textSize="16sp"
+        android:paddingBottom="8dp" />
+
+    <TextView
+        android:id="@+id/flashcardDivider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap to reveal answer"
+        android:textSize="13sp"
         android:paddingBottom="8dp" />
 
     <TextView
