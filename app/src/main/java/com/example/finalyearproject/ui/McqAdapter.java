@@ -62,6 +62,11 @@ public class McqAdapter extends RecyclerView.Adapter<McqAdapter.ViewHolder> {
             holder.explanationTv.setText(item.explanation != null ? item.explanation : "");
 
             setButtonsEnabled(holder, false);
+
+            holder.itemView.setOnClickListener(v -> {
+                selectedAnswers.remove(position);
+                notifyItemChanged(position);
+            });
         } else {
             holder.resultTv.setVisibility(View.GONE);
             holder.answerTv.setVisibility(View.GONE);

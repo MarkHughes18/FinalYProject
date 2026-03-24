@@ -122,6 +122,7 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void showFlashcards() {
+        updateSelectedTab(btnFlashcards);
         if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
             statusTv.setText("No flashcards available.");
             recyclerView.setAdapter(null);
@@ -132,6 +133,7 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void showCloze() {
+        updateSelectedTab(btnCloze);
         if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
             statusTv.setText("No cloze questions available.");
             recyclerView.setAdapter(null);
@@ -142,6 +144,7 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void showTrueFalse() {
+        updateSelectedTab(btnTrueFalse);
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
             recyclerView.setAdapter(null);
@@ -152,6 +155,7 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void showMcq() {
+        updateSelectedTab(btnMcq);
         if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
             statusTv.setText("No MCQ questions available.");
             recyclerView.setAdapter(null);
@@ -162,6 +166,7 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void showMatching() {
+        updateSelectedTab(btnMatching);
         if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
             statusTv.setText("No matching pairs available.");
             recyclerView.setAdapter(null);
@@ -177,6 +182,18 @@ public class StudyPackActivity extends AppCompatActivity {
         btnTrueFalse.setEnabled(enabled);
         btnMcq.setEnabled(enabled);
         btnMatching.setEnabled(enabled);
+    }
+
+    private void updateSelectedTab(Button selectedButton) {
+        Button[] buttons = {btnFlashcards, btnCloze, btnTrueFalse, btnMcq, btnMatching};
+
+        for (Button button : buttons) {
+            if (button == selectedButton) {
+                button.setBackgroundResource(R.drawable.study_tab_selected);
+            } else {
+                button.setBackgroundResource(R.drawable.study_tab_unselected);
+            }
+        }
     }
 
     private String getLoggedInEmail() {
