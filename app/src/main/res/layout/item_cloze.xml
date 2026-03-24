@@ -15,9 +15,25 @@
         android:textSize="16sp"
         android:paddingBottom="8dp" />
 
+    <Button
+        android:id="@+id/clozeRevealBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reveal Answer" />
+
+
     <TextView
         android:id="@+id/clozeAnswerTV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/clozeHintTV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap card to hide answer"
+        android:textSize="13sp"
+        android:paddingTop="8dp"
+        android:visibility="gone" />
 </LinearLayout>
