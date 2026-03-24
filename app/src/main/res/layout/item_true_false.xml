@@ -13,8 +13,37 @@
         android:layout_height="wrap_content"
         android:textStyle="bold"
         android:textSize="16sp"
-        android:paddingBottom="8dp" />
+        android:paddingBottom="12dp" />
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/tfTrueBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="True" />
+
+        <Button
+            android:id="@+id/tfFalseBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="False" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tfResultTV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="15sp"
+        android:paddingTop="10dp"
+        android:visibility="gone" />
     <TextView
         android:id="@+id/tfAnswerTV"
         android:layout_width="match_parent"
