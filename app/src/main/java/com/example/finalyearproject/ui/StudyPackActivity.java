@@ -40,10 +40,12 @@ public class StudyPackActivity extends AppCompatActivity {
     private String historyId;
     private String fileName;
     private StudyPackResponse currentPack;
-    private ViewPager2 flashcardViewPager;
-    private TextView flashcardCounterTv;
+    private ViewPager2 studyViewPager;
+    private TextView pagerCounterTv;
     private FlashcardPagerAdapter flashcardPagerAdapter;
-    private boolean flashcardPageCallbackRegistered = false;
+    private ClozePagerAdapter clozePagerAdapter;
+    private boolean pagerCallbackRegistered = false;
+    private String currentPagerMode = "";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -59,12 +61,12 @@ public class StudyPackActivity extends AppCompatActivity {
         btnTrueFalse = findViewById(R.id.btnTrueFalse);
         btnMcq = findViewById(R.id.btnMcq);
         btnMatching = findViewById(R.id.btnMatching);
-        flashcardViewPager = findViewById(R.id.flashcardViewPager);
-        flashcardCounterTv = findViewById(R.id.flashcardCounterTV);
+        studyViewPager = findViewById(R.id.studyViewPager);
+        pagerCounterTv = findViewById(R.id.pagerCounterTV);
 
-        if (!flashcardPageCallbackRegistered) {
-            flashcardViewPager.registerOnPageChangeCallback(pageChangeCallback);
-            flashcardPageCallbackRegistered = true;
+        if (!pagerCallbackRegistered) {
+            studyViewPager.registerOnPageChangeCallback(pageChangeCallback);
+            pagerCallbackRegistered = true;
         }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -136,33 +138,46 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showFlashcards() {
         updateSelectedTab(btnFlashcards);
+        currentPagerMode = "flashcards";
+
         if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
             statusTv.setText("No flashcards available.");
-            flashcardViewPager.setAdapter(null);
-            showFlashcardPager();
-            flashcardCounterTv.setText("Card 0 of 0");
+            studyViewPager.setAdapter(null);
+            showPagerMode();
+            pagerCounterTv.setText("Card 0 of 0");
             return;
         }
+
         statusTv.setText("Flashcards • " + currentPack.flashcards.size() + " cards");
-        showFlashcardPager();
+        showPagerMode();
 
         flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards);
-        flashcardViewPager.setAdapter(flashcardPagerAdapter);
-        flashcardViewPager.setCurrentItem(0, false);
+        studyViewPager.setAdapter(flashcardPagerAdapter);
+        studyViewPager.setCurrentItem(0, false);
 
-        updateFlashcardCounter(0, currentPack.flashcards.size());
+        updatePagerCounter("Card", 0, currentPack.flashcards.size());
     }
 
     private void showCloze() {
         updateSelectedTab(btnCloze);
-        showRecyclerMode();
+        currentPagerMode = "cloze";
+
         if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
             statusTv.setText("No cloze questions available.");
-            recyclerView.setAdapter(null);
+            studyViewPager.setAdapter(null);
+            showPagerMode();
+            pagerCounterTv.setText("Question 0 of 0");
             return;
         }
-        statusTv.setText("Cloze: " + currentPack.clozeQuestions.size());
-        recyclerView.setAdapter(new ClozeAdapter(currentPack.clozeQuestions));
+
+        statusTv.setText("Cloze • " + currentPack.clozeQuestions.size() + " questions");
+        showPagerMode();
+
+        clozePagerAdapter = new ClozePagerAdapter(currentPack.clozeQuestions);
+        studyViewPager.setAdapter(clozePagerAdapter);
+        studyViewPager.setCurrentItem(0, false);
+
+        updatePagerCounter("Question", 0, currentPack.clozeQuestions.size());
     }
 
     private void showTrueFalse() {
@@ -225,20 +240,20 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     }
 
-    private void showFlashcardPager() {
-        flashcardViewPager.setVisibility(View.VISIBLE);
-        flashcardCounterTv.setVisibility(View.VISIBLE);
+    private void showPagerMode() {
+        studyViewPager.setVisibility(View.VISIBLE);
+        pagerCounterTv.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
     }
 
     private void showRecyclerMode() {
-        flashcardViewPager.setVisibility(View.GONE);
-        flashcardCounterTv.setVisibility(View.GONE);
+        studyViewPager.setVisibility(View.GONE);
+        pagerCounterTv.setVisibility(View.GONE);
         recyclerView.setVisibility(View.VISIBLE);
     }
 
-    private void updateFlashcardCounter(int position, int total) {
-        flashcardCounterTv.setText("Card " + (position + 1) + " of " + total);
+    private void updatePagerCounter(String label, int position, int total) {
+        pagerCounterTv.setText(label + " " + (position + 1) + " of " + total);
     }
 
     private final ViewPager2.OnPageChangeCallback pageChangeCallback = new ViewPager2.OnPageChangeCallback() {
@@ -246,8 +261,10 @@ public class StudyPackActivity extends AppCompatActivity {
         public void onPageSelected(int position) {
             super.onPageSelected(position);
 
-            if (currentPack != null && currentPack.flashcards != null) {
-                updateFlashcardCounter(position, currentPack.flashcards.size());
+            if ("flashcards".equals(currentPagerMode) && currentPack != null && currentPack.flashcards != null) {
+                updatePagerCounter("Card", position, currentPack.flashcards.size());
+            } else if ("cloze".equals(currentPagerMode) && currentPack != null && currentPack.clozeQuestions != null) {
+                updatePagerCounter("Question", position, currentPack.clozeQuestions.size());
             }
         }
     };

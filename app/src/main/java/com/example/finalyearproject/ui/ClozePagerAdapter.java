@@ -1,0 +1,213 @@
+package com.example.finalyearproject.ui;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.StudyPackResponse;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.ViewHolder> {
+
+    private final List<StudyPackResponse.ClozeQuestion> items;
+
+    // position -> selected option index
+    private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
+
+    // position -> generated/displayed options for consistency
+    private final Map<Integer, List<String>> optionsCache = new HashMap<>();
+
+    public ClozePagerAdapter(List<StudyPackResponse.ClozeQuestion> items) {
+        this.items = items;
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_cloze_page, parent, false);
+        return new ViewHolder(v);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        StudyPackResponse.ClozeQuestion item = items.get(position);
+
+        holder.questionTv.setText(item.sentenceWithBlank != null ? item.sentenceWithBlank : "");
+
+        List<String> options = getOptionsForPosition(position, item);
+
+        bindOptionButton(holder.option1Btn, options, 0, position);
+        bindOptionButton(holder.option2Btn, options, 1, position);
+        bindOptionButton(holder.option3Btn, options, 2, position);
+        bindOptionButton(holder.option4Btn, options, 3, position);
+
+        boolean alreadyAnswered = selectedAnswers.containsKey(position);
+
+        if (alreadyAnswered) {
+            int selectedIndex = selectedAnswers.get(position);
+            String selectedText = getOptionText(options, selectedIndex);
+            String correctAnswer = item.answer != null ? item.answer : "";
+            boolean correct = correctAnswer.equalsIgnoreCase(selectedText != null ? selectedText : "");
+
+            holder.resultTv.setVisibility(View.VISIBLE);
+            holder.answerTv.setVisibility(View.VISIBLE);
+
+            holder.resultTv.setText(correct ? "Correct" : "Incorrect");
+            holder.answerTv.setText("Correct answer: " + correctAnswer);
+
+            setButtonsEnabled(holder, false);
+
+            holder.itemView.setOnClickListener(v -> {
+                selectedAnswers.remove(position);
+                notifyItemChanged(position);
+            });
+
+        } else {
+            holder.resultTv.setVisibility(View.GONE);
+            holder.answerTv.setVisibility(View.GONE);
+
+            setButtonsEnabled(holder, true);
+            holder.itemView.setOnClickListener(null);
+        }
+    }
+
+    private List<String> getOptionsForPosition(int position, StudyPackResponse.ClozeQuestion item) {
+        if (optionsCache.containsKey(position)) {
+            return optionsCache.get(position);
+        }
+
+        List<String> options = new ArrayList<>();
+
+        if (item.choices != null) {
+            for (String choice : item.choices) {
+                if (choice != null && !choice.isBlank()) {
+                    options.add(choice.trim());
+                }
+            }
+        }
+
+        String correctAnswer = item.answer != null ? item.answer.trim() : "";
+
+        Set<String> unique = new LinkedHashSet<>(options);
+
+        if (!correctAnswer.isBlank()) {
+            unique.add(correctAnswer);
+        }
+
+        // Fallback distractors if backend did not provide enough choices
+        if (unique.size() < 4) {
+            addFallbackDistractors(unique, correctAnswer);
+        }
+
+        List<String> finalOptions = new ArrayList<>(unique);
+
+        // Trim to 4 if somehow more than 4
+        if (finalOptions.size() > 4) {
+            finalOptions = new ArrayList<>(finalOptions.subList(0, 4));
+        }
+
+        // Shuffle so correct answer is not always last
+        Collections.shuffle(finalOptions);
+
+        optionsCache.put(position, finalOptions);
+        return finalOptions;
+    }
+
+    private void addFallbackDistractors(Set<String> unique, String correctAnswer) {
+        if (correctAnswer.isBlank()) {
+            unique.add("Option A");
+            unique.add("Option B");
+            unique.add("Option C");
+            unique.add("Option D");
+            return;
+        }
+
+        unique.add(correctAnswer + " system");
+        unique.add(correctAnswer + " process");
+        unique.add(correctAnswer + " strategy");
+        unique.add("Personnel management");
+        unique.add("Operations management");
+        unique.add("Administrative planning");
+    }
+
+    private void bindOptionButton(Button button,
+                                  List<String> options,
+                                  int optionIndex,
+                                  int position) {
+
+        String text = getOptionText(options, optionIndex);
+
+        if (text == null || text.isBlank()) {
+            button.setVisibility(View.GONE);
+            button.setOnClickListener(null);
+            return;
+        }
+
+        button.setVisibility(View.VISIBLE);
+        button.setText(text);
+
+        if (selectedAnswers.containsKey(position)) {
+            button.setOnClickListener(null);
+            return;
+        }
+
+        button.setOnClickListener(v -> {
+            selectedAnswers.put(position, optionIndex);
+            notifyItemChanged(position);
+        });
+    }
+
+    private String getOptionText(List<String> options, int index) {
+        if (options == null || index < 0 || index >= options.size()) {
+            return null;
+        }
+        return options.get(index);
+    }
+
+    private void setButtonsEnabled(ViewHolder holder, boolean enabled) {
+        holder.option1Btn.setEnabled(enabled);
+        holder.option2Btn.setEnabled(enabled);
+        holder.option3Btn.setEnabled(enabled);
+        holder.option4Btn.setEnabled(enabled);
+    }
+
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
+
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView questionTv;
+        Button option1Btn;
+        Button option2Btn;
+        Button option3Btn;
+        Button option4Btn;
+        TextView resultTv;
+        TextView answerTv;
+
+        ViewHolder(@NonNull View itemView) {
+            super(itemView);
+            questionTv = itemView.findViewById(R.id.clozeQuestionTV);
+            option1Btn = itemView.findViewById(R.id.clozeOption1Btn);
+            option2Btn = itemView.findViewById(R.id.clozeOption2Btn);
+            option3Btn = itemView.findViewById(R.id.clozeOption3Btn);
+            option4Btn = itemView.findViewById(R.id.clozeOption4Btn);
+            resultTv = itemView.findViewById(R.id.clozeResultTV);
+            answerTv = itemView.findViewById(R.id.clozeAnswerTV);
+        }
+    }
+}
