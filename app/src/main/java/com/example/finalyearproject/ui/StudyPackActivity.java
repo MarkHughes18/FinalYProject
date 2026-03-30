@@ -13,6 +13,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
+import android.content.res.ColorStateList;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
@@ -38,6 +40,10 @@ public class StudyPackActivity extends AppCompatActivity {
     private String historyId;
     private String fileName;
     private StudyPackResponse currentPack;
+    private ViewPager2 flashcardViewPager;
+    private TextView flashcardCounterTv;
+    private FlashcardPagerAdapter flashcardPagerAdapter;
+    private boolean flashcardPageCallbackRegistered = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -53,6 +59,13 @@ public class StudyPackActivity extends AppCompatActivity {
         btnTrueFalse = findViewById(R.id.btnTrueFalse);
         btnMcq = findViewById(R.id.btnMcq);
         btnMatching = findViewById(R.id.btnMatching);
+        flashcardViewPager = findViewById(R.id.flashcardViewPager);
+        flashcardCounterTv = findViewById(R.id.flashcardCounterTV);
+
+        if (!flashcardPageCallbackRegistered) {
+            flashcardViewPager.registerOnPageChangeCallback(pageChangeCallback);
+            flashcardPageCallbackRegistered = true;
+        }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -125,15 +138,24 @@ public class StudyPackActivity extends AppCompatActivity {
         updateSelectedTab(btnFlashcards);
         if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
             statusTv.setText("No flashcards available.");
-            recyclerView.setAdapter(null);
+            flashcardViewPager.setAdapter(null);
+            showFlashcardPager();
+            flashcardCounterTv.setText("Card 0 of 0");
             return;
         }
-        statusTv.setText("Flashcards: " + currentPack.flashcards.size());
-        recyclerView.setAdapter(new FlashcardAdapter(currentPack.flashcards));
+        statusTv.setText("Flashcards • " + currentPack.flashcards.size() + " cards");
+        showFlashcardPager();
+
+        flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards);
+        flashcardViewPager.setAdapter(flashcardPagerAdapter);
+        flashcardViewPager.setCurrentItem(0, false);
+
+        updateFlashcardCounter(0, currentPack.flashcards.size());
     }
 
     private void showCloze() {
         updateSelectedTab(btnCloze);
+        showRecyclerMode();
         if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
             statusTv.setText("No cloze questions available.");
             recyclerView.setAdapter(null);
@@ -145,6 +167,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showTrueFalse() {
         updateSelectedTab(btnTrueFalse);
+        showRecyclerMode();
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
             recyclerView.setAdapter(null);
@@ -156,6 +179,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showMcq() {
         updateSelectedTab(btnMcq);
+        showRecyclerMode();
         if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
             statusTv.setText("No MCQ questions available.");
             recyclerView.setAdapter(null);
@@ -167,6 +191,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showMatching() {
         updateSelectedTab(btnMatching);
+        showRecyclerMode();
         if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
             statusTv.setText("No matching pairs available.");
             recyclerView.setAdapter(null);
@@ -189,12 +214,43 @@ public class StudyPackActivity extends AppCompatActivity {
 
         for (Button button : buttons) {
             if (button == selectedButton) {
-                button.setBackgroundResource(R.drawable.study_tab_selected);
+                button.setBackgroundTintList(ColorStateList.valueOf(
+                        getResources().getColor(R.color.study_tab_selected)
+                ));
             } else {
-                button.setBackgroundResource(R.drawable.study_tab_unselected);
+                button.setBackgroundTintList(ColorStateList.valueOf(
+                        getResources().getColor(R.color.study_tab_unselected)
+                ));
             }
         }
     }
+
+    private void showFlashcardPager() {
+        flashcardViewPager.setVisibility(View.VISIBLE);
+        flashcardCounterTv.setVisibility(View.VISIBLE);
+        recyclerView.setVisibility(View.GONE);
+    }
+
+    private void showRecyclerMode() {
+        flashcardViewPager.setVisibility(View.GONE);
+        flashcardCounterTv.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.VISIBLE);
+    }
+
+    private void updateFlashcardCounter(int position, int total) {
+        flashcardCounterTv.setText("Card " + (position + 1) + " of " + total);
+    }
+
+    private final ViewPager2.OnPageChangeCallback pageChangeCallback = new ViewPager2.OnPageChangeCallback() {
+        @Override
+        public void onPageSelected(int position) {
+            super.onPageSelected(position);
+
+            if (currentPack != null && currentPack.flashcards != null) {
+                updateFlashcardCounter(position, currentPack.flashcards.size());
+            }
+        }
+    };
 
     private String getLoggedInEmail() {
         SharedPreferences prefs = getSharedPreferences("auth", Context.MODE_PRIVATE);

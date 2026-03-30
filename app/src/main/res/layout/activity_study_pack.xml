@@ -123,6 +123,23 @@
         </LinearLayout>
     </HorizontalScrollView>
 
+    <TextView
+        android:id="@+id/flashcardCounterTV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Card 1 of 1"
+        android:textSize="14sp"
+        android:textColor="@color/study_text_secondary"
+        android:paddingBottom="10dp"
+        android:visibility="gone" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/flashcardViewPager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/studyPackRecyclerView"
         android:layout_width="match_parent"
