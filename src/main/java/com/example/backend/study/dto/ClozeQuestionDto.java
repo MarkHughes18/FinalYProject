@@ -4,6 +4,7 @@ public class ClozeQuestionDto {
     private String sentenceWithBlank;
     private String answer;
     private String sourceSnippet;
+    private List<String> choices;
 
     public String getSentenceWithBlank() {
         return sentenceWithBlank;
@@ -27,5 +28,13 @@ public class ClozeQuestionDto {
 
     public void setSourceSnippet(String sourceSnippet) {
         this.sourceSnippet = sourceSnippet;
+    }
+
+    public List<String> getChoices() {
+        return choices;
+    }
+
+    public void setChoices(List<String> choices) {
+        this.choices = choices;
     }
 }

@@ -249,7 +249,7 @@ public class StudyPackGenerationService {
             if (t.isBlank())
                 continue;
 
-            // Prefer phrases as topics (more meaningful)
+            // Prefer phrases as topics
             boolean isPhrase = t.contains(" ");
             if (!isPhrase && isBadFlashcardTerm(t))
                 continue;
@@ -1763,7 +1763,7 @@ public class StudyPackGenerationService {
             StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
             q.setSentenceWithBlank(dto.getSentenceWithBlank());
             q.setAnswer(dto.getAnswer());
-            q.setChoices(Collections.emptyList());
+            q.setChoices(dto.getChoices());
             q.setSourceSnippet(dto.getSourceSnippet());
             out.add(q);
         }
@@ -1814,6 +1814,53 @@ public class StudyPackGenerationService {
         }
 
         return out;
+    }
+
+    private List<String> buildClozeChoices(String correctAnswer, List<String> conceptPool) {
+        LinkedHashSet<String> options = new LinkedHashSet<>();
+
+        if (correctAnswer != null && !correctAnswer.isBlank()) {
+            options.add(correctAnswer.trim());
+        }
+
+        if (conceptPool != null) {
+            for (String concept : conceptPool) {
+                if (concept == null)
+                    continue;
+                String cleaned = concept.trim();
+                if (cleaned.isBlank())
+                    continue;
+                if (cleaned.equalsIgnoreCase(correctAnswer))
+                    continue;
+
+                options.add(cleaned);
+                if (options.size() >= 4)
+                    break;
+            }
+        }
+
+        // fallback distractors if concept pool is too small
+        if (options.size() < 4 && correctAnswer != null && !correctAnswer.isBlank()) {
+            options.add(correctAnswer + " strategy");
+            options.add(correctAnswer + " process");
+            options.add(correctAnswer + " system");
+        }
+
+        if (options.size() < 4) {
+            options.add("Management");
+            options.add("Planning");
+            options.add("Administration");
+            options.add("Operations");
+        }
+
+        List<String> finalChoices = new ArrayList<>(options);
+
+        if (finalChoices.size() > 4) {
+            finalChoices = new ArrayList<>(finalChoices.subList(0, 4));
+        }
+
+        Collections.shuffle(finalChoices);
+        return finalChoices;
     }
 
     // Minimal stopword set

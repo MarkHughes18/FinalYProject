@@ -65,6 +65,12 @@ public class StudyPackPromptFactory {
         - Do NOT blank generic nouns like "thing", "product", "result", "people", "way" unless they are the actual target concept.
         - Keep the sentence grammatical after blanking.
         - The answer should be short and meaningful.
+        - Include exactly 4 choices for every cloze question.
+        - The choices must include the correct answer.
+        - The other 3 choices must be plausible distractors from the same topic.
+        - Choices should be short answer options, not full sentences.
+        - Do NOT use joke answers, "all of the above", or "none of the above".
+        - Keep choices concise, usually between 1 and 5 words where possible.
 
         MCQ rules:
         - Write exactly 4 options.
@@ -95,7 +101,7 @@ public class StudyPackPromptFactory {
             {"front":"...","back":"...","sourceSnippet":"..."}
           ],
           "clozeQuestions": [
-            {"sentenceWithBlank":"...","answer":"...","sourceSnippet":"..."}
+            {"sentenceWithBlank":"...","answer":"...","choices":["...","...","...","..."],"sourceSnippet":"..."}
           ],
           "mcqQuestions": [
             {
