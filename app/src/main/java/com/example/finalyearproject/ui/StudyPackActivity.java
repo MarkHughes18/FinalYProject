@@ -44,6 +44,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private TextView pagerCounterTv;
     private FlashcardPagerAdapter flashcardPagerAdapter;
     private ClozePagerAdapter clozePagerAdapter;
+    private McqPagerAdapter mcqPagerAdapter;
     private boolean pagerCallbackRegistered = false;
     private String currentPagerMode = "";
 
@@ -194,14 +195,24 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showMcq() {
         updateSelectedTab(btnMcq);
-        showRecyclerMode();
+        currentPagerMode = "mcq";
+
         if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
             statusTv.setText("No MCQ questions available.");
-            recyclerView.setAdapter(null);
+            studyViewPager.setAdapter(null);
+            showPagerMode();
+            pagerCounterTv.setText("Question 0 of 0");
             return;
         }
-        statusTv.setText("MCQ: " + currentPack.mcqQuestions.size());
-        recyclerView.setAdapter(new McqAdapter(currentPack.mcqQuestions));
+
+        statusTv.setText("MCQ • " + currentPack.mcqQuestions.size() + " questions");
+        showPagerMode();
+
+        mcqPagerAdapter = new McqPagerAdapter(currentPack.mcqQuestions);
+        studyViewPager.setAdapter(mcqPagerAdapter);
+        studyViewPager.setCurrentItem(0, false);
+
+        updatePagerCounter("Question", 0, currentPack.mcqQuestions.size());
     }
 
     private void showMatching() {
@@ -265,7 +276,8 @@ public class StudyPackActivity extends AppCompatActivity {
                 updatePagerCounter("Card", position, currentPack.flashcards.size());
             } else if ("cloze".equals(currentPagerMode) && currentPack != null && currentPack.clozeQuestions != null) {
                 updatePagerCounter("Question", position, currentPack.clozeQuestions.size());
-            }
+            } else if ("mcq".equals(currentPagerMode) && currentPack != null && currentPack.mcqQuestions != null)
+                updatePagerCounter("Question", position, currentPack.mcqQuestions.size());
         }
     };
 

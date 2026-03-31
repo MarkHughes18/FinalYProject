@@ -1,5 +1,7 @@
 package com.example.finalyearproject.ui;
 
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -70,6 +72,11 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
             holder.answerTv.setText("Correct answer: " + correctAnswer);
 
             setButtonsEnabled(holder, false);
+
+            highlightButton(holder.option1Btn, options, 0, selectedIndex, correctAnswer);
+            highlightButton(holder.option2Btn, options, 1, selectedIndex, correctAnswer);
+            highlightButton(holder.option3Btn, options, 2, selectedIndex, correctAnswer);
+            highlightButton(holder.option4Btn, options, 3, selectedIndex, correctAnswer);
 
             holder.itemView.setOnClickListener(v -> {
                 selectedAnswers.remove(position);
@@ -183,6 +190,30 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         holder.option2Btn.setEnabled(enabled);
         holder.option3Btn.setEnabled(enabled);
         holder.option4Btn.setEnabled(enabled);
+    }
+
+    private void highlightButton(Button button,
+                                 List<String> options,
+                                 int optionIndex,
+                                 int selectedIndex,
+                                 String correctAnswer) {
+
+        String optionText = getOptionText(options, optionIndex);
+        if (optionText == null) {
+            return;
+        }
+
+        if (optionText.equalsIgnoreCase(correctAnswer)) {
+            button.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+        } else if (optionIndex == selectedIndex) {
+            button.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F44336")));
+        } else {
+            button.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#BDBDBD")));
+        }
+    }
+
+    private void resetButtonStyle(Button button) {
+        button.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#66BB6A")));
     }
 
     @Override

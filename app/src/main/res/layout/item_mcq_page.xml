@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="12dp">
+
+    <LinearLayout
+        android:id="@+id/mcqOuterCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/study_card_background"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/mcqQuestionLabelTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Multiple Choice"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="@color/study_text_secondary"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/mcqQuestionTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/study_text_primary"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="20dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/mcqOption1Btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Option 1"
+                android:textColor="@android:color/white"
+                android:background="@drawable/study_action_button"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/mcqOption2Btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Option 2"
+                android:textColor="@android:color/white"
+                android:background="@drawable/study_action_button"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/mcqOption3Btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Option 3"
+                android:textColor="@android:color/white"
+                android:background="@drawable/study_action_button"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/mcqOption4Btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Option 4"
+                android:textColor="@android:color/white"
+                android:background="@drawable/study_action_button"
+                android:layout_marginBottom="12dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/mcqResultTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/mcqAnswerTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/mcqExplanationTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/mcqSwipeHintTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Swipe for next question"
+            android:textSize="13sp"
+            android:textColor="@color/study_text_secondary"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+
+</FrameLayout>
