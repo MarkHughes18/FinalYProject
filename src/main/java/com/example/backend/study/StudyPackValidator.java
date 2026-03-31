@@ -69,10 +69,11 @@ public class StudyPackValidator {
                 continue;
             }
 
-            // Reject similar flashcard fronts
-            if (isTooSimilarToExisting(frontKey, seenFronts, 0.85)) {
-                continue;
-            }
+            /**
+             * if (isTooSimilarToExisting(frontKey, seenFronts, 0.85)) {
+             * continue;
+             * }
+             */
 
             snippetUsage.put(snippetKey, snippetUsage.getOrDefault(snippetKey, 0) + 1);
             out.add(i);
@@ -142,7 +143,7 @@ public class StudyPackValidator {
 
         List<McqQuestionDto> out = new ArrayList<>();
         Set<String> seenQuestions = new HashSet<>();
-        Map<String, Integer> snippetUsage = new HashMap<>();
+        Set<String> seenSnippets = new HashSet<>();
 
         for (McqQuestionDto i : items) {
             if (i == null
@@ -164,7 +165,11 @@ public class StudyPackValidator {
                 continue;
             }
 
-            if (snippetUsage.getOrDefault(snippetKey, 0) >= 1) {
+            if (!seenSnippets.add(snippetKey)) {
+                continue;
+            }
+
+            if (i.getCorrectIndex() < 0 || i.getCorrectIndex() >= i.getOptions().size()) {
                 continue;
             }
 
@@ -173,12 +178,14 @@ public class StudyPackValidator {
                 continue;
             }
 
-            // Reject near duplicate questions
-            if (isTooSimilarToExisting(questionKey, seenQuestions, 0.85)) {
+            if (isWeakMcq(i)) {
                 continue;
             }
 
-            snippetUsage.put(snippetKey, snippetUsage.getOrDefault(snippetKey, 0) + 1);
+            if (!isMcqCorrectOptionConsistent(i)) {
+                continue;
+            }
+
             out.add(i);
 
             if (out.size() >= max) {
@@ -249,6 +256,15 @@ public class StudyPackValidator {
             if (!seen.add(key)) {
                 return false;
             }
+
+            String normalized = normalizeText(opt);
+            if (looksLikeQuestion(normalized)) {
+                return false;
+            }
+
+            if (normalized.equals("all of the above") || normalized.equals("none of the above")) {
+                return false;
+            }
         }
 
         return true;
@@ -268,16 +284,143 @@ public class StudyPackValidator {
         return weak.contains(a);
     }
 
-    private boolean isTooSimilarToExisting(String candidate, Set<String> existing, double threshold) {
-        for (String e : existing) {
-            if (e.equals(candidate)) {
-                continue;
-            }
-            if (similarity(candidate, e) >= threshold) {
+    private boolean isWeakMcq(McqQuestionDto i) {
+        if (i == null) {
+            return true;
+        }
+
+        String question = normalizeText(i.getQuestion());
+        String explanation = normalizeText(i.getExplanation());
+
+        if (question.length() < 12) {
+            return true;
+        }
+
+        if (!notBlank(explanation)) {
+            return true;
+        }
+
+        if (looksLikeQuestionOptionSet(i.getOptions())) {
+            return true;
+        }
+
+        if (allOptionsTooSimilar(i.getOptions())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean isMcqCorrectOptionConsistent(McqQuestionDto i) {
+        if (i == null || i.getOptions() == null || i.getCorrectIndex() == null) {
+            return false;
+        }
+
+        if (i.getCorrectIndex() < 0 || i.getCorrectIndex() >= i.getOptions().size()) {
+            return false;
+        }
+
+        String correctOption = i.getOptions().get(i.getCorrectIndex());
+        if (!notBlank(correctOption)) {
+            return false;
+        }
+
+        String explanation = normalizeText(i.getExplanation());
+        String sourceSnippet = normalizeText(i.getSourceSnippet());
+        String correctNorm = normalizeText(correctOption);
+
+        // At least one meaningful token from the correct option should appear in the
+        // explanation or source snippet
+        List<String> tokens = extractMeaningfulTokens(correctNorm);
+        if (tokens.isEmpty()) {
+            return false;
+        }
+
+        for (String token : tokens) {
+            if (explanation.contains(token) || sourceSnippet.contains(token)) {
                 return true;
             }
         }
+
         return false;
+    }
+
+    private List<String> extractMeaningfulTokens(String text) {
+        List<String> out = new ArrayList<>();
+        if (!notBlank(text)) {
+            return out;
+        }
+
+        for (String part : text.split("\\s+")) {
+            String token = normalizeText(part);
+            if (token.length() < 4) {
+                continue;
+            }
+            if (isStopWord(token)) {
+                continue;
+            }
+            out.add(token);
+        }
+
+        return out;
+    }
+
+    private boolean looksLikeQuestion(String s) {
+        return s.startsWith("what ")
+                || s.startsWith("who ")
+                || s.startsWith("which ")
+                || s.startsWith("when ")
+                || s.startsWith("where ")
+                || s.endsWith("?");
+    }
+
+    private boolean looksLikeQuestionOptionSet(List<String> options) {
+        if (options == null) {
+            return true;
+        }
+
+        for (String option : options) {
+            if (!notBlank(option)) {
+                return true;
+            }
+            if (looksLikeQuestion(normalizeText(option))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean allOptionsTooSimilar(List<String> options) {
+        if (options == null || options.size() != 4) {
+            return true;
+        }
+
+        Set<String> normalized = new HashSet<>();
+        for (String option : options) {
+            normalized.add(normalizeText(option));
+        }
+
+        return normalized.size() < 4;
+    }
+
+    private String safeOptionAt(List<String> options, int index) {
+        if (options == null || index < 0 || index >= options.size()) {
+            return null;
+        }
+        return options.get(index);
+    }
+
+    private boolean isTooSimilarToExisting(List<String> options) {
+        if (options == null || options.size() < 4) {
+            return true;
+        }
+
+        Set<String> normalized = new HashSet<>();
+        for (String opt : options) {
+            normalized.add(normalizeText(opt));
+        }
+        return normalized.size() < 4;
     }
 
     private double similarity(String a, String b) {
@@ -306,5 +449,13 @@ public class StudyPackValidator {
                 .replaceAll("[^a-z0-9\\s]", " ")
                 .replaceAll("\\s{2,}", " ")
                 .trim();
+    }
+
+    private boolean isStopWord(String s) {
+        return Set.of(
+                "the", "and", "with", "from", "that", "this", "into", "their", "than",
+                "then", "have", "has", "been", "were", "will", "would", "could",
+                "should", "about", "only", "also", "such", "both", "more", "most",
+                "some", "many", "much", "management").contains(s);
     }
 }

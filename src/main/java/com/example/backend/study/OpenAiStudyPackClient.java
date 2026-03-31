@@ -83,6 +83,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
         Map<String, Object> payload = Map.of(
                 "model", "gpt-4.1-mini",
                 "temperature", 0.2,
+                "max_completion_tokens", 2500,
                 "messages", List.of(
                         Map.of("role", "system", "content", system),
                         Map.of("role", "user", "content", user)),
@@ -120,9 +121,15 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                                         "properties", Map.of(
                                                                 "sentenceWithBlank", Map.of("type", "string"),
                                                                 "answer", Map.of("type", "string"),
+                                                                "choices", Map.of(
+                                                                        "type", "array",
+                                                                        "items", Map.of("type", "string"),
+                                                                        "minItems", 4,
+                                                                        "maxItems", 4),
                                                                 "sourceSnippet", Map.of("type", "string")),
                                                         "required",
-                                                        List.of("sentenceWithBlank", "answer", "sourceSnippet"))),
+                                                        List.of("sentenceWithBlank", "answer", "choices",
+                                                                "sourceSnippet"))),
                                         "mcqQuestions", Map.of(
                                                 "type", "array",
                                                 "items", Map.of(
@@ -207,7 +214,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                         .bodyValue(payload)
                         .retrieve()
                         .bodyToMono(String.class)
-                        .block(Duration.ofSeconds(90));
+                        .block(Duration.ofSeconds(180));
 
                 if (raw == null || raw.isBlank()) {
                     throw new RuntimeException("Empty response from OpenAI");

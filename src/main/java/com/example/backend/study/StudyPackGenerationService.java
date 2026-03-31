@@ -24,11 +24,11 @@ import com.example.backend.study.dto.TrueFalseQuestionDto;
 public class StudyPackGenerationService {
 
     // Pack sizes
-    private static final int FLASHCARDS_COUNT = 20;
+    private static final int FLASHCARDS_COUNT = 8;
     private static final int MATCHING_COUNT = 10;
-    private static final int CLOZE_COUNT = 15;
+    private static final int CLOZE_COUNT = 5;
     private static final int TF_COUNT = 10;
-    private static final int MCQ_COUNT = 10;
+    private static final int MCQ_COUNT = 5;
 
     // Safety caps for huge narrationText
     private static final int MAX_TEXT_CHARS = 300_000;
@@ -1825,21 +1825,27 @@ public class StudyPackGenerationService {
 
         if (conceptPool != null) {
             for (String concept : conceptPool) {
-                if (concept == null)
+                if (concept == null) {
                     continue;
+                }
+
                 String cleaned = concept.trim();
-                if (cleaned.isBlank())
+                if (cleaned.isBlank()) {
                     continue;
-                if (cleaned.equalsIgnoreCase(correctAnswer))
+                }
+
+                if (correctAnswer != null && cleaned.equalsIgnoreCase(correctAnswer.trim())) {
                     continue;
+                }
 
                 options.add(cleaned);
-                if (options.size() >= 4)
+
+                if (options.size() >= 4) {
                     break;
+                }
             }
         }
 
-        // fallback distractors if concept pool is too small
         if (options.size() < 4 && correctAnswer != null && !correctAnswer.isBlank()) {
             options.add(correctAnswer + " strategy");
             options.add(correctAnswer + " process");
