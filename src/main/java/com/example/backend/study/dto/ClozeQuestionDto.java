@@ -1,5 +1,7 @@
 package com.example.backend.study.dto;
 
+import java.util.List;
+
 public class ClozeQuestionDto {
     private String sentenceWithBlank;
     private String answer;
