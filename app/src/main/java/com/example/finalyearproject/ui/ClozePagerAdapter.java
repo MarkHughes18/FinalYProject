@@ -68,7 +68,7 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
             holder.resultTv.setVisibility(View.VISIBLE);
             holder.answerTv.setVisibility(View.VISIBLE);
 
-            holder.resultTv.setText(correct ? "Correct" : "Incorrect");
+            holder.resultTv.setText(correct ? "🟢 Correct" : "🔴 Incorrect");
             holder.answerTv.setText("Correct answer: " + correctAnswer);
 
             setButtonsEnabled(holder, false);

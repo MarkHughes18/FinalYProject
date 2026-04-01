@@ -58,7 +58,7 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
             holder.answerTv.setVisibility(View.VISIBLE);
             holder.explanationTv.setVisibility(View.VISIBLE);
 
-            holder.resultTv.setText(correct ? "Correct" : "Incorrect");
+            holder.resultTv.setText(correct ? "🟢 Correct" : "🔴 Incorrect");
 
             String correctAnswer = getOptionText(item, item.correctIndex);
             holder.answerTv.setText("Correct answer: " + (correctAnswer != null ? correctAnswer : ""));

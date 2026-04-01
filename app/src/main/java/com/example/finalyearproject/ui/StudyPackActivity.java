@@ -45,6 +45,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private FlashcardPagerAdapter flashcardPagerAdapter;
     private ClozePagerAdapter clozePagerAdapter;
     private McqPagerAdapter mcqPagerAdapter;
+    private TrueFalsePagerAdapter trueFalsePagerAdapter;
     private boolean pagerCallbackRegistered = false;
     private String currentPagerMode = "";
 
@@ -183,14 +184,22 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showTrueFalse() {
         updateSelectedTab(btnTrueFalse);
-        showRecyclerMode();
+        currentPagerMode = "truefalse";
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
             recyclerView.setAdapter(null);
+            showPagerMode();
+            pagerCounterTv.setText("Question 0 of 0");
             return;
         }
         statusTv.setText("True/False: " + currentPack.trueFalseQuestions.size());
-        recyclerView.setAdapter(new TrueFalseAdapter(currentPack.trueFalseQuestions));
+        showPagerMode();
+
+        trueFalsePagerAdapter = new TrueFalsePagerAdapter(currentPack.trueFalseQuestions);
+        studyViewPager.setAdapter(trueFalsePagerAdapter);
+        studyViewPager.setCurrentItem(0, false);
+
+        updatePagerCounter("Question", 0, currentPack.trueFalseQuestions.size());
     }
 
     private void showMcq() {
@@ -276,8 +285,11 @@ public class StudyPackActivity extends AppCompatActivity {
                 updatePagerCounter("Card", position, currentPack.flashcards.size());
             } else if ("cloze".equals(currentPagerMode) && currentPack != null && currentPack.clozeQuestions != null) {
                 updatePagerCounter("Question", position, currentPack.clozeQuestions.size());
-            } else if ("mcq".equals(currentPagerMode) && currentPack != null && currentPack.mcqQuestions != null)
+            } else if ("mcq".equals(currentPagerMode) && currentPack != null && currentPack.mcqQuestions != null) {
                 updatePagerCounter("Question", position, currentPack.mcqQuestions.size());
+            } else if ("truefalse".equals(currentPagerMode) && currentPack != null && currentPack.trueFalseQuestions != null) {
+                updatePagerCounter("Question", position, currentPack.trueFalseQuestions.size());
+            }
         }
     };
 

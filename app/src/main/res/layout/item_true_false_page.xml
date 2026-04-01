@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="12dp">
+
+    <LinearLayout
+        android:id="@+id/tfOuterCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/study_card_background"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/tfLabelTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="True / False"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:textColor="@color/study_text_secondary"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/tfStatementTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/study_text_primary"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/tfTrueBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="True"
+            android:textColor="@android:color/white"
+            android:background="@drawable/study_action_button"
+            android:layout_marginBottom="14dp" />
+
+        <Button
+            android:id="@+id/tfFalseBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="False"
+            android:textColor="@android:color/white"
+            android:background="@drawable/study_action_button"
+            android:layout_marginBottom="14dp" />
+
+        <TextView
+            android:id="@+id/tfResultTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/tfAnswerTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/tfExplanationTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/study_text_primary"
+            android:visibility="gone"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:id="@+id/tfSwipeHintTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Swipe for next question"
+            android:textSize="13sp"
+            android:textColor="@color/study_text_secondary"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+
+</FrameLayout>
