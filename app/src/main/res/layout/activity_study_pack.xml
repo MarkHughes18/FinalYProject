@@ -127,7 +127,7 @@
         android:id="@+id/pagerCounterTV"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Card 1 of 1"
+        android:text="Item 1 of 1"
         android:textSize="14sp"
         android:textColor="@color/study_text_secondary"
         android:paddingBottom="10dp"
@@ -144,6 +144,48 @@
         android:id="@+id/studyPackRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:visibility="visible" />
 
+    <LinearLayout
+        android:id="@+id/matchingGameContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/matchingProgressTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Matched 0 of 0"
+            android:textSize="14sp"
+            android:textColor="@color/study_text_secondary"
+            android:paddingBottom="10dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/matchingUnmatchedRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never" />
+
+        <TextView
+            android:id="@+id/matchingDoneLabelTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Matched Pairs"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:textColor="@color/study_text_primary"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/matchingDoneRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:overScrollMode="never" />
+    </LinearLayout>
 </LinearLayout>
