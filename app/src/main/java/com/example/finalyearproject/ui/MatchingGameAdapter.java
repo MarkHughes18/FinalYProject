@@ -131,6 +131,8 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
             notifyDataSetChanged();
 
         } else {
+            notifyItemChanged(selectedLeftPos);
+            notifyItemChanged(selectedRightPos);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 clearSelection();
                 locked = false;
@@ -152,7 +154,7 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
     }
 
     private void setSelected(TextView tv) {
-        tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#D6E8FF")));
+        tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#90CAF9")));
     }
 
     @Override

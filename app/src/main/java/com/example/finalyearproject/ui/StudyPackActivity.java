@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,6 +48,13 @@ public class StudyPackActivity extends AppCompatActivity {
     private McqPagerAdapter mcqPagerAdapter;
     private TrueFalsePagerAdapter trueFalsePagerAdapter;
     private boolean pagerCallbackRegistered = false;
+    private LinearLayout matchingGameContainer;
+    private TextView matchingProgressTv;
+    private RecyclerView matchingUnmatchedRecyclerView;
+    private RecyclerView matchingDoneRecyclerView;
+    private MatchingGameAdapter matchingGameAdapter;
+    private MatchingDoneAdapter matchingDoneAdapter;
+    private final java.util.List<MatchingGameItem> matchedItems = new java.util.ArrayList<>();
     private String currentPagerMode = "";
 
     @Override
@@ -65,6 +73,13 @@ public class StudyPackActivity extends AppCompatActivity {
         btnMatching = findViewById(R.id.btnMatching);
         studyViewPager = findViewById(R.id.studyViewPager);
         pagerCounterTv = findViewById(R.id.pagerCounterTV);
+        matchingGameContainer = findViewById(R.id.matchingGameContainer);
+        matchingProgressTv = findViewById(R.id.matchingProgressTV);
+        matchingUnmatchedRecyclerView = findViewById(R.id.matchingUnmatchedRecyclerView);
+        matchingDoneRecyclerView = findViewById(R.id.matchingDoneRecyclerView);
+
+        matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         if (!pagerCallbackRegistered) {
             studyViewPager.registerOnPageChangeCallback(pageChangeCallback);
@@ -226,14 +241,52 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showMatching() {
         updateSelectedTab(btnMatching);
-        showRecyclerMode();
+        showMatchingGameMode();
+
         if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
             statusTv.setText("No matching pairs available.");
-            recyclerView.setAdapter(null);
+            matchingUnmatchedRecyclerView.setAdapter(null);
+            matchingDoneRecyclerView.setAdapter(null);
+            matchingProgressTv.setText("Matched 0 of 0");
             return;
         }
-        statusTv.setText("Matching: " + currentPack.matchingPairs.size());
-        recyclerView.setAdapter(new MatchingAdapter(currentPack.matchingPairs));
+
+        statusTv.setText("Matching • " + currentPack.matchingPairs.size() + " pairs");
+
+        java.util.List<MatchingGameItem> leftItems = new java.util.ArrayList<>();
+        java.util.List<MatchingGameItem> rightItems = new java.util.ArrayList<>();
+        matchedItems.clear();
+
+        for (int i = 0; i < currentPack.matchingPairs.size(); i++) {
+            StudyPackResponse.MatchingPair pair = currentPack.matchingPairs.get(i);
+            leftItems.add(new MatchingGameItem(pair.left, pair.right, i));
+            rightItems.add(new MatchingGameItem(pair.left, pair.right, i));
+        }
+
+        java.util.Collections.shuffle(rightItems);
+
+        matchingDoneAdapter = new MatchingDoneAdapter(matchedItems);
+        matchingDoneRecyclerView.setAdapter(matchingDoneAdapter);
+
+        matchingGameAdapter = new MatchingGameAdapter(leftItems, rightItems, item -> {
+            matchedItems.add(item);
+            matchingDoneAdapter.notifyItemInserted(matchedItems.size() - 1);
+            matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
+        });
+
+        matchingUnmatchedRecyclerView.setAdapter(matchingGameAdapter);
+        matchingProgressTv.setText("Matched 0 of " + currentPack.matchingPairs.size());
+    }
+
+    private void showMatchingGameMode() {
+        studyViewPager.setVisibility(View.GONE);
+        pagerCounterTv.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
+        matchingGameContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void hideMatchingGameMode() {
+        matchingGameContainer.setVisibility(View.GONE);
     }
 
     private void setButtonsEnabled(boolean enabled) {
@@ -264,12 +317,14 @@ public class StudyPackActivity extends AppCompatActivity {
         studyViewPager.setVisibility(View.VISIBLE);
         pagerCounterTv.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
+        matchingGameContainer.setVisibility(View.GONE);
     }
 
     private void showRecyclerMode() {
         studyViewPager.setVisibility(View.GONE);
         pagerCounterTv.setVisibility(View.GONE);
         recyclerView.setVisibility(View.VISIBLE);
+        matchingGameContainer.setVisibility(View.GONE);
     }
 
     private void updatePagerCounter(String label, int position, int total) {
