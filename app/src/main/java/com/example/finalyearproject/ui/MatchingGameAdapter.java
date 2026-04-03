@@ -30,7 +30,8 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
     private Integer selectedRightPairId = null;
     private int selectedLeftPos = -1;
     private int selectedRightPos = -1;
-
+    private boolean showWrongFeedback = false;
+    private boolean showCorrectFeedback = false;
     private boolean locked = false;
 
     public MatchingGameAdapter(List<MatchingGameItem> leftItems,
@@ -70,10 +71,23 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
         resetCard(tv);
 
         if (isLeft && position == selectedLeftPos) {
-            setSelected(tv);
+            if (showWrongFeedback) {
+                tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F44336")));
+            } else if (showCorrectFeedback) {
+                tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+            } else {
+                setSelected(tv);
+            }
         }
+
         if (!isLeft && position == selectedRightPos) {
-            setSelected(tv);
+            if (showWrongFeedback) {
+                tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F44336")));
+            } else if (showCorrectFeedback) {
+                tv.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+            } else {
+                setSelected(tv);
+            }
         }
 
         tv.setOnClickListener(v -> {
@@ -120,19 +134,37 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
             }
 
             if (matchedLeft != null && matchedRight != null) {
-                MatchingGameItem merged = new MatchingGameItem(matchedLeft.left, matchedRight.right, pairId);
-                leftItems.remove(matchedLeft);
-                rightItems.remove(matchedRight);
-                listener.onPairMatched(merged);
+                MatchingGameItem merged = new MatchingGameItem(
+                        matchedLeft.left,
+                        matchedRight.right,
+                        pairId
+                );
+
+                showCorrectFeedback = true;
+                notifyDataSetChanged();
+
+                MatchingGameItem finalMatchedLeft = matchedLeft;
+                MatchingGameItem finalMatchedRight = matchedRight;
+
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    leftItems.remove(finalMatchedLeft);
+                    rightItems.remove(finalMatchedRight);
+                    listener.onPairMatched(merged);
+
+                    clearSelection();
+                    locked = false;
+                    notifyDataSetChanged();
+                }, 300);
+            } else {
+                clearSelection();
+                locked = false;
+                notifyDataSetChanged();
             }
 
-            clearSelection();
-            locked = false;
+        } else {
+            showWrongFeedback = true;
             notifyDataSetChanged();
 
-        } else {
-            notifyItemChanged(selectedLeftPos);
-            notifyItemChanged(selectedRightPos);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 clearSelection();
                 locked = false;
@@ -146,6 +178,8 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
         selectedRightPairId = null;
         selectedLeftPos = -1;
         selectedRightPos = -1;
+        showWrongFeedback = false;
+        showCorrectFeedback = false;
     }
 
     private void resetCard(TextView tv) {
