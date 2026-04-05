@@ -18,28 +18,42 @@ public class StudyPackValidator {
             response = new ConceptPackResponse();
         }
 
-        Set<String> usedSnippets = new HashSet<>();
+        Map<String, Integer> snippetUsage = new HashMap<>();
 
         // Flashcards first
         List<FlashcardDto> flashcards = cleanFlashcards(
                 response.getFlashcards(),
                 settings.getFlashcardCount());
         response.setFlashcards(flashcards);
-        addFlashcardSnippetsToUsed(flashcards, usedSnippets);
+        addFlashcardSnippetsToUsage(flashcards, snippetUsage);
 
         // Cloze next, avoiding flashcard snippets
         List<ClozeQuestionDto> clozeQuestions = cleanCloze(
                 response.getClozeQuestions(),
                 settings.getClozeCount(),
-                usedSnippets);
+                snippetUsage, 1);
+
+        if (clozeQuestions.size() < settings.getClozeCount()) {
+            clozeQuestions = cleanCloze(
+                    response.getClozeQuestions(),
+                    settings.getClozeCount(),
+                    snippetUsage, 2);
+        }
         response.setClozeQuestions(clozeQuestions);
-        addClozeSnippetsToUsed(clozeQuestions, usedSnippets);
+        addClozeSnippetsToUsage(clozeQuestions, snippetUsage);
 
         // MCQ last, avoiding flashcard + cloze snippets
         List<McqQuestionDto> mcqQuestions = cleanMcq(
                 response.getMcqQuestions(),
                 settings.getMcqCount(),
-                usedSnippets);
+                snippetUsage, 1);
+
+        if (mcqQuestions.size() < settings.getMcqCount()) {
+            mcqQuestions = cleanMcq(
+                    response.getMcqQuestions(),
+                    settings.getMcqCount(),
+                    snippetUsage, 2);
+        }
         response.setMcqQuestions(mcqQuestions);
 
         return response;
@@ -106,14 +120,29 @@ public class StudyPackValidator {
         return out;
     }
 
-    private List<ClozeQuestionDto> cleanCloze(List<ClozeQuestionDto> items, int max, Set<String> usedSnippets) {
+    private void addFlashcardSnippetsToUsage(List<FlashcardDto> items, Map<String, Integer> snippetUsage) {
+        if (items == null) {
+            return;
+        }
+
+        for (FlashcardDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+
+            String key = normalizeText(item.getSourceSnippet());
+            snippetUsage.put(key, snippetUsage.getOrDefault(key, 0) + 1);
+        }
+    }
+
+    private List<ClozeQuestionDto> cleanCloze(List<ClozeQuestionDto> items, int max, Map<String, Integer> snippetUsage,
+            int maxReuse) {
         if (items == null)
             return new ArrayList<>();
 
         List<ClozeQuestionDto> out = new ArrayList<>();
         Set<String> seenSentences = new HashSet<>();
         Set<String> seenAnswers = new HashSet<>();
-        Map<String, Integer> snippetUsage = new HashMap<>();
 
         for (ClozeQuestionDto i : items) {
             if (i == null
@@ -127,7 +156,7 @@ public class StudyPackValidator {
             String answerKey = normalizeText(i.getAnswer());
             String snippetKey = normalizeText(i.getSourceSnippet());
 
-            if (usedSnippets.contains(snippetKey)) {
+            if (snippetUsage.getOrDefault(snippetKey, 0) >= maxReuse) {
                 continue;
             }
             if (!seenSentences.add(sentenceKey)) {
@@ -164,7 +193,23 @@ public class StudyPackValidator {
         return out;
     }
 
-    private List<McqQuestionDto> cleanMcq(List<McqQuestionDto> items, int max, Set<String> usedSnippets) {
+    private void addClozeSnippetsToUsage(List<ClozeQuestionDto> items, Map<String, Integer> snippetUsage) {
+        if (items == null) {
+            return;
+        }
+
+        for (ClozeQuestionDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+
+            String key = normalizeText(item.getSourceSnippet());
+            snippetUsage.put(key, snippetUsage.getOrDefault(key, 0) + 1);
+        }
+    }
+
+    private List<McqQuestionDto> cleanMcq(List<McqQuestionDto> items, int max, Map<String, Integer> snippetUsage,
+            int maxReuse) {
         if (items == null)
             return new ArrayList<>();
 
@@ -188,7 +233,7 @@ public class StudyPackValidator {
             String questionKey = normalizeText(i.getQuestion());
             String snippetKey = normalizeText(i.getSourceSnippet());
 
-            if (usedSnippets.contains(snippetKey)) {
+            if (snippetUsage.getOrDefault(snippetKey, 0) >= maxReuse) {
                 continue;
             }
 
