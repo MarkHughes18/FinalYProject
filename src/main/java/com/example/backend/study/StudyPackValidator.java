@@ -23,7 +23,7 @@ public class StudyPackValidator {
         // Flashcards first
         List<FlashcardDto> flashcards = cleanFlashcards(
                 response.getFlashcards(),
-                settings.getFlashcardCount());
+                Math.min(settings.getFlashcardCount(), 6));
         response.setFlashcards(flashcards);
         addFlashcardSnippetsToUsage(flashcards, snippetUsage);
 
@@ -33,11 +33,19 @@ public class StudyPackValidator {
                 settings.getClozeCount(),
                 snippetUsage, 1);
 
-        if (clozeQuestions.size() < settings.getClozeCount()) {
+        if (clozeQuestions.size() < 3) {
             clozeQuestions = cleanCloze(
                     response.getClozeQuestions(),
                     settings.getClozeCount(),
                     snippetUsage, 2);
+        }
+
+        if (clozeQuestions.size() < 2) {
+            clozeQuestions = cleanCloze(
+                    response.getClozeQuestions(),
+                    settings.getClozeCount(),
+                    new HashMap<>(), // ignore usage
+                    Integer.MAX_VALUE);
         }
         response.setClozeQuestions(clozeQuestions);
         addClozeSnippetsToUsage(clozeQuestions, snippetUsage);
@@ -48,11 +56,20 @@ public class StudyPackValidator {
                 settings.getMcqCount(),
                 snippetUsage, 1);
 
-        if (mcqQuestions.size() < settings.getMcqCount()) {
+        if (mcqQuestions.size() < 3) {
             mcqQuestions = cleanMcq(
                     response.getMcqQuestions(),
                     settings.getMcqCount(),
-                    snippetUsage, 2);
+                    snippetUsage,
+                    2);
+        }
+
+        if (mcqQuestions.size() < 2) {
+            mcqQuestions = cleanMcq(
+                    response.getMcqQuestions(),
+                    settings.getMcqCount(),
+                    new HashMap<>(),
+                    Integer.MAX_VALUE);
         }
         response.setMcqQuestions(mcqQuestions);
 
@@ -149,6 +166,18 @@ public class StudyPackValidator {
                     || !notBlank(i.getSentenceWithBlank())
                     || !notBlank(i.getAnswer())
                     || !notBlank(i.getSourceSnippet())) {
+                continue;
+            }
+
+            if (!hasSingleBlank(i.getSentenceWithBlank())) {
+                continue;
+            }
+
+            if (!isReasonableClozeAnswer(i.getAnswer())) {
+                continue;
+            }
+
+            if (!hasValidClozeChoices(i)) {
                 continue;
             }
 
@@ -404,6 +433,20 @@ public class StudyPackValidator {
         return containsAnswer;
     }
 
+    private boolean isReasonableClozeAnswer(String answer) {
+        if (!notBlank(answer)) {
+            return false;
+        }
+
+        String trimmed = answer.trim();
+
+        if (trimmed.length() > 40) {
+            return false;
+        }
+
+        return trimmed.split("\\s+").length <= 6;
+    }
+
     private boolean isWeakClozeAnswer(String answer) {
         if (!notBlank(answer)) {
             return true;
@@ -425,6 +468,7 @@ public class StudyPackValidator {
 
         String question = normalizeText(i.getQuestion());
         String explanation = normalizeText(i.getExplanation());
+        String correct = normalizeText(i.getOptions().get(i.getCorrectIndex()));
 
         if (question.length() < 12) {
             return true;
@@ -439,6 +483,14 @@ public class StudyPackValidator {
         }
 
         if (allOptionsTooSimilar(i.getOptions())) {
+            return true;
+        }
+
+        if (question.contains(correct)) {
+            return true;
+        }
+
+        if (question.startsWith("what is") && correct.length() < 10) {
             return true;
         }
 
@@ -572,6 +624,30 @@ public class StudyPackValidator {
         union.addAll(bWords);
 
         return (double) intersection.size() / union.size();
+    }
+
+    private boolean hasSingleBlank(String sentence) {
+        if (!notBlank(sentence)) {
+            return false;
+        }
+
+        int count = 0;
+        boolean inBlank = false;
+
+        for (int i = 0; i < sentence.length(); i++) {
+            char ch = sentence.charAt(i);
+
+            if (ch == '_') {
+                if (!inBlank) {
+                    count++;
+                    inBlank = true;
+                }
+            } else {
+                inBlank = false;
+            }
+        }
+
+        return count == 1;
     }
 
     private String normalizeText(String s) {
