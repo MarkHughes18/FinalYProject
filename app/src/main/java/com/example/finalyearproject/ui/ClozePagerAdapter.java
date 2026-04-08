@@ -13,10 +13,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.StudyPackResponse;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,15 +27,22 @@ import java.util.Set;
 public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.ClozeQuestion> items;
-
     // position -> selected option index
     private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
-
     // position -> generated/displayed options for consistency
     private final Map<Integer, List<String>> optionsCache = new HashMap<>();
+    private final StudySessionStats sessionStats;
+    private final Set<Integer> scoredPositions = new HashSet<>();
+    private final OnStatsChangedListener statsChangedListener;
 
-    public ClozePagerAdapter(List<StudyPackResponse.ClozeQuestion> items) {
+    public ClozePagerAdapter(List<StudyPackResponse.ClozeQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
         this.items = items;
+        this.sessionStats = sessionStats;
+        this.statsChangedListener = statsChangedListener;
+    }
+
+    public interface OnStatsChangedListener {
+        void onStatsChanged();
     }
 
     @NonNull
@@ -52,10 +61,10 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
 
         List<String> options = getOptionsForPosition(position, item);
 
-        bindOptionButton(holder.option1Btn, options, 0, position);
-        bindOptionButton(holder.option2Btn, options, 1, position);
-        bindOptionButton(holder.option3Btn, options, 2, position);
-        bindOptionButton(holder.option4Btn, options, 3, position);
+        bindOptionButton(holder.option1Btn, item, options, 0, position);
+        bindOptionButton(holder.option2Btn, item, options, 1, position);
+        bindOptionButton(holder.option3Btn, item, options, 2, position);
+        bindOptionButton(holder.option4Btn, item, options, 3, position);
 
         boolean alreadyAnswered = selectedAnswers.containsKey(position);
 
@@ -86,6 +95,11 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         } else {
             holder.resultTv.setVisibility(View.GONE);
             holder.answerTv.setVisibility(View.GONE);
+
+            resetButtonStyle(holder.option1Btn);
+            resetButtonStyle(holder.option2Btn);
+            resetButtonStyle(holder.option3Btn);
+            resetButtonStyle(holder.option4Btn);
 
             setButtonsEnabled(holder, true);
             holder.itemView.setOnClickListener(null);
@@ -151,7 +165,7 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         unique.add("Administrative planning");
     }
 
-    private void bindOptionButton(Button button,
+    private void bindOptionButton(Button button, StudyPackResponse.ClozeQuestion item,
                                   List<String> options,
                                   int optionIndex,
                                   int position) {
@@ -167,6 +181,8 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         button.setVisibility(View.VISIBLE);
         button.setText(text);
 
+        resetButtonStyle(button);
+
         if (selectedAnswers.containsKey(position)) {
             button.setOnClickListener(null);
             return;
@@ -174,6 +190,24 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
 
         button.setOnClickListener(v -> {
             selectedAnswers.put(position, optionIndex);
+
+            String selectedText = getOptionText(options, optionIndex);
+            String correctAnswer = item.answer != null ? item.answer : "";
+            boolean isCorrect = correctAnswer.equalsIgnoreCase(selectedText != null ? selectedText : "");
+
+            if (!scoredPositions.contains(position)) {
+                if (isCorrect) {
+                    sessionStats.getClozeStats().recordCorrect();
+                } else {
+                    sessionStats.getClozeStats().recordIncorrect();
+                }
+
+                scoredPositions.add(position);
+
+                if (statsChangedListener != null) {
+                    statsChangedListener.onStatsChanged();
+                }
+            }
             notifyItemChanged(position);
         });
     }

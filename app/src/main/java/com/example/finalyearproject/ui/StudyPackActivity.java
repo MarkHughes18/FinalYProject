@@ -194,7 +194,7 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("Cloze • " + currentPack.clozeQuestions.size() + " questions");
         showPagerMode();
 
-        clozePagerAdapter = new ClozePagerAdapter(currentPack.clozeQuestions);
+        clozePagerAdapter = new ClozePagerAdapter(currentPack.clozeQuestions, sessionStats, this::refreshStatsUi);
         studyViewPager.setAdapter(clozePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
