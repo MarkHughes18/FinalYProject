@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.List;
 
@@ -20,12 +21,13 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
 
     public interface Listener {
         void onPairMatched(MatchingGameItem item);
+        void onStatsChanged();
     }
 
     private final List<MatchingGameItem> leftItems;
     private final List<MatchingGameItem> rightItems;
     private final Listener listener;
-
+    private final StudySessionStats sessionStats;
     private Integer selectedLeftPairId = null;
     private Integer selectedRightPairId = null;
     private int selectedLeftPos = -1;
@@ -36,9 +38,10 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
 
     public MatchingGameAdapter(List<MatchingGameItem> leftItems,
                                List<MatchingGameItem> rightItems,
-                               Listener listener) {
+                               StudySessionStats sessionStats, Listener listener) {
         this.leftItems = leftItems;
         this.rightItems = rightItems;
+        this.sessionStats = sessionStats;
         this.listener = listener;
     }
 
@@ -140,6 +143,9 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
                         pairId
                 );
 
+                sessionStats.getMatchingStats().recordCorrect();
+                listener.onStatsChanged();
+
                 showCorrectFeedback = true;
                 notifyDataSetChanged();
 
@@ -162,6 +168,9 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
             }
 
         } else {
+            sessionStats.getMatchingStats().recordIncorrect();
+            listener.onStatsChanged();
+
             showWrongFeedback = true;
             notifyDataSetChanged();
 

@@ -46,6 +46,10 @@ public class StudyPackActivity extends AppCompatActivity {
     private StudyPackResponse currentPack;
     private ViewPager2 studyViewPager;
     private TextView pagerCounterTv;
+    private TextView statsAttemptedTv;
+    private TextView statsCorrectTv;
+    private TextView statsIncorrectTv;
+    private TextView statsAccuracyTv;
     private FlashcardPagerAdapter flashcardPagerAdapter;
     private ClozePagerAdapter clozePagerAdapter;
     private McqPagerAdapter mcqPagerAdapter;
@@ -81,6 +85,10 @@ public class StudyPackActivity extends AppCompatActivity {
         matchingProgressTv = findViewById(R.id.matchingProgressTV);
         matchingUnmatchedRecyclerView = findViewById(R.id.matchingUnmatchedRecyclerView);
         matchingDoneRecyclerView = findViewById(R.id.matchingDoneRecyclerView);
+        statsAttemptedTv = findViewById(R.id.statsAttemptedTv);
+        statsCorrectTv = findViewById(R.id.statsCorrectTv);
+        statsIncorrectTv = findViewById(R.id.statsIncorrectTv);
+        statsAccuracyTv = findViewById(R.id.statsAccuracyTv);
 
         matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -115,6 +123,7 @@ public class StudyPackActivity extends AppCompatActivity {
         }
 
         loadStudyPack();
+        refreshStatsUi();
     }
 
     private void loadStudyPack() {
@@ -257,8 +266,8 @@ public class StudyPackActivity extends AppCompatActivity {
 
         statusTv.setText("Matching • " + currentPack.matchingPairs.size() + " pairs");
 
-        java.util.List<MatchingGameItem> leftItems = new java.util.ArrayList<>();
-        java.util.List<MatchingGameItem> rightItems = new java.util.ArrayList<>();
+        List<MatchingGameItem> leftItems = new ArrayList<>();
+        List<MatchingGameItem> rightItems = new ArrayList<>();
         matchedItems.clear();
 
         for (int i = 0; i < currentPack.matchingPairs.size(); i++) {
@@ -272,11 +281,24 @@ public class StudyPackActivity extends AppCompatActivity {
         matchingDoneAdapter = new MatchingDoneAdapter(matchedItems);
         matchingDoneRecyclerView.setAdapter(matchingDoneAdapter);
 
-        matchingGameAdapter = new MatchingGameAdapter(leftItems, rightItems, item -> {
-            matchedItems.add(item);
-            matchingDoneAdapter.notifyItemInserted(matchedItems.size() - 1);
-            matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
-        });
+        matchingGameAdapter = new MatchingGameAdapter(
+                leftItems,
+                rightItems,
+                sessionStats,
+                new MatchingGameAdapter.Listener() {
+                    @Override
+                    public void onPairMatched(MatchingGameItem item) {
+                        matchedItems.add(item);
+                        matchingDoneAdapter.notifyItemInserted(matchedItems.size() - 1);
+                        matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
+                    }
+
+                    @Override
+                    public void onStatsChanged() {
+                        refreshStatsUi();
+                    }
+                }
+        );
 
         matchingUnmatchedRecyclerView.setAdapter(matchingGameAdapter);
         matchingProgressTv.setText("Matched 0 of " + currentPack.matchingPairs.size());
@@ -318,12 +340,10 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void refreshStatsUi() {
-        String stats = "Attempted: " + sessionStats.getTotalAttempted()
-                + " | Correct: " + sessionStats.getTotalCorrect()
-                + " | Incorrect: " + sessionStats.getTotalIncorrect()
-                + " | Accuracy: " + sessionStats.getOverallAccuracyPercent() + "%";
-
-        statusTv.setText(stats);
+        statsAttemptedTv.setText(String.valueOf(sessionStats.getTotalAttempted()));
+        statsCorrectTv.setText(String.valueOf(sessionStats.getTotalCorrect()));
+        statsIncorrectTv.setText(String.valueOf(sessionStats.getTotalIncorrect()));
+        statsAccuracyTv.setText(sessionStats.getOverallAccuracyPercent() + "%");
     }
 
     private void showPagerMode() {
