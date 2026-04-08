@@ -2,6 +2,7 @@ package com.example.finalyearproject.ui;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -50,6 +51,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private TextView statsCorrectTv;
     private TextView statsIncorrectTv;
     private TextView statsAccuracyTv;
+    private View statsBarLayout;
     private FlashcardPagerAdapter flashcardPagerAdapter;
     private ClozePagerAdapter clozePagerAdapter;
     private McqPagerAdapter mcqPagerAdapter;
@@ -89,6 +91,7 @@ public class StudyPackActivity extends AppCompatActivity {
         statsCorrectTv = findViewById(R.id.statsCorrectTv);
         statsIncorrectTv = findViewById(R.id.statsIncorrectTv);
         statsAccuracyTv = findViewById(R.id.statsAccuracyTv);
+        statsBarLayout = findViewById(R.id.statsBarLayout);
 
         matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -143,6 +146,15 @@ public class StudyPackActivity extends AppCompatActivity {
 
                 if (response.isSuccessful() && response.body() != null) {
                     currentPack = response.body();
+
+                    flashcardPagerAdapter = null;
+                    clozePagerAdapter = null;
+                    mcqPagerAdapter = null;
+                    trueFalsePagerAdapter = null;
+                    matchingGameAdapter = null;
+                    matchingDoneAdapter = null;
+                    matchedItems.clear();
+
                     statusTv.setText("Study Pack Loaded");
                     setButtonsEnabled(true);
                     showFlashcards();
@@ -169,6 +181,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showFlashcards() {
         updateSelectedTab(btnFlashcards);
         currentPagerMode = "flashcards";
+        refreshStatsUi();
 
         if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
             statusTv.setText("No flashcards available.");
@@ -181,7 +194,9 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("Flashcards • " + currentPack.flashcards.size() + " cards");
         showPagerMode();
 
-        flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards);
+        if (flashcardPagerAdapter == null){
+            flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards);
+        }
         studyViewPager.setAdapter(flashcardPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
@@ -191,6 +206,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showCloze() {
         updateSelectedTab(btnCloze);
         currentPagerMode = "cloze";
+        refreshStatsUi();
 
         if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
             statusTv.setText("No cloze questions available.");
@@ -203,7 +219,9 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("Cloze • " + currentPack.clozeQuestions.size() + " questions");
         showPagerMode();
 
-        clozePagerAdapter = new ClozePagerAdapter(currentPack.clozeQuestions, sessionStats, this::refreshStatsUi);
+        if (clozePagerAdapter == null){
+            clozePagerAdapter = new ClozePagerAdapter(currentPack.clozeQuestions, sessionStats, this::refreshStatsUi);
+        }
         studyViewPager.setAdapter(clozePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
@@ -213,6 +231,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showTrueFalse() {
         updateSelectedTab(btnTrueFalse);
         currentPagerMode = "truefalse";
+        refreshStatsUi();
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
             studyViewPager.setAdapter(null);
@@ -223,7 +242,9 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("True/False: " + currentPack.trueFalseQuestions.size());
         showPagerMode();
 
-        trueFalsePagerAdapter = new TrueFalsePagerAdapter(currentPack.trueFalseQuestions, sessionStats, this::refreshStatsUi);
+        if (trueFalsePagerAdapter == null){
+            trueFalsePagerAdapter = new TrueFalsePagerAdapter(currentPack.trueFalseQuestions, sessionStats, this::refreshStatsUi);
+        }
         studyViewPager.setAdapter(trueFalsePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
@@ -233,6 +254,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showMcq() {
         updateSelectedTab(btnMcq);
         currentPagerMode = "mcq";
+        refreshStatsUi();
 
         if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
             statusTv.setText("No MCQ questions available.");
@@ -245,7 +267,9 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("MCQ • " + currentPack.mcqQuestions.size() + " questions");
         showPagerMode();
 
-        mcqPagerAdapter = new McqPagerAdapter(currentPack.mcqQuestions, sessionStats, this::refreshStatsUi);
+        if (mcqPagerAdapter == null){
+            mcqPagerAdapter = new McqPagerAdapter(currentPack.mcqQuestions, sessionStats, this::refreshStatsUi);
+        }
         studyViewPager.setAdapter(mcqPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
@@ -254,6 +278,8 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private void showMatching() {
         updateSelectedTab(btnMatching);
+        currentPagerMode = "matching";
+        refreshStatsUi();
         showMatchingGameMode();
 
         if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
@@ -266,42 +292,45 @@ public class StudyPackActivity extends AppCompatActivity {
 
         statusTv.setText("Matching • " + currentPack.matchingPairs.size() + " pairs");
 
-        List<MatchingGameItem> leftItems = new ArrayList<>();
-        List<MatchingGameItem> rightItems = new ArrayList<>();
-        matchedItems.clear();
+        if (matchingGameAdapter == null || matchingDoneAdapter == null) {
+            List<MatchingGameItem> leftItems = new ArrayList<>();
+            List<MatchingGameItem> rightItems = new ArrayList<>();
+            matchedItems.clear();
 
-        for (int i = 0; i < currentPack.matchingPairs.size(); i++) {
-            StudyPackResponse.MatchingPair pair = currentPack.matchingPairs.get(i);
-            leftItems.add(new MatchingGameItem(pair.left, pair.right, i));
-            rightItems.add(new MatchingGameItem(pair.left, pair.right, i));
+            for (int i = 0; i < currentPack.matchingPairs.size(); i++) {
+                StudyPackResponse.MatchingPair pair = currentPack.matchingPairs.get(i);
+                leftItems.add(new MatchingGameItem(pair.left, pair.right, i));
+                rightItems.add(new MatchingGameItem(pair.left, pair.right, i));
+            }
+
+            Collections.shuffle(rightItems);
+
+            matchingDoneAdapter = new MatchingDoneAdapter(matchedItems);
+            matchingDoneRecyclerView.setAdapter(matchingDoneAdapter);
+
+            matchingGameAdapter = new MatchingGameAdapter(
+                    leftItems,
+                    rightItems,
+                    sessionStats,
+                    new MatchingGameAdapter.Listener() {
+                        @Override
+                        public void onPairMatched(MatchingGameItem item) {
+                            matchedItems.add(item);
+                            matchingDoneAdapter.notifyItemInserted(matchedItems.size() - 1);
+                            matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
+                        }
+
+                        @Override
+                        public void onStatsChanged() {
+                            refreshStatsUi();
+                        }
+                    }
+            );
         }
 
-        java.util.Collections.shuffle(rightItems);
-
-        matchingDoneAdapter = new MatchingDoneAdapter(matchedItems);
-        matchingDoneRecyclerView.setAdapter(matchingDoneAdapter);
-
-        matchingGameAdapter = new MatchingGameAdapter(
-                leftItems,
-                rightItems,
-                sessionStats,
-                new MatchingGameAdapter.Listener() {
-                    @Override
-                    public void onPairMatched(MatchingGameItem item) {
-                        matchedItems.add(item);
-                        matchingDoneAdapter.notifyItemInserted(matchedItems.size() - 1);
-                        matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
-                    }
-
-                    @Override
-                    public void onStatsChanged() {
-                        refreshStatsUi();
-                    }
-                }
-        );
-
         matchingUnmatchedRecyclerView.setAdapter(matchingGameAdapter);
-        matchingProgressTv.setText("Matched 0 of " + currentPack.matchingPairs.size());
+        matchingDoneRecyclerView.setAdapter(matchingDoneAdapter);
+        matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
     }
 
     private void showMatchingGameMode() {
@@ -340,10 +369,59 @@ public class StudyPackActivity extends AppCompatActivity {
     }
 
     private void refreshStatsUi() {
-        statsAttemptedTv.setText(String.valueOf(sessionStats.getTotalAttempted()));
-        statsCorrectTv.setText(String.valueOf(sessionStats.getTotalCorrect()));
-        statsIncorrectTv.setText(String.valueOf(sessionStats.getTotalIncorrect()));
-        statsAccuracyTv.setText(sessionStats.getOverallAccuracyPercent() + "%");
+        if (statsBarLayout == null) {
+            return;
+        }
+
+        if ("flashcards".equals(currentPagerMode)) {
+            statsBarLayout.setVisibility(View.GONE);
+            return;
+        }
+
+        statsBarLayout.setVisibility(View.VISIBLE);
+
+        int attempted = 0;
+        int correct = 0;
+        int incorrect = 0;
+        int accuracy = 0;
+
+        if ("mcq".equals(currentPagerMode)) {
+            attempted = sessionStats.getMcqStats().getAttempted();
+            correct = sessionStats.getMcqStats().getCorrect();
+            incorrect = sessionStats.getMcqStats().getIncorrect();
+            accuracy = sessionStats.getMcqStats().getAccuracyPercent();
+
+        } else if ("cloze".equals(currentPagerMode)) {
+            attempted = sessionStats.getClozeStats().getAttempted();
+            correct = sessionStats.getClozeStats().getCorrect();
+            incorrect = sessionStats.getClozeStats().getIncorrect();
+            accuracy = sessionStats.getClozeStats().getAccuracyPercent();
+
+        } else if ("truefalse".equals(currentPagerMode)) {
+            attempted = sessionStats.getTrueFalseStats().getAttempted();
+            correct = sessionStats.getTrueFalseStats().getCorrect();
+            incorrect = sessionStats.getTrueFalseStats().getIncorrect();
+            accuracy = sessionStats.getTrueFalseStats().getAccuracyPercent();
+
+        } else if ("matching".equals(currentPagerMode)) {
+            attempted = sessionStats.getMatchingStats().getAttempted();
+            correct = sessionStats.getMatchingStats().getCorrect();
+            incorrect = sessionStats.getMatchingStats().getIncorrect();
+            accuracy = sessionStats.getMatchingStats().getAccuracyPercent();
+        }
+
+        if (accuracy >= 80) {
+            statsAccuracyTv.setTextColor(Color.parseColor("#4CAF50")); // green
+        } else if (accuracy >= 50) {
+            statsAccuracyTv.setTextColor(Color.parseColor("#FFC107")); // amber
+        } else {
+            statsAccuracyTv.setTextColor(Color.parseColor("#F44336")); // red
+        }
+
+        statsAttemptedTv.setText(String.valueOf(attempted));
+        statsCorrectTv.setText(String.valueOf(correct));
+        statsIncorrectTv.setText(String.valueOf(incorrect));
+        statsAccuracyTv.setText(accuracy + "%");
     }
 
     private void showPagerMode() {
