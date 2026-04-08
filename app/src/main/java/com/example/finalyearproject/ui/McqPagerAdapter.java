@@ -13,20 +13,31 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.StudyPackResponse;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.McqQuestion> items;
-
+    private final StudySessionStats sessionStats;
+    private final Set<Integer> scoredPositions = new HashSet<>();
+    private final OnStatsChangedListener statsChangedListener;
     // position -> selected option index
     private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
 
-    public McqPagerAdapter(List<StudyPackResponse.McqQuestion> items) {
+    public McqPagerAdapter(List<StudyPackResponse.McqQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
         this.items = items;
+        this.sessionStats = sessionStats;
+        this.statsChangedListener = statsChangedListener;
+    }
+
+    public interface OnStatsChangedListener {
+        void onStatsChanged();
     }
 
     @NonNull
@@ -52,7 +63,7 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
 
         if (alreadyAnswered) {
             int selectedIndex = selectedAnswers.get(position);
-            boolean correct = selectedIndex == item.correctIndex;
+            boolean correct = item.correctIndex >= 0 && selectedIndex == item.correctIndex;
 
             holder.resultTv.setVisibility(View.VISIBLE);
             holder.answerTv.setVisibility(View.VISIBLE);
@@ -71,12 +82,11 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
                 notifyItemChanged(position);
             });
 
-            if (alreadyAnswered) {
-                highlightButton(holder.option1Btn, item, 0, selectedIndex);
-                highlightButton(holder.option2Btn, item, 1, selectedIndex);
-                highlightButton(holder.option3Btn, item, 2, selectedIndex);
-                highlightButton(holder.option4Btn, item, 3, selectedIndex);
-            }
+            highlightButton(holder.option1Btn, item, 0, selectedIndex);
+            highlightButton(holder.option2Btn, item, 1, selectedIndex);
+            highlightButton(holder.option3Btn, item, 2, selectedIndex);
+            highlightButton(holder.option4Btn, item, 3, selectedIndex);
+
 
         } else {
             holder.resultTv.setVisibility(View.GONE);
@@ -115,6 +125,23 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
 
         button.setOnClickListener(v -> {
             selectedAnswers.put(position, optionIndex);
+
+            boolean isCorrect = item.correctIndex >= 0 && optionIndex == item.correctIndex;
+
+            if (!scoredPositions.contains(position)) {
+                if (isCorrect) {
+                    sessionStats.getMcqStats().recordCorrect();
+                } else {
+                    sessionStats.getMcqStats().recordIncorrect();
+                }
+
+                scoredPositions.add(position);
+
+                if (statsChangedListener != null) {
+                    statsChangedListener.onStatsChanged();
+                }
+            }
+
             notifyItemChanged(position);
         });
     }

@@ -21,10 +21,13 @@ import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.RetrofitClient;
 import com.example.finalyearproject.data.StudyPackResponse;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import java.util.*;
 
 public class StudyPackActivity extends AppCompatActivity {
 
@@ -54,7 +57,8 @@ public class StudyPackActivity extends AppCompatActivity {
     private RecyclerView matchingDoneRecyclerView;
     private MatchingGameAdapter matchingGameAdapter;
     private MatchingDoneAdapter matchingDoneAdapter;
-    private final java.util.List<MatchingGameItem> matchedItems = new java.util.ArrayList<>();
+    private final List<MatchingGameItem> matchedItems = new ArrayList<>();
+    private final StudySessionStats sessionStats = new StudySessionStats();
     private String currentPagerMode = "";
 
     @Override
@@ -232,7 +236,7 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("MCQ • " + currentPack.mcqQuestions.size() + " questions");
         showPagerMode();
 
-        mcqPagerAdapter = new McqPagerAdapter(currentPack.mcqQuestions);
+        mcqPagerAdapter = new McqPagerAdapter(currentPack.mcqQuestions, sessionStats, this::refreshStatsUi);
         studyViewPager.setAdapter(mcqPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 
@@ -311,6 +315,15 @@ public class StudyPackActivity extends AppCompatActivity {
                 ));
             }
         }
+    }
+
+    private void refreshStatsUi() {
+        String stats = "Attempted: " + sessionStats.getTotalAttempted()
+                + " | Correct: " + sessionStats.getTotalCorrect()
+                + " | Incorrect: " + sessionStats.getTotalIncorrect()
+                + " | Accuracy: " + sessionStats.getOverallAccuracyPercent() + "%";
+
+        statusTv.setText(stats);
     }
 
     private void showPagerMode() {

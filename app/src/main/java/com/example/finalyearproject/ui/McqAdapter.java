@@ -11,19 +11,30 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.StudyPackResponse;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class McqAdapter extends RecyclerView.Adapter<McqAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.McqQuestion> items;
     // position -> selected option index
     private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
-
-    public McqAdapter(List<StudyPackResponse.McqQuestion> items) {
+    private final StudySessionStats sessionStats;
+    private final Set<Integer> scoredPositions = new HashSet<>();
+    private final OnStatsChangedListener statsChangedListener;
+    public McqAdapter(List<StudyPackResponse.McqQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
         this.items = items;
+        this.sessionStats = sessionStats;
+        this.statsChangedListener = statsChangedListener;
+    }
+
+    public interface OnStatsChangedListener {
+        void onStatsChanged();
     }
 
     @NonNull
