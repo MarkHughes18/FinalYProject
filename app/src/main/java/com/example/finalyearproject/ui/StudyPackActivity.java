@@ -206,7 +206,7 @@ public class StudyPackActivity extends AppCompatActivity {
         currentPagerMode = "truefalse";
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
-            recyclerView.setAdapter(null);
+            studyViewPager.setAdapter(null);
             showPagerMode();
             pagerCounterTv.setText("Question 0 of 0");
             return;
@@ -214,7 +214,7 @@ public class StudyPackActivity extends AppCompatActivity {
         statusTv.setText("True/False: " + currentPack.trueFalseQuestions.size());
         showPagerMode();
 
-        trueFalsePagerAdapter = new TrueFalsePagerAdapter(currentPack.trueFalseQuestions);
+        trueFalsePagerAdapter = new TrueFalsePagerAdapter(currentPack.trueFalseQuestions, sessionStats, this::refreshStatsUi);
         studyViewPager.setAdapter(trueFalsePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
 

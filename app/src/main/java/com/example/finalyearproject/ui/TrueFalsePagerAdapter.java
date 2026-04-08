@@ -13,20 +13,31 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.StudyPackResponse;
+import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.TrueFalseQuestion> items;
-
     // position -> user's selected answer
     private final Map<Integer, Boolean> selectedAnswers = new HashMap<>();
+    private final StudySessionStats sessionStats;
+    private final Set<Integer> scoredPositions = new HashSet<>();
+    private final OnStatsChangedListener statsChangedListener;
 
-    public TrueFalsePagerAdapter(List<StudyPackResponse.TrueFalseQuestion> items) {
+    public TrueFalsePagerAdapter(List<StudyPackResponse.TrueFalseQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
         this.items = items;
+        this.sessionStats = sessionStats;
+        this.statsChangedListener = statsChangedListener;
+    }
+
+    public interface OnStatsChangedListener {
+        void onStatsChanged();
     }
 
     @NonNull
@@ -80,11 +91,45 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
             holder.trueBtn.setOnClickListener(v -> {
                 selectedAnswers.put(position, true);
+
+                boolean isCorrect = item.answer;
+
+                if (!scoredPositions.contains(position)) {
+                    if (isCorrect) {
+                        sessionStats.getTrueFalseStats().recordCorrect();
+                    } else {
+                        sessionStats.getTrueFalseStats().recordIncorrect();
+                    }
+
+                    scoredPositions.add(position);
+
+                    if (statsChangedListener != null) {
+                        statsChangedListener.onStatsChanged();
+                    }
+                }
+
                 notifyItemChanged(position);
             });
 
             holder.falseBtn.setOnClickListener(v -> {
                 selectedAnswers.put(position, false);
+
+                boolean isCorrect = !item.answer;
+
+                if (!scoredPositions.contains(position)) {
+                    if (isCorrect) {
+                        sessionStats.getTrueFalseStats().recordCorrect();
+                    } else {
+                        sessionStats.getTrueFalseStats().recordIncorrect();
+                    }
+
+                    scoredPositions.add(position);
+
+                    if (statsChangedListener != null) {
+                        statsChangedListener.onStatsChanged();
+                    }
+                }
+
                 notifyItemChanged(position);
             });
 
