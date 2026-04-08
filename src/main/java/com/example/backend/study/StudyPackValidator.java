@@ -18,9 +18,60 @@ public class StudyPackValidator {
             response = new ConceptPackResponse();
         }
 
-        response.setFlashcards(cleanFlashcards(response.getFlashcards(), settings.getFlashcardCount()));
-        response.setClozeQuestions(cleanCloze(response.getClozeQuestions(), settings.getClozeCount()));
-        response.setMcqQuestions(cleanMcq(response.getMcqQuestions(), settings.getMcqCount()));
+        Map<String, Integer> snippetUsage = new HashMap<>();
+
+        // Flashcards first
+        List<FlashcardDto> flashcards = cleanFlashcards(
+                response.getFlashcards(),
+                Math.min(settings.getFlashcardCount(), 6));
+        response.setFlashcards(flashcards);
+        addFlashcardSnippetsToUsage(flashcards, snippetUsage);
+
+        // Cloze next, avoiding flashcard snippets
+        List<ClozeQuestionDto> clozeQuestions = cleanCloze(
+                response.getClozeQuestions(),
+                settings.getClozeCount(),
+                snippetUsage, 1);
+
+        if (clozeQuestions.size() < 3) {
+            clozeQuestions = cleanCloze(
+                    response.getClozeQuestions(),
+                    settings.getClozeCount(),
+                    snippetUsage, 2);
+        }
+
+        if (clozeQuestions.size() < 2) {
+            clozeQuestions = cleanCloze(
+                    response.getClozeQuestions(),
+                    settings.getClozeCount(),
+                    new HashMap<>(), // ignore usage
+                    Integer.MAX_VALUE);
+        }
+        response.setClozeQuestions(clozeQuestions);
+        addClozeSnippetsToUsage(clozeQuestions, snippetUsage);
+
+        // MCQ last, avoiding flashcard + cloze snippets
+        List<McqQuestionDto> mcqQuestions = cleanMcq(
+                response.getMcqQuestions(),
+                settings.getMcqCount(),
+                snippetUsage, 1);
+
+        if (mcqQuestions.size() < 3) {
+            mcqQuestions = cleanMcq(
+                    response.getMcqQuestions(),
+                    settings.getMcqCount(),
+                    snippetUsage,
+                    2);
+        }
+
+        if (mcqQuestions.size() < 2) {
+            mcqQuestions = cleanMcq(
+                    response.getMcqQuestions(),
+                    settings.getMcqCount(),
+                    new HashMap<>(),
+                    Integer.MAX_VALUE);
+        }
+        response.setMcqQuestions(mcqQuestions);
 
         return response;
     }
@@ -86,14 +137,29 @@ public class StudyPackValidator {
         return out;
     }
 
-    private List<ClozeQuestionDto> cleanCloze(List<ClozeQuestionDto> items, int max) {
+    private void addFlashcardSnippetsToUsage(List<FlashcardDto> items, Map<String, Integer> snippetUsage) {
+        if (items == null) {
+            return;
+        }
+
+        for (FlashcardDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+
+            String key = normalizeText(item.getSourceSnippet());
+            snippetUsage.put(key, snippetUsage.getOrDefault(key, 0) + 1);
+        }
+    }
+
+    private List<ClozeQuestionDto> cleanCloze(List<ClozeQuestionDto> items, int max, Map<String, Integer> snippetUsage,
+            int maxReuse) {
         if (items == null)
             return new ArrayList<>();
 
         List<ClozeQuestionDto> out = new ArrayList<>();
         Set<String> seenSentences = new HashSet<>();
         Set<String> seenAnswers = new HashSet<>();
-        Map<String, Integer> snippetUsage = new HashMap<>();
 
         for (ClozeQuestionDto i : items) {
             if (i == null
@@ -103,10 +169,25 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (!hasSingleBlank(i.getSentenceWithBlank())) {
+                continue;
+            }
+
+            if (!isReasonableClozeAnswer(i.getAnswer())) {
+                continue;
+            }
+
+            if (!hasValidClozeChoices(i)) {
+                continue;
+            }
+
             String sentenceKey = normalizeText(i.getSentenceWithBlank());
             String answerKey = normalizeText(i.getAnswer());
             String snippetKey = normalizeText(i.getSourceSnippet());
 
+            if (snippetUsage.getOrDefault(snippetKey, 0) >= maxReuse) {
+                continue;
+            }
             if (!seenSentences.add(sentenceKey)) {
                 continue;
             }
@@ -125,6 +206,10 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (!hasValidClozeChoices(i)) {
+                continue;
+            }
+
             seenAnswers.add(answerKey);
             snippetUsage.put(snippetKey, snippetUsage.getOrDefault(snippetKey, 0) + 1);
             out.add(i);
@@ -137,7 +222,23 @@ public class StudyPackValidator {
         return out;
     }
 
-    private List<McqQuestionDto> cleanMcq(List<McqQuestionDto> items, int max) {
+    private void addClozeSnippetsToUsage(List<ClozeQuestionDto> items, Map<String, Integer> snippetUsage) {
+        if (items == null) {
+            return;
+        }
+
+        for (ClozeQuestionDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+
+            String key = normalizeText(item.getSourceSnippet());
+            snippetUsage.put(key, snippetUsage.getOrDefault(key, 0) + 1);
+        }
+    }
+
+    private List<McqQuestionDto> cleanMcq(List<McqQuestionDto> items, int max, Map<String, Integer> snippetUsage,
+            int maxReuse) {
         if (items == null)
             return new ArrayList<>();
 
@@ -160,6 +261,10 @@ public class StudyPackValidator {
 
             String questionKey = normalizeText(i.getQuestion());
             String snippetKey = normalizeText(i.getSourceSnippet());
+
+            if (snippetUsage.getOrDefault(snippetKey, 0) >= maxReuse) {
+                continue;
+            }
 
             if (!seenQuestions.add(questionKey)) {
                 continue;
@@ -231,6 +336,32 @@ public class StudyPackValidator {
         return s != null && !s.isBlank();
     }
 
+    private void addFlashcardSnippetsToUsed(List<FlashcardDto> items, Set<String> usedSnippets) {
+        if (items == null) {
+            return;
+        }
+
+        for (FlashcardDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+            usedSnippets.add(normalizeText(item.getSourceSnippet()));
+        }
+    }
+
+    private void addClozeSnippetsToUsed(List<ClozeQuestionDto> items, Set<String> usedSnippets) {
+        if (items == null) {
+            return;
+        }
+
+        for (ClozeQuestionDto item : items) {
+            if (item == null || !notBlank(item.getSourceSnippet())) {
+                continue;
+            }
+            usedSnippets.add(normalizeText(item.getSourceSnippet()));
+        }
+    }
+
     private boolean hasValidMcqOptions(List<String> options) {
         if (options == null || options.size() != 4) {
             return false;
@@ -270,6 +401,52 @@ public class StudyPackValidator {
         return true;
     }
 
+    private boolean hasValidClozeChoices(ClozeQuestionDto i) {
+        if (i == null || i.getChoices() == null || i.getChoices().size() != 4) {
+            return false;
+        }
+
+        String answer = normalizeText(i.getAnswer());
+        if (!notBlank(answer)) {
+            return false;
+        }
+
+        Set<String> seen = new HashSet<>();
+        boolean containsAnswer = false;
+
+        for (String choice : i.getChoices()) {
+            if (!notBlank(choice)) {
+                return false;
+            }
+
+            String normalizedChoice = normalizeText(choice);
+
+            if (!seen.add(normalizedChoice)) {
+                return false;
+            }
+
+            if (normalizedChoice.equals(answer)) {
+                containsAnswer = true;
+            }
+        }
+
+        return containsAnswer;
+    }
+
+    private boolean isReasonableClozeAnswer(String answer) {
+        if (!notBlank(answer)) {
+            return false;
+        }
+
+        String trimmed = answer.trim();
+
+        if (trimmed.length() > 40) {
+            return false;
+        }
+
+        return trimmed.split("\\s+").length <= 6;
+    }
+
     private boolean isWeakClozeAnswer(String answer) {
         if (!notBlank(answer)) {
             return true;
@@ -291,6 +468,7 @@ public class StudyPackValidator {
 
         String question = normalizeText(i.getQuestion());
         String explanation = normalizeText(i.getExplanation());
+        String correct = normalizeText(i.getOptions().get(i.getCorrectIndex()));
 
         if (question.length() < 12) {
             return true;
@@ -305,6 +483,14 @@ public class StudyPackValidator {
         }
 
         if (allOptionsTooSimilar(i.getOptions())) {
+            return true;
+        }
+
+        if (question.contains(correct)) {
+            return true;
+        }
+
+        if (question.startsWith("what is") && correct.length() < 10) {
             return true;
         }
 
@@ -438,6 +624,30 @@ public class StudyPackValidator {
         union.addAll(bWords);
 
         return (double) intersection.size() / union.size();
+    }
+
+    private boolean hasSingleBlank(String sentence) {
+        if (!notBlank(sentence)) {
+            return false;
+        }
+
+        int count = 0;
+        boolean inBlank = false;
+
+        for (int i = 0; i < sentence.length(); i++) {
+            char ch = sentence.charAt(i);
+
+            if (ch == '_') {
+                if (!inBlank) {
+                    count++;
+                    inBlank = true;
+                }
+            } else {
+                inBlank = false;
+            }
+        }
+
+        return count == 1;
     }
 
     private String normalizeText(String s) {
