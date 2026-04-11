@@ -126,8 +126,11 @@ public class HomeFragment extends Fragment {
     // Helpers
 
     private String getLoggedInEmail() {
-        SharedPreferences prefs =
-                requireActivity().getSharedPreferences("auth", Context.MODE_PRIVATE);
+        Context context = getContext();
+        if (context == null) {
+            return null;
+        }
+        SharedPreferences prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE);
         return prefs.getString("email", null);
     }
 
@@ -616,7 +619,9 @@ public class HomeFragment extends Fragment {
     }
 
     private void startPolling() {
-        if (isPolling) return;
+        if (!isAdded() || getContext() == null) {
+            return;
+        }
 
         String email = getLoggedInEmail();
         if (email == null) return;

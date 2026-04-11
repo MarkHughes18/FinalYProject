@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -13,6 +14,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -32,7 +34,6 @@ import java.util.*;
 
 public class StudyPackActivity extends AppCompatActivity {
 
-    private TextView titleTv;
     private TextView statusTv;
     private ProgressBar progressBar;
     private RecyclerView recyclerView;
@@ -63,6 +64,9 @@ public class StudyPackActivity extends AppCompatActivity {
     private RecyclerView matchingDoneRecyclerView;
     private MatchingGameAdapter matchingGameAdapter;
     private MatchingDoneAdapter matchingDoneAdapter;
+    private Toolbar toolbar;
+    private TextView toolbarTitle;
+    private ImageButton toolbarBackBtn;
     private final List<MatchingGameItem> matchedItems = new ArrayList<>();
     private final StudySessionStats sessionStats = new StudySessionStats();
     private String currentPagerMode = "";
@@ -72,7 +76,6 @@ public class StudyPackActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_study_pack);
 
-        titleTv = findViewById(R.id.studyPackTitleTV);
         statusTv = findViewById(R.id.studyPackStatusTV);
         progressBar = findViewById(R.id.studyPackProgress);
         recyclerView = findViewById(R.id.studyPackRecyclerView);
@@ -92,23 +95,35 @@ public class StudyPackActivity extends AppCompatActivity {
         statsIncorrectTv = findViewById(R.id.statsIncorrectTv);
         statsAccuracyTv = findViewById(R.id.statsAccuracyTv);
         statsBarLayout = findViewById(R.id.statsBarLayout);
-
-        matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        if (!pagerCallbackRegistered) {
-            studyViewPager.registerOnPageChangeCallback(pageChangeCallback);
-            pagerCallbackRegistered = true;
-        }
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        toolbar = findViewById(R.id.studyToolbar);
+        toolbarTitle = findViewById(R.id.toolbarTitle);
+        toolbarBackBtn = findViewById(R.id.toolbarBackBtn);
 
         api = RetrofitClient.getApiService();
 
         historyId = getIntent().getStringExtra("historyId");
         fileName = getIntent().getStringExtra("fileName");
+        String trimmedFileName = fileName != null ? fileName.trim() : "";
 
-        titleTv.setText(fileName != null ? fileName : "Study Pack");
+        if (trimmedFileName.length() > 18) {
+            trimmedFileName = trimmedFileName.substring(0, 15) + "...";
+        }
+
+        String displayTitle = !trimmedFileName.isBlank()
+                ? "Study Pack • " + trimmedFileName
+                : "Study Pack";
+
+        toolbarTitle.setText(displayTitle);
+        toolbarBackBtn.setOnClickListener(v -> finish());
+
+        matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        if (!pagerCallbackRegistered) {
+            studyViewPager.registerOnPageChangeCallback(pageChangeCallback);
+            pagerCallbackRegistered = true;
+        }
 
         setButtonsEnabled(false);
 
@@ -458,6 +473,12 @@ public class StudyPackActivity extends AppCompatActivity {
             }
         }
     };
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
+    }
 
     private String getLoggedInEmail() {
         SharedPreferences prefs = getSharedPreferences("auth", Context.MODE_PRIVATE);
