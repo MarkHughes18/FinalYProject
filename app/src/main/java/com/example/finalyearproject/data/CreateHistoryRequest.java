@@ -7,24 +7,26 @@ public class CreateHistoryRequest {
     public long fileSize;
     public String ttsLanguageCode;
     public String ttsVoice;
+    public String label;
     public CreateHistoryRequest(String userEmail,
                                 String fileName,
                                 String fileType,
                                 long fileSize,
                                 String ttsLanguageCode,
-                                String ttsVoice) {
+                                String ttsVoice, String label) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
         this.fileSize = fileSize;
         this.ttsLanguageCode = ttsLanguageCode;
         this.ttsVoice = ttsVoice;
+        this.label = label;
     }
     //odl constructor keeps old calls working
     public CreateHistoryRequest(String userEmail,
                                 String fileName,
                                 String fileType,
                                 long fileSize) {
-        this(userEmail, fileName, fileType, fileSize, "en-GB", "female");
+        this(userEmail, fileName, fileType, fileSize, "en-GB", "female", null);
     }
 }

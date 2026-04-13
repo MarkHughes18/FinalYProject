@@ -55,6 +55,15 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
         holder.subtitle.setText(status);
 
         applyStatusChipStyle(holder.subtitle, status);
+
+        TextView labelTv = holder.itemView.findViewById(R.id.itemLabel);
+
+        if (item.label != null && !item.label.isBlank()) {
+            labelTv.setText(item.label);
+            labelTv.setVisibility(View.VISIBLE);
+        } else {
+            labelTv.setVisibility(View.GONE);
+        }
     }
 
     private void applyStatusChipStyle(TextView tv, String status) {

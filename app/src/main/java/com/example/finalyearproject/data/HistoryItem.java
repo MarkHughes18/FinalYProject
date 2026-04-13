@@ -12,6 +12,7 @@ public class HistoryItem {
     public String audioUrl;
     public String updatedAt;
     public String errorMessage;
+    public String label;
 
     // Empty constructor needed by Retrofit / Gson
     public HistoryItem() {

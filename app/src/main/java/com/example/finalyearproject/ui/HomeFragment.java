@@ -14,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -24,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -242,18 +244,82 @@ public class HomeFragment extends Fragment {
             if (c != null) c.close();
         }
 
+        showLabelSelector(userEmail, fileName, fileType, fileSize);
+    }
+
+    private void showLabelSelector(String userEmail,
+                                   String fileName,
+                                   String fileType,
+                                   long fileSize) {
+
+        String[] labels = {"Exam", "Lecture", "Assignment", "Other"};
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Label")
+                .setItems(labels, (dialog, which) -> {
+
+                    String selected = labels[which];
+
+                    if ("Other".equals(selected)) {
+                        showCustomLabelInput(userEmail, fileName, fileType, fileSize);
+                    } else {
+                        createHistoryWithLabel(userEmail, fileName, fileType, fileSize, selected);
+                    }
+
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showCustomLabelInput(String userEmail,
+                                      String fileName,
+                                      String fileType,
+                                      long fileSize) {
+
+        EditText input = new EditText(requireContext());
+        input.setHint("Enter custom label");
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Custom Label")
+                .setView(input)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String customLabel = input.getText().toString().trim();
+
+                    if (customLabel.isEmpty()) {
+                        toast("Label cannot be empty");
+                        return;
+                    }
+
+                    customLabel = customLabel.substring(0, 1).toUpperCase() + customLabel.substring(1);
+                    createHistoryWithLabel(userEmail, fileName, fileType, fileSize, customLabel);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void createHistoryWithLabel(String userEmail,
+                                        String fileName,
+                                        String fileType,
+                                        long fileSize,
+                                        String selectedLabel) {
+
         String lang = "en-GB";
         String voice = getSavedTtsVoiceForUser(userEmail);
-        if (voice == null || voice.isBlank()) voice = "female";
+
+        if (voice == null || voice.isBlank()) {
+            voice = "female";
+        }
         voice = voice.trim().toLowerCase();
-        //build request object
+
         CreateHistoryRequest req = new CreateHistoryRequest(
                 userEmail,
                 fileName,
                 fileType,
                 fileSize,
                 lang,
-                voice);
+                voice,
+                selectedLabel
+        );
 
         uploadProgress.setVisibility(View.VISIBLE);
 
@@ -264,9 +330,10 @@ public class HomeFragment extends Fragment {
 
                 if (response.isSuccessful() && response.body() != null) {
                     HistoryItem created = response.body();
-                    // Add the new item to the top of the list
+
                     historyItems.add(0, created);
                     historyAdapter.notifyItemInserted(0);
+
                     toast("History updated for " + created.fileName);
                     uploadSelectedFile(created.id);
                 } else {
