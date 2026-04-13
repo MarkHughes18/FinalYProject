@@ -36,7 +36,8 @@ public class FileHistoryController {
                         String fileType,
                         long fileSize,
                         String ttsLanguageCode,
-                        String ttsVoice) {
+                        String ttsVoice,
+                        String label) {
         }
 
         public record HistoryResponse(
@@ -52,7 +53,8 @@ public class FileHistoryController {
                         String updatedAt,
                         String errorMessage,
                         String ttsLanguageCode,
-                        String ttsVoice) {
+                        String ttsVoice,
+                        String label) {
         }
 
         @PostMapping("/history")
@@ -77,7 +79,7 @@ public class FileHistoryController {
                 fh.setTtsLanguageCode((req.ttsLanguageCode() == null || req.ttsLanguageCode().isBlank()) ? "en-GB"
                                 : req.ttsLanguageCode().trim());
                 fh.setTtsVoice((req.ttsVoice() == null || req.ttsVoice().isBlank()) ? "female" : req.ttsVoice().trim());
-
+                fh.setLabel(req.label());
                 fh = repo.save(fh);
 
                 return new HistoryResponse(
@@ -93,7 +95,8 @@ public class FileHistoryController {
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage(),
                                 fh.getTtsLanguageCode(),
-                                fh.getTtsVoice());
+                                fh.getTtsVoice(),
+                                fh.getLabel());
         }
 
         @GetMapping("/history")
@@ -113,7 +116,8 @@ public class FileHistoryController {
                                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                                 fh.getErrorMessage(),
                                                 fh.getTtsLanguageCode(),
-                                                fh.getTtsVoice()))
+                                                fh.getTtsVoice(),
+                                                fh.getLabel()))
                                 .toList();
         }
 
@@ -229,7 +233,8 @@ public class FileHistoryController {
                                 fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
                                 fh.getErrorMessage(),
                                 fh.getTtsLanguageCode(),
-                                fh.getTtsVoice());
+                                fh.getTtsVoice(),
+                                fh.getLabel());
 
                 return ResponseEntity.ok(resp);
         }
