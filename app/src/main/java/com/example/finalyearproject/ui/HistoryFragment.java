@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -25,7 +26,6 @@ import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.HistoryItem;
 import com.example.finalyearproject.data.RetrofitClient;
-import com.example.finalyearproject.ui.HomeFragment;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayList;
@@ -52,6 +52,8 @@ public class HistoryFragment extends Fragment {
     private SearchView historySearchView;
     private final List<HistoryItem> historyItems = new ArrayList<>();
     private final List<HistoryItem> allHistoryItems = new ArrayList<>();
+    private LinearLayout historyFilterContainer;
+    private String selectedLabelFilter = "All";
     private static final String MEDIA_BASE_URL = "http://10.0.2.2:8080";
 
     private ApiService api;
@@ -73,6 +75,7 @@ public class HistoryFragment extends Fragment {
         historyRecyclerView = view.findViewById(R.id.historyRecyclerView);
         historyProgress     = view.findViewById(R.id.historyProgress);
         historyEmptyTV      = view.findViewById(R.id.historyEmptyTV);
+        historyFilterContainer = view.findViewById(R.id.historyFilterContainer);
 
         // Setup RecyclerView
         historyRecyclerView.setLayoutManager(
@@ -145,16 +148,8 @@ public class HistoryFragment extends Fragment {
                 if (response.isSuccessful() && response.body() != null) {
                     allHistoryItems.clear();
                     allHistoryItems.addAll(response.body());
-                    historyItems.clear();
-                    historyItems.addAll(response.body());
-                    historyAdapter.notifyDataSetChanged();
-
-                    if (historyItems.isEmpty()) {
-                        historyEmptyTV.setVisibility(View.VISIBLE);
-                        historyEmptyTV.setText("No uploads yet.");
-                    } else {
-                        historyEmptyTV.setVisibility(View.GONE);
-                    }
+                    rebuildLabelFilters();
+                    filterHistory(historySearchView != null ? historySearchView.getQuery().toString() : "");
                 } else {
                     historyEmptyTV.setVisibility(View.VISIBLE);
                     historyEmptyTV.setText("Failed to load history.");
@@ -180,16 +175,29 @@ public class HistoryFragment extends Fragment {
         String q = (query == null) ? "" : query.trim().toLowerCase();
 
         historyItems.clear();
-        if (q.isEmpty()) {
-            historyItems.addAll(allHistoryItems);
-        } else {
-            for (HistoryItem item : allHistoryItems) {
-                String name = item.fileName == null ? "" : item.fileName.toLowerCase();
-                String type = item.fileType == null ? "" : item.fileType.toLowerCase();
 
-                if (name.contains(q) || type.contains(q)) {
-                    historyItems.add(item);
-                }
+        for (HistoryItem item : allHistoryItems) {
+            if (item == null) continue;
+
+            String name = item.fileName == null ? "" : item.fileName.toLowerCase();
+            String type = item.fileType == null ? "" : item.fileType.toLowerCase();
+            String label = item.label == null ? "" : item.label.toLowerCase();
+
+            boolean matchesSearch = q.isEmpty()
+                    || name.contains(q)
+                    || type.contains(q)
+                    || label.contains(q);
+
+            boolean matchesLabel;
+            if ("All".equalsIgnoreCase(selectedLabelFilter)) {
+                matchesLabel = true;
+            } else {
+                String itemLabel = item.label == null ? "" : item.label.trim();
+                matchesLabel = itemLabel.equalsIgnoreCase(selectedLabelFilter);
+            }
+
+            if (matchesSearch && matchesLabel) {
+                historyItems.add(item);
             }
         }
 
@@ -200,6 +208,73 @@ public class HistoryFragment extends Fragment {
             historyEmptyTV.setText("No matches found.");
         } else {
             historyEmptyTV.setVisibility(View.GONE);
+        }
+    }
+
+    private void rebuildLabelFilters() {
+        if (historyFilterContainer == null || getContext() == null) {
+            return;
+        }
+
+        historyFilterContainer.removeAllViews();
+
+        List<String> labels = new ArrayList<>();
+        labels.add("All");
+
+        for (HistoryItem item : allHistoryItems) {
+            if (item != null && item.label != null && !item.label.isBlank()) {
+                String trimmed = item.label.trim();
+
+                boolean exists = false;
+                for (String existing : labels) {
+                    if (existing.equalsIgnoreCase(trimmed)) {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists) {
+                    labels.add(trimmed);
+                }
+            }
+        }
+
+        boolean selectedStillExists = false;
+        for (String label : labels) {
+            if (label.equalsIgnoreCase(selectedLabelFilter)) {
+                selectedStillExists = true;
+                break;
+            }
+        }
+
+        if (!selectedStillExists) {
+            selectedLabelFilter = "All";
+        }
+
+        for (String label : labels) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(label);
+            chip.setTextSize(13f);
+            chip.setPadding(24, 12, 24, 12);
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            params.setMarginEnd(12);
+            chip.setLayoutParams(params);
+
+            chip.setTextColor(android.graphics.Color.WHITE);
+            chip.setBackgroundResource(R.drawable.bg_label_chip);
+            chip.setAlpha(label.equalsIgnoreCase(selectedLabelFilter) ? 1.0f : 0.65f);
+
+            chip.setOnClickListener(v -> {
+                selectedLabelFilter = label;
+                rebuildLabelFilters();
+                filterHistory(historySearchView != null ? historySearchView.getQuery().toString() : "");
+            });
+
+            historyFilterContainer.addView(chip);
         }
     }
 
@@ -463,8 +538,8 @@ public class HistoryFragment extends Fragment {
 
                     // remove from BOTH lists so search + list stay consistent
                     removeById(allHistoryItems, item.id);
-                    removeById(historyItems, item.id);
-                    historyAdapter.notifyDataSetChanged();
+                    rebuildLabelFilters();
+                    filterHistory(historySearchView != null ? historySearchView.getQuery().toString() : "");
 
                 } else {
                     toast("Delete failed: " + response.code());

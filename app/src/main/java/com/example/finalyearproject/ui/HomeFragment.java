@@ -107,7 +107,7 @@ public class HomeFragment extends Fragment {
         previousFilesRV.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
         historyAdapter = new HistoryAdapter(historyItems, item ->
-            onHistoryItemClicked(item), null);
+                onHistoryItemClicked(item), null);
         previousFilesRV.setAdapter(historyAdapter);
 
         api = RetrofitClient.getApiService();
@@ -389,6 +389,11 @@ public class HomeFragment extends Fragment {
     }
 
     private String getSavedTtsVoiceForUser(String email) {
+        Context context = getContext();
+        if (context == null) {
+            return DEFAULT_TTS_VOICE;
+        }
+
         SharedPreferences prefs =
                 requireActivity().getSharedPreferences(PREF_SETTINGS, Context.MODE_PRIVATE);
         String key = (email != null) ? KEY_TTS_VOICE_PREFIX + email : KEY_TTS_VOICE_PREFIX + "default";
@@ -425,7 +430,10 @@ public class HomeFragment extends Fragment {
                     if (response.isSuccessful() && response.body() != null) {
                         toast("Upload started. Processing will run in the shadows.");
                         String email = getLoggedInEmail();
-                        if (email != null) getHistory(email); startPolling();
+                        if (email != null){
+                            getHistory(email);
+                            startPolling();
+                        }
                     } else {
                         toast("Upload failed");
                     }
@@ -690,6 +698,10 @@ public class HomeFragment extends Fragment {
             return;
         }
 
+        if (isPolling) {
+            return;
+        }
+
         String email = getLoggedInEmail();
         if (email == null) return;
 
@@ -698,10 +710,12 @@ public class HomeFragment extends Fragment {
         pollRunnable = new Runnable() {
             @Override
             public void run() {
-                if (!isAdded()) return;
+                if (!isAdded()){
+                    isPolling = false;
+                    return;
+                }
 
                 getHistory(email, true); // silent refresh
-
                 pollHandler.postDelayed(this, POLL_INTERVAL_MS);
             }
         };
