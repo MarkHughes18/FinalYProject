@@ -280,4 +280,45 @@ public class FileHistoryController {
                                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                                 .body(resource);
         }
+
+        public record UpdateLabelRequest(
+                        String label) {
+        }
+
+        @PatchMapping("/history/{id}/label")
+        public ResponseEntity<HistoryResponse> updateHistoryLabel(@PathVariable String id,
+                        @RequestBody UpdateLabelRequest req) {
+
+                FileHistory fh = repo.findById(id).orElse(null);
+                if (fh == null) {
+                        return ResponseEntity.notFound().build();
+                }
+
+                String newLabel = (req.label() == null) ? null : req.label().trim();
+                if (newLabel != null && newLabel.isBlank()) {
+                        newLabel = null;
+                }
+
+                fh.setLabel(newLabel);
+                fh.setUpdatedAt(Instant.now());
+                fh = repo.save(fh);
+
+                HistoryResponse resp = new HistoryResponse(
+                                fh.getId(),
+                                fh.getFileName(),
+                                fh.getFileType(),
+                                fh.getFileSize(),
+                                fh.getUploadedAt() != null ? fh.getUploadedAt().toString() : null,
+                                fh.getTextStatus(),
+                                fh.getNarrationStatus(),
+                                fh.getAudioStatus(),
+                                fh.getAudioUrl(),
+                                fh.getUpdatedAt() != null ? fh.getUpdatedAt().toString() : null,
+                                fh.getErrorMessage(),
+                                fh.getTtsLanguageCode(),
+                                fh.getTtsVoice(),
+                                fh.getLabel());
+
+                return ResponseEntity.ok(resp);
+        }
 }
