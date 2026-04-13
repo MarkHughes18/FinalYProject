@@ -502,7 +502,7 @@ public class HistoryFragment extends Fragment {
                             replaceHistoryItem(allHistoryItems, updated);
                             replaceHistoryItem(historyItems, updated);
 
-                            historyAdapter.notifyDataSetChanged();
+                            rebuildLabelFilters();
 
                             // keep current search/filter view in sync
                             filterHistory(historySearchView != null

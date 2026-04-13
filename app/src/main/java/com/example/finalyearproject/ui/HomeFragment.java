@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -67,7 +68,7 @@ public class HomeFragment extends Fragment {
     private Runnable playerTick;
     private SeekBar bsSeekBar;
     private TextView bsTimeTV;
-    private Button bsPlayPauseBtn;
+    private ImageButton bsPlayPauseBtn;
     private final Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isPolling = false;
@@ -536,13 +537,13 @@ public class HomeFragment extends Fragment {
         TextView titleTV = sheetView.findViewById(R.id.bsTitleTV);
         bsSeekBar = sheetView.findViewById(R.id.bsSeekBar);
         bsTimeTV = sheetView.findViewById(R.id.bsTimeTV);
-        Button back10 = sheetView.findViewById(R.id.bsBack10Btn);
+        ImageButton back10 = sheetView.findViewById(R.id.bsBack10Btn);
         bsPlayPauseBtn = sheetView.findViewById(R.id.bsPlayPauseBtn);
-        Button fwd10 = sheetView.findViewById(R.id.bsFwd10Btn);
+        ImageButton fwd10 = sheetView.findViewById(R.id.bsFwd10Btn);
 
         titleTV.setText(title != null ? title : "Now playing");
         bsPlayPauseBtn.setEnabled(false);
-        bsPlayPauseBtn.setText("Loading...");
+        bsPlayPauseBtn.setImageResource(R.drawable.baseline_play_arrow_24);
 
         playerSheet = new BottomSheetDialog(requireContext());
         playerSheet.setContentView(sheetView);
@@ -561,14 +562,13 @@ public class HomeFragment extends Fragment {
                 bsTimeTV.setText(fmtTime(0) + " / " + fmtTime(dur));
 
                 bsPlayPauseBtn.setEnabled(true);
-                bsPlayPauseBtn.setText("Pause");
-
+                bsPlayPauseBtn.setImageResource(R.drawable.baseline_pause_circle_outline_24);
                 mp.start();
                 startPlayerTick();
             });
 
             mediaPlayer.setOnCompletionListener(mp -> {
-                bsPlayPauseBtn.setText("Play");
+                bsPlayPauseBtn.setImageResource(R.drawable.baseline_play_arrow_24);
                 stopPlayerTick();
                 if (bsSeekBar != null) bsSeekBar.setProgress(bsSeekBar.getMax());
             });
@@ -618,14 +618,16 @@ public class HomeFragment extends Fragment {
     }
 
     private void togglePlayPause() {
-        if (mediaPlayer == null || bsPlayPauseBtn == null) return;
+        if (mediaPlayer == null || bsPlayPauseBtn == null){
+            return;
+        }
 
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
-            bsPlayPauseBtn.setText("Play");
+            bsPlayPauseBtn.setImageResource(R.drawable.baseline_play_arrow_24);
         } else {
             mediaPlayer.start();
-            bsPlayPauseBtn.setText("Pause");
+            bsPlayPauseBtn.setImageResource(R.drawable.baseline_pause_circle_outline_24);
             startPlayerTick();
         }
     }

@@ -12,51 +12,68 @@
         android:layout_height="wrap_content"
         android:text="Now playing"
         android:textStyle="bold"
-        android:textSize="16sp"
-        android:paddingBottom="8dp"/>
+        android:textSize="18sp"
+        android:textColor="?attr/colorOnSurface"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginBottom="12dp" />
 
     <SeekBar
         android:id="@+id/bsSeekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingTop="8dp">
-
         <TextView
             android:id="@+id/bsTimeTV"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="00:00 / 00:00"/>
+            android:text="00:00 / 00:00"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="18dp" />
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="8dp">
 
-        <Button
+        <!-- Back -->
+        <ImageButton
             android:id="@+id/bsBack10Btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="-10s" />
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginEnd="32dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/baseline_replay_10_24"
+            android:tint="?attr/colorOnSurface"
+            android:contentDescription="Back 10 seconds"
+            android:scaleType="centerInside" />
 
-        <Button
+        <!-- Play / Pause -->
+        <ImageButton
             android:id="@+id/bsPlayPauseBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Play"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"/>
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/baseline_play_arrow_24"
+            android:tint="?attr/colorOnSurface"
+            android:contentDescription="Play Pause"
+            android:scaleType="centerInside" />
 
-        <Button
+        <!-- Forward -->
+        <ImageButton
             android:id="@+id/bsFwd10Btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+10s" />
-    </LinearLayout>
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginStart="32dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/baseline_forward_10_24"
+            android:tint="?attr/colorOnSurface"
+            android:contentDescription="Forward 10 seconds"
+            android:scaleType="centerInside" />
 
+    </LinearLayout>
 </LinearLayout>

@@ -28,6 +28,13 @@
         android:text="Open Study Pack" />
 
     <Button
+        android:id="@+id/actionEditLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Edit Label"/>
+
+    <Button
         android:id="@+id/actionCancel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
