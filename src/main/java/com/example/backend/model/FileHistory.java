@@ -33,6 +33,7 @@ public class FileHistory {
 
     private String ttsLanguageCode;
     private String ttsVoice;
+    private String label;
 
     public FileHistory() {
     }
@@ -40,7 +41,7 @@ public class FileHistory {
     public FileHistory(String userEmail, String fileName, String fileType, long fileSize, Instant uploadedAt,
             String audioStatus, String audioUrl, String sourcePath, String audioPath, Instant updatedAt,
             String errorMessage, String extractedText, String textStatus, String narrationText,
-            String narrationStatus, String ttsLanguageCode, String ttsVoice) {
+            String narrationStatus, String ttsLanguageCode, String ttsVoice, String label) {
         this.userEmail = userEmail;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -58,6 +59,7 @@ public class FileHistory {
         this.narrationStatus = narrationStatus;
         this.ttsLanguageCode = ttsLanguageCode;
         this.ttsVoice = ttsVoice;
+        this.label = label;
     }
 
     public String getId() {
@@ -202,5 +204,13 @@ public class FileHistory {
 
     public void setTtsVoice(String ttsVoice) {
         this.ttsVoice = ttsVoice;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
     }
 }
