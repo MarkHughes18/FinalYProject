@@ -8,6 +8,7 @@ import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
+import retrofit2.http.PATCH;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.Path;
@@ -45,4 +46,9 @@ public interface ApiService {
     @GET("api/study/packs/{historyId}")
     Call<StudyPackResponse> getStudyPack( @Path("historyId") String historyId, @Query("email") String email);
 
+    @PATCH("api/files/history/{id}/label")
+    Call<HistoryItem> updateHistoryLabel(
+            @Path("id") String id,
+            @Body UpdateLabelRequest req
+    );
 }

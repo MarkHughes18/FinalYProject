@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -291,6 +292,7 @@ public class HistoryFragment extends Fragment {
         TextView titleTv = sheetView.findViewById(R.id.actionTitleTV);
         View playAudioBtn = sheetView.findViewById(R.id.actionPlayAudio);
         View openStudyPackBtn = sheetView.findViewById(R.id.actionOpenStudyPack);
+        View editLabelBtn = sheetView.findViewById(R.id.actionEditLabel);
         View cancelBtn = sheetView.findViewById(R.id.actionCancel);
 
         titleTv.setText(item.fileName != null ? item.fileName : "Choose action");
@@ -306,6 +308,11 @@ public class HistoryFragment extends Fragment {
         openStudyPackBtn.setOnClickListener(v -> {
             dialog.dismiss();
             handleOpenStudyPack(item);
+        });
+
+        editLabelBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            showEditLabelSelector(item);
         });
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
@@ -342,6 +349,26 @@ public class HistoryFragment extends Fragment {
         intent.putExtra("historyId", item.id);
         intent.putExtra("fileName", item.fileName);
         startActivity(intent);
+    }
+
+    private void showEditLabelSelector(HistoryItem item) {
+        String[] labels = {"Exam", "Lecture", "Assignment", "Other", "Clear Label"};
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Change Label")
+                .setItems(labels, (dialog, which) -> {
+                    String selected = labels[which];
+
+                    if ("Other".equals(selected)) {
+                        showCustomLabelInput(item);
+                    } else if ("Clear Label".equals(selected)) {
+                        updateHistoryLabel(item, null);
+                    } else {
+                        updateHistoryLabel(item, selected);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
     private void showPlayerBottomSheet(String title, String url) {
 
@@ -428,6 +455,81 @@ public class HistoryFragment extends Fragment {
             e.printStackTrace();
             toast("Failed to play: " + e.getMessage());
             stopPlayer();
+        }
+    }
+
+    private void showCustomLabelInput(HistoryItem item) {
+        EditText input = new EditText(requireContext());
+        input.setHint("Enter custom label");
+
+        if (item.label != null && !item.label.isBlank()) {
+            input.setText(item.label);
+            input.setSelection(item.label.length());
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Custom Label")
+                .setView(input)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String customLabel = input.getText().toString().trim();
+
+                    if (customLabel.isEmpty()) {
+                        toast("Label cannot be empty");
+                        return;
+                    }
+
+                    customLabel = customLabel.substring(0, 1).toUpperCase() + customLabel.substring(1);
+                    updateHistoryLabel(item, customLabel);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void updateHistoryLabel(HistoryItem item, String newLabel) {
+        if (item == null || item.id == null || item.id.isBlank()) {
+            toast("Cannot update label");
+            return;
+        }
+
+        api.updateHistoryLabel(item.id, new com.example.finalyearproject.data.UpdateLabelRequest(newLabel))
+                .enqueue(new Callback<HistoryItem>() {
+                    @Override
+                    public void onResponse(@NonNull Call<HistoryItem> call,
+                                           @NonNull Response<HistoryItem> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            HistoryItem updated = response.body();
+
+                            replaceHistoryItem(allHistoryItems, updated);
+                            replaceHistoryItem(historyItems, updated);
+
+                            historyAdapter.notifyDataSetChanged();
+
+                            // keep current search/filter view in sync
+                            filterHistory(historySearchView != null
+                                    ? historySearchView.getQuery().toString()
+                                    : "");
+
+                            toast("Label updated");
+                        } else {
+                            toast("Failed to update label");
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Call<HistoryItem> call,
+                                          @NonNull Throwable t) {
+                        toast("Network error: " + t.getMessage());
+                    }
+                });
+    }
+
+    private static void replaceHistoryItem(List<HistoryItem> list, HistoryItem updated) {
+        for (int i = 0; i < list.size(); i++) {
+            HistoryItem current = list.get(i);
+            if (current != null && current.id != null && current.id.equals(updated.id)) {
+                list.set(i, updated);
+                return;
+            }
         }
     }
     private void togglePlayPause() {
