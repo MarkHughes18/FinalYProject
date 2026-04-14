@@ -22,6 +22,7 @@ import android.content.res.ColorStateList;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.ContinueLearningPrefs;
 import com.example.finalyearproject.data.RetrofitClient;
 import com.example.finalyearproject.data.StudyPackResponse;
 import com.example.finalyearproject.data.StudySessionStats;
@@ -53,6 +54,10 @@ public class StudyPackActivity extends AppCompatActivity {
     private TextView statsIncorrectTv;
     private TextView statsAccuracyTv;
     private View statsBarLayout;
+    private String currentMode = "FLASHCARDS";
+    private int currentPosition = 0;
+    private String currentHistoryId;
+    private String currentFileName;
     private FlashcardPagerAdapter flashcardPagerAdapter;
     private ClozePagerAdapter clozePagerAdapter;
     private McqPagerAdapter mcqPagerAdapter;
@@ -70,6 +75,9 @@ public class StudyPackActivity extends AppCompatActivity {
     private final List<MatchingGameItem> matchedItems = new ArrayList<>();
     private final StudySessionStats sessionStats = new StudySessionStats();
     private String currentPagerMode = "";
+    private String resumeMode;
+    private int resumePosition = 0;
+    private boolean hasAppliedResumeState = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -103,6 +111,11 @@ public class StudyPackActivity extends AppCompatActivity {
 
         historyId = getIntent().getStringExtra("historyId");
         fileName = getIntent().getStringExtra("fileName");
+        currentHistoryId = getIntent().getStringExtra("historyId");
+        currentFileName = getIntent().getStringExtra("fileName");
+        resumeMode = getIntent().getStringExtra("resumeMode");
+        resumePosition = getIntent().getIntExtra("resumePosition", 0);
+
         String trimmedFileName = fileName != null ? fileName.trim() : "";
 
         if (trimmedFileName.length() > 18) {
@@ -142,6 +155,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
         loadStudyPack();
         refreshStatsUi();
+        saveContinueLearningState();
     }
 
     private void loadStudyPack() {
@@ -172,7 +186,14 @@ public class StudyPackActivity extends AppCompatActivity {
 
                     statusTv.setText("Study Pack Loaded");
                     setButtonsEnabled(true);
-                    showFlashcards();
+
+                    if (!hasAppliedResumeState && resumeMode != null && !resumeMode.isBlank()) {
+                        openResumeMode(resumeMode, resumePosition);
+                        hasAppliedResumeState = true;
+                    } else {
+                        showFlashcards();
+                    }
+
                 } else if (response.code() == 202) {
                     statusTv.setText("Study pack is not ready yet.\nNarration is still processing.");
                 } else if (response.code() == 403) {
@@ -193,10 +214,72 @@ public class StudyPackActivity extends AppCompatActivity {
         });
     }
 
+    private void openResumeMode(String resumeMode, int resumePosition) {
+        if (resumeMode == null || resumeMode.isBlank()) {
+            showFlashcards();
+            return;
+        }
+
+        switch (resumeMode) {
+            case "FLASHCARDS":
+                showFlashcards();
+                if (currentPack != null && currentPack.flashcards != null && !currentPack.flashcards.isEmpty()) {
+                    int safePosition = Math.min(Math.max(resumePosition, 0), currentPack.flashcards.size() - 1);
+                    studyViewPager.setCurrentItem(safePosition, false);
+                    currentPosition = safePosition;
+                    saveContinueLearningState();
+                }
+                break;
+
+            case "CLOZE":
+                showCloze();
+                if (currentPack != null && currentPack.clozeQuestions != null && !currentPack.clozeQuestions.isEmpty()) {
+                    int safePosition = Math.min(Math.max(resumePosition, 0), currentPack.clozeQuestions.size() - 1);
+                    studyViewPager.setCurrentItem(safePosition, false);
+                    currentPosition = safePosition;
+                    saveContinueLearningState();
+                }
+                break;
+
+            case "TRUE_FALSE":
+                showTrueFalse();
+                if (currentPack != null && currentPack.trueFalseQuestions != null && !currentPack.trueFalseQuestions.isEmpty()) {
+                    int safePosition = Math.min(Math.max(resumePosition, 0), currentPack.trueFalseQuestions.size() - 1);
+                    studyViewPager.setCurrentItem(safePosition, false);
+                    currentPosition = safePosition;
+                    saveContinueLearningState();
+                }
+                break;
+
+            case "MCQ":
+                showMcq();
+                if (currentPack != null && currentPack.mcqQuestions != null && !currentPack.mcqQuestions.isEmpty()) {
+                    int safePosition = Math.min(Math.max(resumePosition, 0), currentPack.mcqQuestions.size() - 1);
+                    studyViewPager.setCurrentItem(safePosition, false);
+                    currentPosition = safePosition;
+                    saveContinueLearningState();
+                }
+                break;
+
+            case "MATCHING":
+                showMatching();
+                currentPosition = 0;
+                saveContinueLearningState();
+                break;
+
+            default:
+                showFlashcards();
+                break;
+        }
+    }
+
     private void showFlashcards() {
         updateSelectedTab(btnFlashcards);
         currentPagerMode = "flashcards";
+        currentMode = "FLASHCARDS";
+        currentPosition = 0;
         refreshStatsUi();
+        saveContinueLearningState();
 
         if (currentPack == null || currentPack.flashcards == null || currentPack.flashcards.isEmpty()) {
             statusTv.setText("No flashcards available.");
@@ -216,14 +299,16 @@ public class StudyPackActivity extends AppCompatActivity {
         }
         studyViewPager.setAdapter(flashcardPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
-
         updatePagerCounter("Card", 0, currentPack.flashcards.size());
     }
 
     private void showCloze() {
         updateSelectedTab(btnCloze);
         currentPagerMode = "cloze";
+        currentMode = "CLOZE";
+        currentPosition = 0;
         refreshStatsUi();
+        saveContinueLearningState();
 
         if (currentPack == null || currentPack.clozeQuestions == null || currentPack.clozeQuestions.isEmpty()) {
             statusTv.setText("No cloze questions available.");
@@ -241,14 +326,17 @@ public class StudyPackActivity extends AppCompatActivity {
         }
         studyViewPager.setAdapter(clozePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
-
         updatePagerCounter("Question", 0, currentPack.clozeQuestions.size());
     }
 
     private void showTrueFalse() {
         updateSelectedTab(btnTrueFalse);
         currentPagerMode = "truefalse";
+        currentMode = "TRUE_FALSE";
+        currentPosition = 0;
         refreshStatsUi();
+        saveContinueLearningState();
+
         if (currentPack == null || currentPack.trueFalseQuestions == null || currentPack.trueFalseQuestions.isEmpty()) {
             statusTv.setText("No true/false questions available.");
             studyViewPager.setAdapter(null);
@@ -264,14 +352,16 @@ public class StudyPackActivity extends AppCompatActivity {
         }
         studyViewPager.setAdapter(trueFalsePagerAdapter);
         studyViewPager.setCurrentItem(0, false);
-
         updatePagerCounter("Question", 0, currentPack.trueFalseQuestions.size());
     }
 
     private void showMcq() {
         updateSelectedTab(btnMcq);
         currentPagerMode = "mcq";
+        currentMode = "MCQ";
+        currentPosition = 0;
         refreshStatsUi();
+        saveContinueLearningState();
 
         if (currentPack == null || currentPack.mcqQuestions == null || currentPack.mcqQuestions.isEmpty()) {
             statusTv.setText("No MCQ questions available.");
@@ -289,15 +379,17 @@ public class StudyPackActivity extends AppCompatActivity {
         }
         studyViewPager.setAdapter(mcqPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
-
         updatePagerCounter("Question", 0, currentPack.mcqQuestions.size());
     }
 
     private void showMatching() {
         updateSelectedTab(btnMatching);
         currentPagerMode = "matching";
+        currentMode = "MATCHING";
+        currentPosition = 0;
         refreshStatsUi();
         showMatchingGameMode();
+        saveContinueLearningState();
 
         if (currentPack == null || currentPack.matchingPairs == null || currentPack.matchingPairs.isEmpty()) {
             statusTv.setText("No matching pairs available.");
@@ -385,6 +477,21 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     }
 
+    private void saveContinueLearningState() {
+        if (currentHistoryId == null || currentFileName == null || currentMode == null) {
+            return;
+        }
+
+        ContinueLearningPrefs.saveContinueLearning(
+                this,
+                currentHistoryId,
+                currentFileName,
+                currentMode,
+                currentPosition,
+                System.currentTimeMillis()
+        );
+    }
+
     private void refreshStatsUi() {
         if (statsBarLayout == null) {
             return;
@@ -464,6 +571,9 @@ public class StudyPackActivity extends AppCompatActivity {
         @Override
         public void onPageSelected(int position) {
             super.onPageSelected(position);
+
+            currentPosition = position;
+            saveContinueLearningState();
 
             if ("flashcards".equals(currentPagerMode) && currentPack != null && currentPack.flashcards != null) {
                 updatePagerCounter("Card", position, currentPack.flashcards.size());

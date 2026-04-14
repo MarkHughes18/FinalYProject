@@ -41,7 +41,7 @@ public class HomePGActivity extends AppCompatActivity {
         // Toolbar
         MaterialToolbar toolbar = findViewById(R.id.homeToolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("Unconventional Learning");
+        getSupportActionBar().setTitle("");
 
         // Bottom navigation
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);

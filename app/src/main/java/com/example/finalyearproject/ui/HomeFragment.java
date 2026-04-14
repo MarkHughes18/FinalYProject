@@ -33,6 +33,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.ApiService;
+import com.example.finalyearproject.data.ContinueLearningPrefs;
 import com.example.finalyearproject.data.CreateHistoryRequest;
 import com.example.finalyearproject.data.HistoryItem;
 import com.example.finalyearproject.data.RetrofitClient;
@@ -69,6 +70,11 @@ public class HomeFragment extends Fragment {
     private SeekBar bsSeekBar;
     private TextView bsTimeTV;
     private ImageButton bsPlayPauseBtn;
+    private View continueLearningCard;
+    private TextView continueFileNameTV;
+    private TextView continueModeTV;
+    private TextView continueProgressTV;
+    private Button continueLearningBtn;
     private final Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isPolling = false;
@@ -104,6 +110,11 @@ public class HomeFragment extends Fragment {
         uploadBtn        = view.findViewById(R.id.uploadBtn);
         uploadProgress   = view.findViewById(R.id.uploadProgress);
         previousFilesRV  = view.findViewById(R.id.previousFilesRV);
+        continueLearningCard = view.findViewById(R.id.continueLearningCard);
+        continueFileNameTV = view.findViewById(R.id.continueFileNameTV);
+        continueModeTV = view.findViewById(R.id.continueModeTV);
+        continueProgressTV = view.findViewById(R.id.continueProgressTV);
+        continueLearningBtn = view.findViewById(R.id.continueLearningBtn);
 
         previousFilesRV.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
@@ -112,6 +123,7 @@ public class HomeFragment extends Fragment {
         previousFilesRV.setAdapter(historyAdapter);
 
         api = RetrofitClient.getApiService();
+        bindContinueLearningCard();
         setupFilePicker();
 
         pickFileBtn.setOnClickListener(v -> openFilePicker());
@@ -135,6 +147,49 @@ public class HomeFragment extends Fragment {
         }
         SharedPreferences prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE);
         return prefs.getString("email", null);
+    }
+
+    private void bindContinueLearningCard() {
+        ContinueLearningPrefs.ContinueLearningData data = ContinueLearningPrefs.getContinueLearning(requireContext());
+
+        if (data == null) {
+            continueLearningCard.setVisibility(View.GONE);
+            return;
+        }
+
+        continueLearningCard.setVisibility(View.VISIBLE);
+
+        continueFileNameTV.setText(data.getFileName());
+        continueModeTV.setText("Last mode: " + formatModeName(data.getLastMode()));
+        continueProgressTV.setText("Resume from item " + (data.getLastPosition() + 1));
+
+        continueLearningBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), StudyPackActivity.class);
+            intent.putExtra("historyId", data.getHistoryId());
+            intent.putExtra("fileName", data.getFileName());
+            intent.putExtra("resumeMode", data.getLastMode());
+            intent.putExtra("resumePosition", data.getLastPosition());
+            startActivity(intent);
+        });
+    }
+
+    private String formatModeName(String mode) {
+        if (mode == null) return "";
+
+        switch (mode) {
+            case "FLASHCARDS":
+                return "Flashcards";
+            case "CLOZE":
+                return "Cloze";
+            case "TRUE_FALSE":
+                return "True / False";
+            case "MCQ":
+                return "Multiple Choice";
+            case "MATCHING":
+                return "Matching";
+            default:
+                return mode;
+        }
     }
 
     // how we receive picked file
@@ -525,6 +580,12 @@ public class HomeFragment extends Fragment {
         super.onStop();
         stopPolling();
         stopPlayer();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        bindContinueLearningCard();
     }
 
     private void showPlayerBottomSheet(String title, String url) {
