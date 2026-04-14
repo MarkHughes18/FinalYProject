@@ -6,9 +6,8 @@ public class StudySessionStats {
     private final ModeStats clozeStats = new ModeStats();
     private final ModeStats trueFalseStats = new ModeStats();
     private final ModeStats matchingStats = new ModeStats();
+    private final ModeStats flashcardStats = new ModeStats();
 
-    private int flashcardsViewed = 0;
-    private int flashcardsFlipped = 0;
 
     public ModeStats getMcqStats() {
         return mcqStats;
@@ -26,38 +25,27 @@ public class StudySessionStats {
         return matchingStats;
     }
 
-    public void recordFlashcardViewed() {
-        flashcardsViewed++;
-    }
-
-    public void recordFlashcardFlipped() {
-        flashcardsFlipped++;
-    }
-
-    public int getFlashcardsViewed() {
-        return flashcardsViewed;
-    }
-
-    public int getFlashcardsFlipped() {
-        return flashcardsFlipped;
-    }
+    public ModeStats getFlashcardStats() {return flashcardStats;}
 
     public int getTotalAttempted() {
-        return mcqStats.getAttempted()
+        return flashcardStats.getAttempted()
+                + mcqStats.getAttempted()
                 + clozeStats.getAttempted()
                 + trueFalseStats.getAttempted()
                 + matchingStats.getAttempted();
     }
 
     public int getTotalCorrect() {
-        return mcqStats.getCorrect()
+        return flashcardStats.getAttempted()
+                + mcqStats.getCorrect()
                 + clozeStats.getCorrect()
                 + trueFalseStats.getCorrect()
                 + matchingStats.getCorrect();
     }
 
     public int getTotalIncorrect() {
-        return mcqStats.getIncorrect()
+        return flashcardStats.getAttempted()
+                + mcqStats.getIncorrect()
                 + clozeStats.getIncorrect()
                 + trueFalseStats.getIncorrect()
                 + matchingStats.getIncorrect();

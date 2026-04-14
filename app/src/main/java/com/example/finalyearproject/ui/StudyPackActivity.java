@@ -210,7 +210,9 @@ public class StudyPackActivity extends AppCompatActivity {
         showPagerMode();
 
         if (flashcardPagerAdapter == null){
-            flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards);
+            flashcardPagerAdapter = new FlashcardPagerAdapter(currentPack.flashcards,
+                    sessionStats,
+                    this::refreshStatsUi);
         }
         studyViewPager.setAdapter(flashcardPagerAdapter);
         studyViewPager.setCurrentItem(0, false);
@@ -388,11 +390,6 @@ public class StudyPackActivity extends AppCompatActivity {
             return;
         }
 
-        if ("flashcards".equals(currentPagerMode)) {
-            statsBarLayout.setVisibility(View.GONE);
-            return;
-        }
-
         statsBarLayout.setVisibility(View.VISIBLE);
 
         int attempted = 0;
@@ -400,7 +397,13 @@ public class StudyPackActivity extends AppCompatActivity {
         int incorrect = 0;
         int accuracy = 0;
 
-        if ("mcq".equals(currentPagerMode)) {
+        if ("flashcards".equals(currentPagerMode)){
+            attempted = sessionStats.getFlashcardStats().getAttempted();
+            correct = sessionStats.getFlashcardStats().getCorrect();
+            incorrect = sessionStats.getFlashcardStats().getIncorrect();
+            accuracy = sessionStats.getFlashcardStats().getAccuracyPercent();
+
+        }else if ("mcq".equals(currentPagerMode)){
             attempted = sessionStats.getMcqStats().getAttempted();
             correct = sessionStats.getMcqStats().getCorrect();
             incorrect = sessionStats.getMcqStats().getIncorrect();

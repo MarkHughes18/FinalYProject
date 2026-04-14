@@ -50,6 +50,45 @@
                 android:textColor="@color/study_text_primary"
                 android:lineSpacingExtra="5dp" />
 
+            <LinearLayout
+                android:id="@+id/flashcardFeedbackLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <Button
+                    android:id="@+id/flashcardGotItBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="👍 Got it"
+                    android:layout_marginEnd="12dp"
+                    android:textColor="@android:color/white"
+                    android:backgroundTint="#66BB6A" />
+
+                <Button
+                    android:id="@+id/flashcardNeedReviewBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="👎 Review"
+                    android:textColor="@android:color/white"
+                    android:backgroundTint="#F44336" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/flashcardFeedbackStatusTV"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Marked as correct"
+                android:textSize="13sp"
+                android:textColor="@color/study_text_secondary"
+                android:visibility="gone"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp" />
+
             <TextView
                 android:id="@+id/flashcardSwipeHintTV"
                 android:layout_width="wrap_content"
