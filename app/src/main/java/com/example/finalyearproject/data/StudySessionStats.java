@@ -36,23 +36,21 @@ public class StudySessionStats {
     }
 
     public int getTotalCorrect() {
-        return flashcardStats.getAttempted()
-                + mcqStats.getCorrect()
+        return mcqStats.getCorrect()
                 + clozeStats.getCorrect()
                 + trueFalseStats.getCorrect()
                 + matchingStats.getCorrect();
     }
 
     public int getTotalIncorrect() {
-        return flashcardStats.getAttempted()
-                + mcqStats.getIncorrect()
+        return mcqStats.getIncorrect()
                 + clozeStats.getIncorrect()
                 + trueFalseStats.getIncorrect()
                 + matchingStats.getIncorrect();
     }
 
     public int getOverallAccuracyPercent() {
-        int attempted = getTotalAttempted();
+        int attempted = getTotalCorrect()- getTotalIncorrect();
         if (attempted == 0) {
             return 0;
         }

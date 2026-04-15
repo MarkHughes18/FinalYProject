@@ -36,6 +36,7 @@ import com.example.finalyearproject.data.ApiService;
 import com.example.finalyearproject.data.ContinueLearningPrefs;
 import com.example.finalyearproject.data.CreateHistoryRequest;
 import com.example.finalyearproject.data.HistoryItem;
+import com.example.finalyearproject.data.LearningStatsPrefs;
 import com.example.finalyearproject.data.RetrofitClient;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
@@ -75,6 +76,11 @@ public class HomeFragment extends Fragment {
     private TextView continueModeTV;
     private TextView continueProgressTV;
     private Button continueLearningBtn;
+    private View quickStatsCard;
+    private TextView quickStatsAttemptedTV;
+    private TextView quickStatsAccuracyTV;
+    private TextView quickStatsBestModeTV;
+    private TextView quickStatsSessionsTV;
     private final Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isPolling = false;
@@ -115,6 +121,11 @@ public class HomeFragment extends Fragment {
         continueModeTV = view.findViewById(R.id.continueModeTV);
         continueProgressTV = view.findViewById(R.id.continueProgressTV);
         continueLearningBtn = view.findViewById(R.id.continueLearningBtn);
+        quickStatsCard = view.findViewById(R.id.quickStatsCard);
+        quickStatsAttemptedTV = view.findViewById(R.id.quickStatsAttemptedTV);
+        quickStatsAccuracyTV = view.findViewById(R.id.quickStatsAccuracyTV);
+        quickStatsBestModeTV = view.findViewById(R.id.quickStatsBestModeTV);
+        quickStatsSessionsTV = view.findViewById(R.id.quickStatsSessionsTV);
 
         previousFilesRV.setLayoutManager(
                 new LinearLayoutManager(requireContext()));
@@ -124,6 +135,7 @@ public class HomeFragment extends Fragment {
 
         api = RetrofitClient.getApiService();
         bindContinueLearningCard();
+        bindQuickStatsCard();
         setupFilePicker();
 
         pickFileBtn.setOnClickListener(v -> openFilePicker());
@@ -171,6 +183,16 @@ public class HomeFragment extends Fragment {
             intent.putExtra("resumePosition", data.getLastPosition());
             startActivity(intent);
         });
+    }
+
+    private void bindQuickStatsCard() {
+        LearningStatsPrefs.DashboardStats stats = LearningStatsPrefs.getDashboardStats(requireContext());
+
+        quickStatsCard.setVisibility(View.VISIBLE);
+        quickStatsAttemptedTV.setText(String.valueOf(stats.getTotalAttempted()));
+        quickStatsAccuracyTV.setText(stats.getOverallAccuracy() + "%");
+        quickStatsBestModeTV.setText(stats.getBestMode());
+        quickStatsSessionsTV.setText(String.valueOf(stats.getSessionsCompleted()));
     }
 
     private String formatModeName(String mode) {
@@ -586,6 +608,7 @@ public class HomeFragment extends Fragment {
     public void onResume() {
         super.onResume();
         bindContinueLearningCard();
+        bindQuickStatsCard();
     }
 
     private void showPlayerBottomSheet(String title, String url) {

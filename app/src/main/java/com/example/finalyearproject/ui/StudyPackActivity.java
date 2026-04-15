@@ -63,6 +63,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private McqPagerAdapter mcqPagerAdapter;
     private TrueFalsePagerAdapter trueFalsePagerAdapter;
     private boolean pagerCallbackRegistered = false;
+    private boolean sessionStatsSaved = false;
     private LinearLayout matchingGameContainer;
     private TextView matchingProgressTv;
     private RecyclerView matchingUnmatchedRecyclerView;
@@ -492,6 +493,21 @@ public class StudyPackActivity extends AppCompatActivity {
         );
     }
 
+    private void persistSessionStatsOnce() {
+        if (sessionStatsSaved) {
+            return;
+        }
+
+        if (sessionStats.getTotalAttempted() == 0
+                && sessionStats.getTotalCorrect() == 0
+                && sessionStats.getTotalIncorrect() == 0) {
+            return;
+        }
+
+        com.example.finalyearproject.data.LearningStatsPrefs.mergeSessionStats(this, sessionStats);
+        sessionStatsSaved = true;
+    }
+
     private void refreshStatsUi() {
         if (statsBarLayout == null) {
             return;
@@ -591,6 +607,12 @@ public class StudyPackActivity extends AppCompatActivity {
     public boolean onSupportNavigateUp() {
         finish();
         return true;
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        persistSessionStatsOnce();
     }
 
     private String getLoggedInEmail() {
