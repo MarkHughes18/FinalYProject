@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -188,7 +189,17 @@ public class HomeFragment extends Fragment {
 
         quickStatsCard.setVisibility(View.VISIBLE);
         quickStatsAttemptedTV.setText(String.valueOf(stats.getTotalAttempted()));
+        int accuracy = stats.getOverallAccuracy();
         quickStatsAccuracyTV.setText(stats.getOverallAccuracy() + "%");
+
+        if (accuracy >= 80) {
+            quickStatsAccuracyTV.setTextColor(Color.parseColor("#4CAF50"));
+        } else if (accuracy >= 50) {
+            quickStatsAccuracyTV.setTextColor(Color.parseColor("#FFC107"));
+        } else {
+            quickStatsAccuracyTV.setTextColor(Color.parseColor("#E53935"));
+        }
+
         quickStatsBestModeTV.setText(stats.getBestMode());
         quickStatsSessionsTV.setText(String.valueOf(stats.getSessionsCompleted()));
     }

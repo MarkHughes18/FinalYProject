@@ -556,7 +556,7 @@ public class StudyPackActivity extends AppCompatActivity {
         } else if (accuracy >= 50) {
             statsAccuracyTv.setTextColor(Color.parseColor("#FFC107")); // amber
         } else {
-            statsAccuracyTv.setTextColor(Color.parseColor("#F44336")); // red
+            statsAccuracyTv.setTextColor(Color.parseColor("#E53935")); // red
         }
 
         statsAttemptedTv.setText(String.valueOf(attempted));
