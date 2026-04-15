@@ -74,7 +74,6 @@ public class HomeFragment extends Fragment {
     private View continueLearningCard;
     private TextView continueFileNameTV;
     private TextView continueModeTV;
-    private TextView continueProgressTV;
     private Button continueLearningBtn;
     private View quickStatsCard;
     private TextView quickStatsAttemptedTV;
@@ -119,7 +118,6 @@ public class HomeFragment extends Fragment {
         continueLearningCard = view.findViewById(R.id.continueLearningCard);
         continueFileNameTV = view.findViewById(R.id.continueFileNameTV);
         continueModeTV = view.findViewById(R.id.continueModeTV);
-        continueProgressTV = view.findViewById(R.id.continueProgressTV);
         continueLearningBtn = view.findViewById(R.id.continueLearningBtn);
         quickStatsCard = view.findViewById(R.id.quickStatsCard);
         quickStatsAttemptedTV = view.findViewById(R.id.quickStatsAttemptedTV);
@@ -162,7 +160,8 @@ public class HomeFragment extends Fragment {
     }
 
     private void bindContinueLearningCard() {
-        ContinueLearningPrefs.ContinueLearningData data = ContinueLearningPrefs.getContinueLearning(requireContext());
+        ContinueLearningPrefs.ContinueLearningData data =
+                ContinueLearningPrefs.getContinueLearning(requireContext());
 
         if (data == null) {
             continueLearningCard.setVisibility(View.GONE);
@@ -172,8 +171,7 @@ public class HomeFragment extends Fragment {
         continueLearningCard.setVisibility(View.VISIBLE);
 
         continueFileNameTV.setText(data.getFileName());
-        continueModeTV.setText("Last mode: " + formatModeName(data.getLastMode()));
-        continueProgressTV.setText("Resume from item " + (data.getLastPosition() + 1));
+        continueModeTV.setText(formatModeName(data.getLastMode()) + " • Item " + (data.getLastPosition() + 1));
 
         continueLearningBtn.setOnClickListener(v -> {
             Intent intent = new Intent(requireContext(), StudyPackActivity.class);
