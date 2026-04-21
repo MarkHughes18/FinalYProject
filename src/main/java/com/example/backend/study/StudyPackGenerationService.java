@@ -52,27 +52,69 @@ public class StudyPackGenerationService {
         this.studyPackLlmService = studyPackLlmService;
     }
 
-    // Returns the stored StudyPack if it exists, otherwise generates and returns it
-    // Ownership check is done against FileHistory.userEmail
     public StudyPack getOrGenerate(String userEmail, String historyId) {
-        // If already generated, return it
-        Optional<StudyPack> existing = studyPackRepository.findByUserEmailAndHistoryId(userEmail, historyId);
-        if (existing.isPresent()) {
-            return existing.get();
+        Optional<StudyPack> existingActive = studyPackRepository
+                .findByUserEmailAndHistoryIdAndActiveTrue(userEmail, historyId);
+
+        if (existingActive.isPresent()) {
+            return existingActive.get();
         }
 
-        // Load FileHistory
         FileHistory fh = fileHistoryRepository.findById(historyId).orElse(null);
         if (fh == null) {
             throw new IllegalArgumentException("File history not found for file id: " + historyId);
         }
 
-        // Ownership validation
         if (fh.getUserEmail() == null || !fh.getUserEmail().equalsIgnoreCase(userEmail)) {
             throw new IllegalArgumentException("Not allowed: history file does not belong to user");
         }
 
-        // We generate from narrationText, fallback to extractedText
+        return generatePackVersion(userEmail, fh, 1, null);
+    }
+
+    public StudyPack regenerate(String userEmail, String historyId) {
+        FileHistory fh = fileHistoryRepository.findById(historyId).orElse(null);
+        if (fh == null) {
+            throw new IllegalArgumentException("File history not found for file id: " + historyId);
+        }
+
+        if (fh.getUserEmail() == null || !fh.getUserEmail().equalsIgnoreCase(userEmail)) {
+            throw new IllegalArgumentException("Not allowed: history file does not belong to user");
+        }
+
+        // Find current active pack, if any
+        Optional<StudyPack> activePackOpt = studyPackRepository.findByUserEmailAndHistoryIdAndActiveTrue(userEmail,
+                historyId);
+
+        // Find latest version number
+        Optional<StudyPack> latestPackOpt = studyPackRepository
+                .findFirstByUserEmailAndHistoryIdOrderByVersionNumberDesc(userEmail, historyId);
+
+        int nextVersion = latestPackOpt
+                .map(StudyPack::getVersionNumber)
+                .filter(Objects::nonNull)
+                .map(version -> version + 1)
+                .orElse(1);
+
+        String regeneratedFromPackId = null;
+
+        if (activePackOpt.isPresent()) {
+            StudyPack activePack = activePackOpt.get();
+            activePack.setActive(false);
+            activePack.setUpdatedAt(Instant.now());
+            studyPackRepository.save(activePack);
+            regeneratedFromPackId = activePack.getId();
+        }
+
+        return generatePackVersion(userEmail, fh, nextVersion, regeneratedFromPackId);
+    }
+
+    private StudyPack generatePackVersion(String userEmail,
+            FileHistory fh,
+            int versionNumber,
+            String regeneratedFromPackId) {
+
+        // Generate from narrationText, fallback to extractedText
         String text = fh.getNarrationText();
         if (text == null || text.isBlank()) {
             text = fh.getExtractedText();
@@ -86,7 +128,7 @@ public class StudyPackGenerationService {
 
         List<String> sentences = splitIntoSentences(bounded, MAX_SENTENCES);
 
-        // sentence first pipeline
+        // Sentence-first pipeline
         List<String> factSentences = extractEducationalSentences(sentences, 120);
         if (factSentences.isEmpty()) {
             factSentences = new ArrayList<>(sentences);
@@ -104,13 +146,16 @@ public class StudyPackGenerationService {
         List<String> tfPool = new ArrayList<>(processSentences);
         tfPool.addAll(detailSentences);
 
-        // Fallback in case one pool is too small/ empty
-        if (flashcardPool.isEmpty())
+        // Fallback in case one pool is too small / empty
+        if (flashcardPool.isEmpty()) {
             flashcardPool = new ArrayList<>(factSentences);
-        if (clozePool.isEmpty())
+        }
+        if (clozePool.isEmpty()) {
             clozePool = new ArrayList<>(factSentences);
-        if (tfPool.isEmpty())
+        }
+        if (tfPool.isEmpty()) {
             tfPool = new ArrayList<>(factSentences);
+        }
 
         List<String> safeProcessPool = processSentences.isEmpty() ? tfPool : processSentences;
         List<String> safeDetailPool = detailSentences.isEmpty() ? tfPool : detailSentences;
@@ -135,8 +180,8 @@ public class StudyPackGenerationService {
                     settings);
 
             tfPack = studyPackLlmService.generateTrueFalsePack(
-                    processSentences,
-                    detailSentences,
+                    safeProcessPool,
+                    safeDetailPool,
                     settings);
         } catch (Exception e) {
             throw new RuntimeException("Study pack generation failed: " + e.getMessage(), e);
@@ -151,13 +196,23 @@ public class StudyPackGenerationService {
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
         Instant now = Instant.now();
+
         StudyPack pack = new StudyPack();
         pack.setUserEmail(userEmail);
-        pack.setHistoryId(historyId);
+        pack.setHistoryId(fh.getId());
         pack.setCreatedAt(now);
         pack.setUpdatedAt(now);
         pack.setSourceHash(sourceHash);
+
+        pack.setVersionNumber(versionNumber);
+        pack.setActive(true);
+        pack.setRegeneratedFromPackId(regeneratedFromPackId);
+
+        pack.setFileName(fh.getFileName());
+        pack.setFileLabel(fh.getLabel());
+
         pack.setSettings(settings);
+        pack.setUsedCandidates(new StudyPack.CandidateUsage());
 
         pack.setFlashcards(flashcards);
         pack.setMatchingPairs(matchingPairs);

@@ -26,8 +26,8 @@ public class StudyPack {
     // Helps detect if narration text changed / regeneration needed
     private String sourceHash;
 
-    private int versionNumber;
-    private boolean active;
+    private Integer versionNumber;
+    private Boolean active;
     private String regeneratedFromPackId; // Previous pack id, if regenerated
 
     private String fileName;
@@ -118,19 +118,19 @@ public class StudyPack {
         this.sourceHash = sourceHash;
     }
 
-    public int getVersionNumber() {
+    public Integer getVersionNumber() {
         return versionNumber;
     }
 
-    public void setVersionNumber(int versionNumber) {
+    public void setVersionNumber(Integer versionNumber) {
         this.versionNumber = versionNumber;
     }
 
-    public boolean getActive() {
+    public Boolean getActive() {
         return active;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 
