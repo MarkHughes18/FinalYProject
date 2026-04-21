@@ -8,7 +8,11 @@ import java.util.Optional;
 
 public interface StudyPackRepository extends MongoRepository<StudyPack, String> {
 
-    Optional<StudyPack> findByUserEmailAndHistoryId(String userEmail, String historyId);
+    Optional<StudyPack> findByUserEmailAndHistoryIdAndActiveTrue(String userEmail, String historyId);
+
+    Optional<StudyPack> findFirstByUserEmailAndHistoryIdOrderByVersionNumberDesc(String userEmail, String historyId);
+
+    List<StudyPack> findByUserEmailAndHistoryIdOrderByVersionNumberDesc(String userEmail, String historyId);
 
     boolean existsByUserEmailAndHistoryId(String userEmail, String historyId);
 

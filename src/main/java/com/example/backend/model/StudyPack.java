@@ -26,7 +26,15 @@ public class StudyPack {
     // Helps detect if narration text changed / regeneration needed
     private String sourceHash;
 
+    private int versionNumber;
+    private boolean active;
+    private String regeneratedFromPackId; // Previous pack id, if regenerated
+
+    private String fileName;
+    private String fileLabel;
+
     private StudyPackSettings settings;
+    private CandidateUsage usedCandidates = new CandidateUsage();// Tracks which items were used
 
     private List<Flashcard> flashcards = new ArrayList<>();
     private List<MatchingPair> matchingPairs = new ArrayList<>();
@@ -38,7 +46,8 @@ public class StudyPack {
     }
 
     public StudyPack(String userEmail, String historyId, Instant createdAt, Instant updatedAt,
-            String sourceHash, StudyPackSettings settings,
+            String sourceHash, int versionNumber, boolean active, String regeneratedFromPackId,
+            String fileName, String fileLabel, StudyPackSettings settings, CandidateUsage usedCandidates,
             List<Flashcard> flashcards, List<MatchingPair> matchingPairs,
             List<ClozeQuestion> clozeQuestions, List<TrueFalseQuestion> trueFalseQuestions,
             List<McqQuestion> mcqQuestions) {
@@ -47,7 +56,13 @@ public class StudyPack {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.sourceHash = sourceHash;
+        this.versionNumber = versionNumber;
+        this.active = active;
+        this.regeneratedFromPackId = regeneratedFromPackId;
+        this.fileName = fileName;
+        this.fileLabel = fileLabel;
         this.settings = settings;
+        this.usedCandidates = usedCandidates != null ? usedCandidates : new CandidateUsage();
         this.flashcards = flashcards != null ? flashcards : new ArrayList<>();
         this.matchingPairs = matchingPairs != null ? matchingPairs : new ArrayList<>();
         this.clozeQuestions = clozeQuestions != null ? clozeQuestions : new ArrayList<>();
@@ -103,12 +118,60 @@ public class StudyPack {
         this.sourceHash = sourceHash;
     }
 
+    public int getVersionNumber() {
+        return versionNumber;
+    }
+
+    public void setVersionNumber(int versionNumber) {
+        this.versionNumber = versionNumber;
+    }
+
+    public boolean getActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public String getRegeneratedFromPackId() {
+        return regeneratedFromPackId;
+    }
+
+    public void setRegeneratedFromPackId(String regeneratedFromPackId) {
+        this.regeneratedFromPackId = regeneratedFromPackId;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getFileLabel() {
+        return fileLabel;
+    }
+
+    public void setFileLabel(String fileLabel) {
+        this.fileLabel = fileLabel;
+    }
+
     public StudyPackSettings getSettings() {
         return settings;
     }
 
     public void setSettings(StudyPackSettings settings) {
         this.settings = settings;
+    }
+
+    public CandidateUsage getUsedCandidates() {
+        return usedCandidates;
+    }
+
+    public void setUsedCandidates(CandidateUsage usedCandidates) {
+        this.usedCandidates = usedCandidates;
     }
 
     public List<Flashcard> getFlashcards() {
@@ -151,7 +214,57 @@ public class StudyPack {
         this.mcqQuestions = mcqQuestions;
     }
 
-    // Nested types keeps v1 simple, one model file
+    public static class CandidateUsage {
+        private List<String> flashcardIds = new ArrayList<>();
+        private List<String> matchingIds = new ArrayList<>();
+        private List<String> clozeIds = new ArrayList<>();
+        private List<String> trueFalseIds = new ArrayList<>();
+        private List<String> mcqIds = new ArrayList<>();
+
+        public CandidateUsage() {
+        }
+
+        public List<String> getFlashcardIds() {
+            return flashcardIds;
+        }
+
+        public void setFlashcardIds(List<String> flashcardIds) {
+            this.flashcardIds = flashcardIds != null ? flashcardIds : new ArrayList<>();
+        }
+
+        public List<String> getMatchingIds() {
+            return matchingIds;
+        }
+
+        public void setMatchingIds(List<String> matchingIds) {
+            this.matchingIds = matchingIds != null ? matchingIds : new ArrayList<>();
+        }
+
+        public List<String> getClozeIds() {
+            return clozeIds;
+        }
+
+        public void setClozeIds(List<String> clozeIds) {
+            this.clozeIds = clozeIds != null ? clozeIds : new ArrayList<>();
+        }
+
+        public List<String> getTrueFalseIds() {
+            return trueFalseIds;
+        }
+
+        public void setTrueFalseIds(List<String> trueFalseIds) {
+            this.trueFalseIds = trueFalseIds != null ? trueFalseIds : new ArrayList<>();
+        }
+
+        public List<String> getMcqIds() {
+            return mcqIds;
+        }
+
+        public void setMcqIds(List<String> mcqIds) {
+            this.mcqIds = mcqIds != null ? mcqIds : new ArrayList<>();
+        }
+    }
+
     public static class StudyPackSettings {
         private int flashcardCount;
         private int matchingPairCount;
