@@ -195,6 +195,13 @@ public class StudyPackGenerationService {
         // Keep matching derived from flashcards
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
+        StudyPack.CandidateUsage usage = new StudyPack.CandidateUsage();
+        usage.setFlashcardIds(collectFlashcardIds(flashcards));
+        usage.setMatchingIds(collectMatchingIds(matchingPairs));
+        usage.setClozeIds(collectClozeIds(clozeQuestions));
+        usage.setTrueFalseIds(collectTrueFalseIds(tfQuestions));
+        usage.setMcqIds(collectMcqIds(mcqQuestions));
+
         Instant now = Instant.now();
 
         StudyPack pack = new StudyPack();
@@ -212,7 +219,7 @@ public class StudyPackGenerationService {
         pack.setFileLabel(fh.getLabel());
 
         pack.setSettings(settings);
-        pack.setUsedCandidates(new StudyPack.CandidateUsage());
+        pack.setUsedCandidates(usage);
 
         pack.setFlashcards(flashcards);
         pack.setMatchingPairs(matchingPairs);
@@ -1869,6 +1876,116 @@ public class StudyPackGenerationService {
         }
 
         return out;
+    }
+
+    private String buildCandidateId(String prefix, String... parts) {
+        StringBuilder sb = new StringBuilder(prefix);
+
+        if (parts != null) {
+            for (String part : parts) {
+                sb.append("|");
+                sb.append(part == null ? "" : normalizeIdPart(part));
+            }
+        }
+
+        return prefix + "|" + sha256Hex(sb.toString());
+    }
+
+    private String normalizeIdPart(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> collectFlashcardIds(List<StudyPack.Flashcard> flashcards) {
+        List<String> ids = new ArrayList<>();
+        if (flashcards == null) {
+            return ids;
+        }
+
+        for (StudyPack.Flashcard card : flashcards) {
+            if (card == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "flashcard",
+                    card.getFront(),
+                    card.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectClozeIds(List<StudyPack.ClozeQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.ClozeQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "cloze",
+                    q.getAnswer(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectTrueFalseIds(List<StudyPack.TrueFalseQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.TrueFalseQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "tf",
+                    q.getStatement(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectMcqIds(List<StudyPack.McqQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.McqQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "mcq",
+                    q.getQuestion(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectMatchingIds(List<StudyPack.MatchingPair> pairs) {
+        List<String> ids = new ArrayList<>();
+        if (pairs == null) {
+            return ids;
+        }
+
+        for (StudyPack.MatchingPair pair : pairs) {
+            if (pair == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "matching",
+                    pair.getLeft(),
+                    pair.getRight()));
+        }
+        return ids;
     }
 
     private List<String> buildClozeChoices(String correctAnswer, List<String> conceptPool) {
