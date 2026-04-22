@@ -162,6 +162,40 @@ public class StudyPackGenerationService {
 
         List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
 
+        List<StudyPack> previousPacks = studyPackRepository
+                .findByUserEmailAndHistoryIdOrderByVersionNumberDesc(userEmail, fh.getId());
+
+        Set<String> usedFlashcardSourceIds = collectPreviouslyUsedFlashcardSourceIds(previousPacks);
+        Set<String> usedClozeSourceIds = collectPreviouslyUsedClozeSourceIds(previousPacks);
+        Set<String> usedTrueFalseSourceIds = collectPreviouslyUsedTrueFalseSourceIds(previousPacks);
+
+        // Filter pools using used source snippets
+        List<String> filteredFlashcardPool = filterPoolByUsedSourceIds(
+                flashcardPool,
+                usedFlashcardSourceIds,
+                "flashcard-src");
+
+        List<String> filteredClozePool = filterPoolByUsedSourceIds(
+                clozePool,
+                usedClozeSourceIds,
+                "cloze-src");
+
+        List<String> filteredProcessPool = filterPoolByUsedSourceIds(
+                safeProcessPool,
+                usedTrueFalseSourceIds,
+                "tf-src");
+
+        List<String> filteredDetailPool = filterPoolByUsedSourceIds(
+                safeDetailPool,
+                usedTrueFalseSourceIds,
+                "tf-src");
+
+        // Fallback if filtering makes pool too small
+        flashcardPool = choosePoolWithFallback(filteredFlashcardPool, flashcardPool, 3);
+        clozePool = choosePoolWithFallback(filteredClozePool, clozePool, 3);
+        safeProcessPool = choosePoolWithFallback(filteredProcessPool, safeProcessPool, 3);
+        safeDetailPool = choosePoolWithFallback(filteredDetailPool, safeDetailPool, 3);
+
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
 
@@ -2039,6 +2073,104 @@ public class StudyPackGenerationService {
 
         Collections.shuffle(finalChoices);
         return finalChoices;
+    }
+
+    private String buildSourceSentenceId(String prefix, String sentence) {
+        return buildCandidateId(prefix, sentence);
+    }
+
+    private Set<String> collectPreviouslyUsedFlashcardSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null) {
+            return ids;
+        }
+
+        for (StudyPack pack : previousPacks) {
+            if (pack == null || pack.getFlashcards() == null) {
+                continue;
+            }
+
+            for (StudyPack.Flashcard card : pack.getFlashcards()) {
+                if (card == null || card.getSourceSnippet() == null || card.getSourceSnippet().isBlank()) {
+                    continue;
+                }
+                ids.add(buildSourceSentenceId("flashcard-src", card.getSourceSnippet()));
+            }
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectPreviouslyUsedClozeSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null) {
+            return ids;
+        }
+
+        for (StudyPack pack : previousPacks) {
+            if (pack == null || pack.getClozeQuestions() == null) {
+                continue;
+            }
+
+            for (StudyPack.ClozeQuestion q : pack.getClozeQuestions()) {
+                if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                    continue;
+                }
+                ids.add(buildSourceSentenceId("cloze-src", q.getSourceSnippet()));
+            }
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectPreviouslyUsedTrueFalseSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null) {
+            return ids;
+        }
+
+        for (StudyPack pack : previousPacks) {
+            if (pack == null || pack.getTrueFalseQuestions() == null) {
+                continue;
+            }
+
+            for (StudyPack.TrueFalseQuestion q : pack.getTrueFalseQuestions()) {
+                if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                    continue;
+                }
+                ids.add(buildSourceSentenceId("tf-src", q.getSourceSnippet()));
+            }
+        }
+
+        return ids;
+    }
+
+    private List<String> filterPoolByUsedSourceIds(List<String> pool, Set<String> usedIds, String prefix) {
+        List<String> filtered = new ArrayList<>();
+        if (pool == null || pool.isEmpty()) {
+            return filtered;
+        }
+
+        for (String sentence : pool) {
+            if (sentence == null || sentence.isBlank()) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, sentence);
+            if (!usedIds.contains(id)) {
+                filtered.add(sentence);
+            }
+        }
+
+        return filtered;
+    }
+
+    private List<String> choosePoolWithFallback(List<String> filteredPool, List<String> originalPool,
+            int minimumRequired) {
+        if (filteredPool != null && filteredPool.size() >= minimumRequired) {
+            return filteredPool;
+        }
+        return originalPool != null ? new ArrayList<>(originalPool) : new ArrayList<>();
     }
 
     // Minimal stopword set
