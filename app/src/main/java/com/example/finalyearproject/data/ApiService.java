@@ -32,10 +32,7 @@ public interface ApiService {
 
     @Multipart
     @POST("api/files/upload")
-    Call<HistoryItem> uploadFile(
-            @Query("historyId") String historyId,
-            @Part MultipartBody.Part file
-    );
+    Call<HistoryItem> uploadFile(@Query("historyId") String historyId, @Part MultipartBody.Part file);
 
     @DELETE("api/files/history")
     Call<Void> clearHistory(@Query("email") String email);
@@ -47,8 +44,8 @@ public interface ApiService {
     Call<StudyPackResponse> getStudyPack( @Path("historyId") String historyId, @Query("email") String email);
 
     @PATCH("api/files/history/{id}/label")
-    Call<HistoryItem> updateHistoryLabel(
-            @Path("id") String id,
-            @Body UpdateLabelRequest req
-    );
+    Call<HistoryItem> updateHistoryLabel(@Path("id") String id, @Body UpdateLabelRequest req);
+
+    @POST("api/study/packs/{historyId}/regenerate")
+    Call<StudyPackResponse> regenerateStudyPack(@Path("historyId") String historyId, @Query("email") String email);
 }
