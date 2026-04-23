@@ -70,4 +70,24 @@ public class StudyPackLlmService {
 
         return validator.validateTrueFalsePack(response, settings);
     }
+
+    public List<FlashcardDto> generateFlashcardsFromSnippets(List<String> selectedSnippets) throws Exception {
+
+        selectedSnippets = limitList(selectedSnippets, 12);
+
+        System.out.println("STUDYPACK LLM flashcard snippet request:");
+        System.out.println("selectedSnippets size=" + selectedSnippets.size());
+
+        return client.generateFlashcardsFromSnippets(selectedSnippets);
+    }
+
+    public List<ClozeQuestionDto> generateClozeFromSnippets(List<String> selectedSnippets) throws Exception {
+
+        selectedSnippets = limitList(selectedSnippets, 12);
+
+        System.out.println("STUDYPACK LLM cloze snippet request:");
+        System.out.println("selectedSnippets size=" + selectedSnippets.size());
+
+        return client.generateClozeFromSnippets(selectedSnippets);
+    }
 }

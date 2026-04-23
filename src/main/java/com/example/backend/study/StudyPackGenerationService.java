@@ -160,43 +160,25 @@ public class StudyPackGenerationService {
         List<StudyPack> previousPacks = studyPackRepository
                 .findByUserEmailAndHistoryIdOrderByVersionNumberDesc(userEmail, fh.getId());
 
-        Set<String> usedFlashcardSourceIds = collectPreviouslyUsedFlashcardSourceIds(previousPacks);
-        Set<String> usedClozeSourceIds = collectPreviouslyUsedClozeSourceIds(previousPacks);
-        Set<String> usedTrueFalseSourceIds = collectPreviouslyUsedTrueFalseSourceIds(previousPacks);
-
         Set<String> latestFlashcardSourceIds = collectLatestVersionFlashcardSourceIds(previousPacks);
         Set<String> latestClozeSourceIds = collectLatestVersionClozeSourceIds(previousPacks);
         Set<String> latestTrueFalseSourceIds = collectLatestVersionTrueFalseSourceIds(previousPacks);
 
-        // Prefer unused, then reused but not from the most recent version, then reused
-        // from the most recent version last
-        flashcardPool = chooseUnusedThenOlderFallbackThenLatest(
-                flashcardPool,
-                usedFlashcardSourceIds,
-                latestFlashcardSourceIds,
-                "flashcard-src",
-                FLASHCARDS_COUNT);
+        // Preselect source snippets for regeneration
+        // Keep some strong repeated anchors, but force some fresher snippets too
+        List<String> selectedFlashcardSources = selectSourceSnippetsForMode(flashcardPool, latestFlashcardSourceIds,
+                "flashcard-src", 3, 2);
 
-        clozePool = chooseUnusedThenOlderFallbackThenLatest(
-                clozePool,
-                usedClozeSourceIds,
-                latestClozeSourceIds,
-                "cloze-src",
-                CLOZE_COUNT);
+        List<String> selectedClozeSources = selectSourceSnippetsForMode(clozePool, latestClozeSourceIds,
+                "cloze-src", 3, 2);
 
-        safeProcessPool = chooseUnusedThenOlderFallbackThenLatest(
-                safeProcessPool,
-                usedTrueFalseSourceIds,
+        List<String> selectedTrueFalseProcessSources = selectSourceSnippetsForMode(safeProcessPool,
                 latestTrueFalseSourceIds,
-                "tf-src",
-                TF_COUNT);
+                "tf-src", 6, 3);
 
-        safeDetailPool = chooseUnusedThenOlderFallbackThenLatest(
-                safeDetailPool,
-                usedTrueFalseSourceIds,
+        List<String> selectedTrueFalseDetailSources = selectSourceSnippetsForMode(safeDetailPool,
                 latestTrueFalseSourceIds,
-                "tf-src",
-                TF_COUNT);
+                "tf-src", 6, 3);
 
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
@@ -209,16 +191,12 @@ public class StudyPackGenerationService {
         TrueFalsePackResponse tfPack;
 
         try {
-            conceptPack = studyPackLlmService.generateConceptPack(
-                    flashcardPool,
-                    clozePool,
-                    topicLabels,
-                    settings);
+            conceptPack = studyPackLlmService.generateConceptPack(selectedFlashcardSources, selectedClozeSources,
+                    topicLabels, settings);
 
             tfPack = studyPackLlmService.generateTrueFalsePack(
-                    safeProcessPool,
-                    safeDetailPool,
-                    settings);
+                    selectedTrueFalseProcessSources, selectedTrueFalseDetailSources, settings);
+
         } catch (Exception e) {
             throw new RuntimeException("Study pack generation failed: " + e.getMessage(), e);
         }
@@ -471,6 +449,68 @@ public class StudyPackGenerationService {
             }
             if (added >= limit) {
                 break;
+            }
+        }
+    }
+
+    private List<String> selectSourceSnippetsForMode(List<String> pool, Set<String> latestUsedIds, String prefix,
+            int freshTarget, int repeatTarget) {
+        List<String> fresh = new ArrayList<>();
+        List<String> repeated = new ArrayList<>();
+
+        if (pool == null) {
+            return new ArrayList<>();
+        }
+
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (String item : pool) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (!seen.add(item)) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, item);
+            if (latestUsedIds.contains(id)) {
+                repeated.add(item);
+            } else {
+                fresh.add(item);
+            }
+        }
+
+        List<String> result = new ArrayList<>();
+        Set<String> resultSeen = new LinkedHashSet<>();
+
+        // Prefer fresh first
+        addUpTo(result, resultSeen, fresh, freshTarget);
+
+        // Then allow repeated anchor items
+        addUpTo(result, resultSeen, repeated, repeatTarget);
+
+        // If still short, add the rest of the fresh pool
+        addRemaining(result, resultSeen, fresh);
+
+        // Then the rest of the repeated pool
+        addRemaining(result, resultSeen, repeated);
+
+        return result;
+    }
+
+    private void addRemaining(List<String> target,
+            Set<String> seen,
+            List<String> source) {
+        if (source == null) {
+            return;
+        }
+
+        for (String item : source) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (seen.add(item)) {
+                target.add(item);
             }
         }
     }
@@ -2248,72 +2288,6 @@ public class StudyPackGenerationService {
 
     private String buildSourceSentenceId(String prefix, String sentence) {
         return buildCandidateId(prefix, sentence);
-    }
-
-    private Set<String> collectPreviouslyUsedFlashcardSourceIds(List<StudyPack> previousPacks) {
-        Set<String> ids = new HashSet<>();
-        if (previousPacks == null) {
-            return ids;
-        }
-
-        for (StudyPack pack : previousPacks) {
-            if (pack == null || pack.getFlashcards() == null) {
-                continue;
-            }
-
-            for (StudyPack.Flashcard card : pack.getFlashcards()) {
-                if (card == null || card.getSourceSnippet() == null || card.getSourceSnippet().isBlank()) {
-                    continue;
-                }
-                ids.add(buildSourceSentenceId("flashcard-src", card.getSourceSnippet()));
-            }
-        }
-
-        return ids;
-    }
-
-    private Set<String> collectPreviouslyUsedClozeSourceIds(List<StudyPack> previousPacks) {
-        Set<String> ids = new HashSet<>();
-        if (previousPacks == null) {
-            return ids;
-        }
-
-        for (StudyPack pack : previousPacks) {
-            if (pack == null || pack.getClozeQuestions() == null) {
-                continue;
-            }
-
-            for (StudyPack.ClozeQuestion q : pack.getClozeQuestions()) {
-                if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
-                    continue;
-                }
-                ids.add(buildSourceSentenceId("cloze-src", q.getSourceSnippet()));
-            }
-        }
-
-        return ids;
-    }
-
-    private Set<String> collectPreviouslyUsedTrueFalseSourceIds(List<StudyPack> previousPacks) {
-        Set<String> ids = new HashSet<>();
-        if (previousPacks == null) {
-            return ids;
-        }
-
-        for (StudyPack pack : previousPacks) {
-            if (pack == null || pack.getTrueFalseQuestions() == null) {
-                continue;
-            }
-
-            for (StudyPack.TrueFalseQuestion q : pack.getTrueFalseQuestions()) {
-                if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
-                    continue;
-                }
-                ids.add(buildSourceSentenceId("tf-src", q.getSourceSnippet()));
-            }
-        }
-
-        return ids;
     }
 
     private List<String> filterPoolByUsedSourceIds(List<String> pool, Set<String> usedIds, String prefix) {
