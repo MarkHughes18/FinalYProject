@@ -140,25 +140,20 @@ public class StudyPackGenerationService {
         List<String> processSentences = pools.getOrDefault("processes", Collections.emptyList());
         List<String> detailSentences = pools.getOrDefault("details", Collections.emptyList());
 
-        List<String> flashcardPool = new ArrayList<>(definitionSentences);
-        List<String> clozePool = new ArrayList<>(definitionSentences);
-        clozePool.addAll(processSentences);
-        List<String> tfPool = new ArrayList<>(processSentences);
-        tfPool.addAll(detailSentences);
+        List<String> flashcardPool = buildBalancedPool(definitionSentences, processSentences, detailSentences, 3, 2, 2,
+                factSentences);
 
-        // Fallback in case one pool is too small / empty
-        if (flashcardPool.isEmpty()) {
-            flashcardPool = new ArrayList<>(factSentences);
-        }
-        if (clozePool.isEmpty()) {
-            clozePool = new ArrayList<>(factSentences);
-        }
-        if (tfPool.isEmpty()) {
-            tfPool = new ArrayList<>(factSentences);
-        }
+        List<String> clozePool = buildBalancedPool(definitionSentences, processSentences, detailSentences, 2, 2, 2,
+                factSentences);
 
-        List<String> safeProcessPool = processSentences.isEmpty() ? tfPool : processSentences;
-        List<String> safeDetailPool = detailSentences.isEmpty() ? tfPool : detailSentences;
+        List<String> tfPool = buildBalancedPool(processSentences, detailSentences, definitionSentences, 4, 4, 2,
+                factSentences);
+
+        List<String> safeProcessPool = processSentences.isEmpty() ? new ArrayList<>(tfPool)
+                : new ArrayList<>(processSentences);
+
+        List<String> safeDetailPool = detailSentences.isEmpty() ? new ArrayList<>(tfPool)
+                : new ArrayList<>(detailSentences);
 
         List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
 
@@ -169,32 +164,39 @@ public class StudyPackGenerationService {
         Set<String> usedClozeSourceIds = collectPreviouslyUsedClozeSourceIds(previousPacks);
         Set<String> usedTrueFalseSourceIds = collectPreviouslyUsedTrueFalseSourceIds(previousPacks);
 
-        // Filter pools using used source snippets
-        List<String> filteredFlashcardPool = filterPoolByUsedSourceIds(
+        Set<String> latestFlashcardSourceIds = collectLatestVersionFlashcardSourceIds(previousPacks);
+        Set<String> latestClozeSourceIds = collectLatestVersionClozeSourceIds(previousPacks);
+        Set<String> latestTrueFalseSourceIds = collectLatestVersionTrueFalseSourceIds(previousPacks);
+
+        // Prefer unused, then reused but not from the most recent version, then reused
+        // from the most recent version last
+        flashcardPool = chooseUnusedThenOlderFallbackThenLatest(
                 flashcardPool,
                 usedFlashcardSourceIds,
-                "flashcard-src");
+                latestFlashcardSourceIds,
+                "flashcard-src",
+                FLASHCARDS_COUNT);
 
-        List<String> filteredClozePool = filterPoolByUsedSourceIds(
+        clozePool = chooseUnusedThenOlderFallbackThenLatest(
                 clozePool,
                 usedClozeSourceIds,
-                "cloze-src");
+                latestClozeSourceIds,
+                "cloze-src",
+                CLOZE_COUNT);
 
-        List<String> filteredProcessPool = filterPoolByUsedSourceIds(
+        safeProcessPool = chooseUnusedThenOlderFallbackThenLatest(
                 safeProcessPool,
                 usedTrueFalseSourceIds,
-                "tf-src");
+                latestTrueFalseSourceIds,
+                "tf-src",
+                TF_COUNT);
 
-        List<String> filteredDetailPool = filterPoolByUsedSourceIds(
+        safeDetailPool = chooseUnusedThenOlderFallbackThenLatest(
                 safeDetailPool,
                 usedTrueFalseSourceIds,
-                "tf-src");
-
-        // Fallback if filtering makes pool too small
-        flashcardPool = choosePoolWithFallback(filteredFlashcardPool, flashcardPool, 3);
-        clozePool = choosePoolWithFallback(filteredClozePool, clozePool, 3);
-        safeProcessPool = choosePoolWithFallback(filteredProcessPool, safeProcessPool, 3);
-        safeDetailPool = choosePoolWithFallback(filteredDetailPool, safeDetailPool, 3);
+                latestTrueFalseSourceIds,
+                "tf-src",
+                TF_COUNT);
 
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
@@ -264,6 +266,123 @@ public class StudyPackGenerationService {
         return studyPackRepository.save(pack);
     }
 
+    private Set<String> collectLatestVersionFlashcardSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getFlashcards() == null) {
+            return ids;
+        }
+
+        for (StudyPack.Flashcard card : latest.getFlashcards()) {
+            if (card == null || card.getSourceSnippet() == null || card.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("flashcard-src", card.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectLatestVersionClozeSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getClozeQuestions() == null) {
+            return ids;
+        }
+
+        for (StudyPack.ClozeQuestion q : latest.getClozeQuestions()) {
+            if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("cloze-src", q.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectLatestVersionTrueFalseSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getTrueFalseQuestions() == null) {
+            return ids;
+        }
+
+        for (StudyPack.TrueFalseQuestion q : latest.getTrueFalseQuestions()) {
+            if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("tf-src", q.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private List<String> chooseUnusedThenOlderFallbackThenLatest(List<String> originalPool,
+            Set<String> allUsedIds,
+            Set<String> latestUsedIds,
+            String prefix,
+            int targetCount) {
+        List<String> unused = new ArrayList<>();
+        List<String> olderReused = new ArrayList<>();
+        List<String> latestReused = new ArrayList<>();
+
+        if (originalPool == null) {
+            return new ArrayList<>();
+        }
+
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (String item : originalPool) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (!seen.add(item)) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, item);
+
+            if (!allUsedIds.contains(id)) {
+                unused.add(item);
+            } else if (!latestUsedIds.contains(id)) {
+                olderReused.add(item);
+            } else {
+                latestReused.add(item);
+            }
+        }
+
+        List<String> result = new ArrayList<>();
+        result.addAll(unused);
+
+        for (String item : olderReused) {
+            if (result.size() >= targetCount) {
+                break;
+            }
+            result.add(item);
+        }
+
+        for (String item : latestReused) {
+            if (result.size() >= targetCount) {
+                break;
+            }
+            result.add(item);
+        }
+
+        return result;
+    }
+
     // Building sentence pools for fetures to pull from
     private Map<String, List<String>> buildSentencePools(List<String> factSentences) {
         List<String> definitionSentences = new ArrayList<>();
@@ -302,6 +421,58 @@ public class StudyPackGenerationService {
         pools.put("details", detailSentences);
 
         return pools;
+    }
+
+    private List<String> buildBalancedPool(List<String> definitions,
+            List<String> processes,
+            List<String> details,
+            int definitionLimit,
+            int processLimit,
+            int detailLimit,
+            List<String> fallbackPool) {
+
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        addUpTo(result, seen, definitions, definitionLimit);
+        addUpTo(result, seen, processes, processLimit);
+        addUpTo(result, seen, details, detailLimit);
+
+        if (result.isEmpty() && fallbackPool != null) {
+            for (String item : fallbackPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private void addUpTo(List<String> target,
+            Set<String> seen,
+            List<String> source,
+            int limit) {
+        if (source == null || limit <= 0) {
+            return;
+        }
+
+        int added = 0;
+        for (String item : source) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (seen.add(item)) {
+                target.add(item);
+                added++;
+            }
+            if (added >= limit) {
+                break;
+            }
+        }
     }
 
     // Text helpers
@@ -2165,12 +2336,42 @@ public class StudyPackGenerationService {
         return filtered;
     }
 
-    private List<String> choosePoolWithFallback(List<String> filteredPool, List<String> originalPool,
+    private List<String> choosePoolWithFallback(List<String> filteredPool,
+            List<String> originalPool,
             int minimumRequired) {
-        if (filteredPool != null && filteredPool.size() >= minimumRequired) {
-            return filteredPool;
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        if (filteredPool != null) {
+            for (String item : filteredPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+            }
         }
-        return originalPool != null ? new ArrayList<>(originalPool) : new ArrayList<>();
+
+        if (result.size() >= minimumRequired) {
+            return result;
+        }
+
+        if (originalPool != null) {
+            for (String item : originalPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+                if (result.size() >= minimumRequired) {
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
     // Minimal stopword set
