@@ -2,6 +2,8 @@ package com.example.backend.study;
 
 import com.example.backend.study.dto.ConceptPackResponse;
 import com.example.backend.study.dto.TrueFalsePackResponse;
+import com.example.backend.study.dto.FlashcardDto;
+import com.example.backend.study.dto.ClozeQuestionDto;
 import org.springframework.stereotype.Service;
 import com.example.backend.model.StudyPack;
 
@@ -81,13 +83,13 @@ public class StudyPackLlmService {
         return client.generateFlashcardsFromSnippets(selectedSnippets);
     }
 
-    public List<ClozeQuestionDto> generateClozeFromSnippets(List<String> selectedSnippets) throws Exception {
+    public List<ClozeQuestionDto> generateClozeQuestionsFromSnippets(List<String> selectedSnippets) throws Exception {
 
         selectedSnippets = limitList(selectedSnippets, 12);
 
         System.out.println("STUDYPACK LLM cloze snippet request:");
         System.out.println("selectedSnippets size=" + selectedSnippets.size());
 
-        return client.generateClozeFromSnippets(selectedSnippets);
+        return client.generateClozeQuestionsFromSnippets(selectedSnippets);
     }
 }

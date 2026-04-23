@@ -167,18 +167,18 @@ public class StudyPackGenerationService {
         // Preselect source snippets for regeneration
         // Keep some strong repeated anchors, but force some fresher snippets too
         List<String> selectedFlashcardSources = selectSourceSnippetsForMode(flashcardPool, latestFlashcardSourceIds,
-                "flashcard-src", 3, 2);
+                "flashcard-src", 3, 2, versionNumber);
 
         List<String> selectedClozeSources = selectSourceSnippetsForMode(clozePool, latestClozeSourceIds,
-                "cloze-src", 3, 2);
+                "cloze-src", 3, 2, versionNumber);
 
         List<String> selectedTrueFalseProcessSources = selectSourceSnippetsForMode(safeProcessPool,
                 latestTrueFalseSourceIds,
-                "tf-src", 6, 3);
+                "tf-src", 6, 3, versionNumber);
 
         List<String> selectedTrueFalseDetailSources = selectSourceSnippetsForMode(safeDetailPool,
                 latestTrueFalseSourceIds,
-                "tf-src", 6, 3);
+                "tf-src", 6, 3, versionNumber);
 
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
@@ -187,23 +187,33 @@ public class StudyPackGenerationService {
         StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
                 FLASHCARDS_COUNT, MATCHING_COUNT, CLOZE_COUNT, TF_COUNT, MCQ_COUNT, "EASY");
 
-        ConceptPackResponse conceptPack;
+        List<FlashcardDto> flashcardDtos;
+        List<ClozeQuestionDto> clozeDtos;
         TrueFalsePackResponse tfPack;
+        ConceptPackResponse mcqConceptPack;
 
         try {
-            conceptPack = studyPackLlmService.generateConceptPack(selectedFlashcardSources, selectedClozeSources,
-                    topicLabels, settings);
+            flashcardDtos = studyPackLlmService.generateFlashcardsFromSnippets(selectedFlashcardSources);
+
+            clozeDtos = studyPackLlmService.generateClozeQuestionsFromSnippets(selectedClozeSources);
 
             tfPack = studyPackLlmService.generateTrueFalsePack(
-                    selectedTrueFalseProcessSources, selectedTrueFalseDetailSources, settings);
+                    selectedTrueFalseProcessSources,
+                    selectedTrueFalseDetailSources,
+                    settings);
+
+            // Keep MCQ generation on existing concept-pack path for now
+            mcqConceptPack = studyPackLlmService.generateConceptPack(selectedFlashcardSources, selectedClozeSources,
+                    topicLabels,
+                    new StudyPack.StudyPackSettings(0, 0, 0, 0, MCQ_COUNT, "EASY"));
 
         } catch (Exception e) {
             throw new RuntimeException("Study pack generation failed: " + e.getMessage(), e);
         }
 
-        List<StudyPack.Flashcard> flashcards = mapFlashcards(conceptPack);
-        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestions(conceptPack);
-        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(conceptPack);
+        List<StudyPack.Flashcard> flashcards = mapFlashcardsFromDtos(flashcardDtos);
+        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestionsFromDtos(clozeDtos);
+        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(mcqConceptPack);
         List<StudyPack.TrueFalseQuestion> tfQuestions = mapTrueFalseQuestions(tfPack);
 
         // Keep matching derived from flashcards
@@ -454,7 +464,9 @@ public class StudyPackGenerationService {
     }
 
     private List<String> selectSourceSnippetsForMode(List<String> pool, Set<String> latestUsedIds, String prefix,
-            int freshTarget, int repeatTarget) {
+            int freshTarget,
+            int repeatTarget, int versionNumber) {
+
         List<String> fresh = new ArrayList<>();
         List<String> repeated = new ArrayList<>();
 
@@ -480,21 +492,47 @@ public class StudyPackGenerationService {
             }
         }
 
+        List<String> rotatedFresh = rotateList(fresh, versionNumber - 1);
+        List<String> rotatedRepeated = rotateList(repeated, versionNumber - 1);
+
         List<String> result = new ArrayList<>();
         Set<String> resultSeen = new LinkedHashSet<>();
 
         // Prefer fresh first
-        addUpTo(result, resultSeen, fresh, freshTarget);
+        addUpTo(result, resultSeen, rotatedFresh, freshTarget);
 
         // Then allow repeated anchor items
-        addUpTo(result, resultSeen, repeated, repeatTarget);
+        addUpTo(result, resultSeen, rotatedRepeated, repeatTarget);
 
         // If still short, add the rest of the fresh pool
-        addRemaining(result, resultSeen, fresh);
+        addRemaining(result, resultSeen, rotatedFresh);
 
         // Then the rest of the repeated pool
-        addRemaining(result, resultSeen, repeated);
+        addRemaining(result, resultSeen, rotatedRepeated);
 
+        return result;
+    }
+
+    private List<String> rotateList(List<String> source, int steps) {
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<String> rotated = new ArrayList<>(source);
+        int size = rotated.size();
+
+        int shift = steps % size;
+        if (shift < 0) {
+            shift += size;
+        }
+
+        if (shift == 0) {
+            return rotated;
+        }
+
+        List<String> result = new ArrayList<>(size);
+        result.addAll(rotated.subList(shift, size));
+        result.addAll(rotated.subList(0, shift));
         return result;
     }
 
@@ -2116,6 +2154,50 @@ public class StudyPackGenerationService {
             q.setStatement(dto.getStatement());
             q.setAnswer(Boolean.TRUE.equals(dto.getAnswer()));
             q.setExplanation(dto.getExplanation());
+            q.setSourceSnippet(dto.getSourceSnippet());
+            out.add(q);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.Flashcard> mapFlashcardsFromDtos(List<FlashcardDto> dtos) {
+        List<StudyPack.Flashcard> out = new ArrayList<>();
+        if (dtos == null) {
+            return out;
+        }
+
+        for (FlashcardDto dto : dtos) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.Flashcard card = new StudyPack.Flashcard();
+            card.setFront(dto.getFront());
+            card.setBack(dto.getBack());
+            card.setSourceSnippet(dto.getSourceSnippet());
+            card.setTags(Collections.singletonList(TOPIC_GENERAL));
+            out.add(card);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.ClozeQuestion> mapClozeQuestionsFromDtos(List<ClozeQuestionDto> dtos) {
+        List<StudyPack.ClozeQuestion> out = new ArrayList<>();
+        if (dtos == null) {
+            return out;
+        }
+
+        for (ClozeQuestionDto dto : dtos) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setSentenceWithBlank(dto.getSentenceWithBlank());
+            q.setAnswer(dto.getAnswer());
+            q.setChoices(dto.getChoices() != null ? dto.getChoices() : Collections.emptyList());
             q.setSourceSnippet(dto.getSourceSnippet());
             out.add(q);
         }

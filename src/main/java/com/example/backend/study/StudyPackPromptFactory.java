@@ -180,6 +180,61 @@ public class StudyPackPromptFactory {
         joinLines(detailPool));
   }
 
+  public String buildFlashcardSnippetSystemPrompt() {
+    return """
+        You generate study flashcards from provided source snippets.
+
+        Rules:
+        - Generate exactly one flashcard per source snippet.
+        - Use the snippet itself as the basis of the answer.
+        - Keep the front concise and study-friendly.
+        - Keep the back factual and grounded in the snippet.
+        - Preserve the original sourceSnippet exactly as given.
+        - Return valid JSON only.
+        """;
+  }
+
+  public String buildFlashcardSnippetUserPrompt(List<String> selectedSnippets) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Generate exactly one flashcard for each source snippet below.\n");
+    sb.append("Return JSON with a flashcards array.\n\n");
+
+    for (int i = 0; i < selectedSnippets.size(); i++) {
+      sb.append("Snippet ").append(i + 1).append(":\n");
+      sb.append(selectedSnippets.get(i)).append("\n\n");
+    }
+
+    return sb.toString();
+  }
+
+  public String buildClozeSnippetSystemPrompt() {
+    return """
+        You generate cloze study questions from provided source snippets.
+
+        Rules:
+        - Generate exactly one cloze question per source snippet.
+        - The blank must come directly from the snippet.
+        - Keep the sentence grammatical after blanking.
+        - Provide exactly 4 answer choices.
+        - Include the correct answer in the choices.
+        - Preserve the original sourceSnippet exactly as given.
+        - Return valid JSON only.
+        """;
+  }
+
+  public String buildClozeSnippetUserPrompt(List<String> selectedSnippets) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Generate exactly one cloze question for each source snippet below.\n");
+    sb.append("Return JSON with a clozeQuestions array.\n\n");
+
+    for (int i = 0; i < selectedSnippets.size(); i++) {
+      sb.append("Snippet ").append(i + 1).append(":\n");
+      sb.append(selectedSnippets.get(i)).append("\n\n");
+    }
+
+    return sb.toString();
+  }
+
   private String joinLines(List<String> items) {
     if (items == null || items.isEmpty()) {
       return "(none)";
