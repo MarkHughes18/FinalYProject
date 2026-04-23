@@ -52,27 +52,69 @@ public class StudyPackGenerationService {
         this.studyPackLlmService = studyPackLlmService;
     }
 
-    // Returns the stored StudyPack if it exists, otherwise generates and returns it
-    // Ownership check is done against FileHistory.userEmail
     public StudyPack getOrGenerate(String userEmail, String historyId) {
-        // If already generated, return it
-        Optional<StudyPack> existing = studyPackRepository.findByUserEmailAndHistoryId(userEmail, historyId);
-        if (existing.isPresent()) {
-            return existing.get();
+        Optional<StudyPack> existingActive = studyPackRepository
+                .findByUserEmailAndHistoryIdAndActiveTrue(userEmail, historyId);
+
+        if (existingActive.isPresent()) {
+            return existingActive.get();
         }
 
-        // Load FileHistory
         FileHistory fh = fileHistoryRepository.findById(historyId).orElse(null);
         if (fh == null) {
             throw new IllegalArgumentException("File history not found for file id: " + historyId);
         }
 
-        // Ownership validation
         if (fh.getUserEmail() == null || !fh.getUserEmail().equalsIgnoreCase(userEmail)) {
             throw new IllegalArgumentException("Not allowed: history file does not belong to user");
         }
 
-        // We generate from narrationText, fallback to extractedText
+        return generatePackVersion(userEmail, fh, 1, null);
+    }
+
+    public StudyPack regenerate(String userEmail, String historyId) {
+        FileHistory fh = fileHistoryRepository.findById(historyId).orElse(null);
+        if (fh == null) {
+            throw new IllegalArgumentException("File history not found for file id: " + historyId);
+        }
+
+        if (fh.getUserEmail() == null || !fh.getUserEmail().equalsIgnoreCase(userEmail)) {
+            throw new IllegalArgumentException("Not allowed: history file does not belong to user");
+        }
+
+        // Find current active pack, if any
+        Optional<StudyPack> activePackOpt = studyPackRepository.findByUserEmailAndHistoryIdAndActiveTrue(userEmail,
+                historyId);
+
+        // Find latest version number
+        Optional<StudyPack> latestPackOpt = studyPackRepository
+                .findFirstByUserEmailAndHistoryIdOrderByVersionNumberDesc(userEmail, historyId);
+
+        int nextVersion = latestPackOpt
+                .map(StudyPack::getVersionNumber)
+                .filter(Objects::nonNull)
+                .map(version -> version + 1)
+                .orElse(1);
+
+        String regeneratedFromPackId = null;
+
+        if (activePackOpt.isPresent()) {
+            StudyPack activePack = activePackOpt.get();
+            activePack.setActive(false);
+            activePack.setUpdatedAt(Instant.now());
+            studyPackRepository.save(activePack);
+            regeneratedFromPackId = activePack.getId();
+        }
+
+        return generatePackVersion(userEmail, fh, nextVersion, regeneratedFromPackId);
+    }
+
+    private StudyPack generatePackVersion(String userEmail,
+            FileHistory fh,
+            int versionNumber,
+            String regeneratedFromPackId) {
+
+        // Generate from narrationText, fallback to extractedText
         String text = fh.getNarrationText();
         if (text == null || text.isBlank()) {
             text = fh.getExtractedText();
@@ -86,7 +128,7 @@ public class StudyPackGenerationService {
 
         List<String> sentences = splitIntoSentences(bounded, MAX_SENTENCES);
 
-        // sentence first pipeline
+        // Sentence-first pipeline
         List<String> factSentences = extractEducationalSentences(sentences, 120);
         if (factSentences.isEmpty()) {
             factSentences = new ArrayList<>(sentences);
@@ -98,24 +140,45 @@ public class StudyPackGenerationService {
         List<String> processSentences = pools.getOrDefault("processes", Collections.emptyList());
         List<String> detailSentences = pools.getOrDefault("details", Collections.emptyList());
 
-        List<String> flashcardPool = new ArrayList<>(definitionSentences);
-        List<String> clozePool = new ArrayList<>(definitionSentences);
-        clozePool.addAll(processSentences);
-        List<String> tfPool = new ArrayList<>(processSentences);
-        tfPool.addAll(detailSentences);
+        List<String> flashcardPool = buildBalancedPool(definitionSentences, processSentences, detailSentences, 3, 2, 2,
+                factSentences);
 
-        // Fallback in case one pool is too small/ empty
-        if (flashcardPool.isEmpty())
-            flashcardPool = new ArrayList<>(factSentences);
-        if (clozePool.isEmpty())
-            clozePool = new ArrayList<>(factSentences);
-        if (tfPool.isEmpty())
-            tfPool = new ArrayList<>(factSentences);
+        List<String> clozePool = buildBalancedPool(definitionSentences, processSentences, detailSentences, 2, 2, 2,
+                factSentences);
 
-        List<String> safeProcessPool = processSentences.isEmpty() ? tfPool : processSentences;
-        List<String> safeDetailPool = detailSentences.isEmpty() ? tfPool : detailSentences;
+        List<String> tfPool = buildBalancedPool(processSentences, detailSentences, definitionSentences, 4, 4, 2,
+                factSentences);
+
+        List<String> safeProcessPool = processSentences.isEmpty() ? new ArrayList<>(tfPool)
+                : new ArrayList<>(processSentences);
+
+        List<String> safeDetailPool = detailSentences.isEmpty() ? new ArrayList<>(tfPool)
+                : new ArrayList<>(detailSentences);
 
         List<String> factConcepts = extractConceptsFromFacts(factSentences, MAX_KEYWORDS);
+
+        List<StudyPack> previousPacks = studyPackRepository
+                .findByUserEmailAndHistoryIdOrderByVersionNumberDesc(userEmail, fh.getId());
+
+        Set<String> latestFlashcardSourceIds = collectLatestVersionFlashcardSourceIds(previousPacks);
+        Set<String> latestClozeSourceIds = collectLatestVersionClozeSourceIds(previousPacks);
+        Set<String> latestTrueFalseSourceIds = collectLatestVersionTrueFalseSourceIds(previousPacks);
+
+        // Preselect source snippets for regeneration
+        // Keep some strong repeated anchors, but force some fresher snippets too
+        List<String> selectedFlashcardSources = selectSourceSnippetsForMode(flashcardPool, latestFlashcardSourceIds,
+                "flashcard-src", 3, 2, versionNumber);
+
+        List<String> selectedClozeSources = selectSourceSnippetsForMode(clozePool, latestClozeSourceIds,
+                "cloze-src", 3, 2, versionNumber);
+
+        List<String> selectedTrueFalseProcessSources = selectSourceSnippetsForMode(safeProcessPool,
+                latestTrueFalseSourceIds,
+                "tf-src", 6, 3, versionNumber);
+
+        List<String> selectedTrueFalseDetailSources = selectSourceSnippetsForMode(safeDetailPool,
+                latestTrueFalseSourceIds,
+                "tf-src", 6, 3, versionNumber);
 
         // Pick some topic labels from keywords
         List<String> topicLabels = pickTopicLabels(factConcepts, TOPIC_LABELS_COUNT);
@@ -124,40 +187,63 @@ public class StudyPackGenerationService {
         StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
                 FLASHCARDS_COUNT, MATCHING_COUNT, CLOZE_COUNT, TF_COUNT, MCQ_COUNT, "EASY");
 
-        ConceptPackResponse conceptPack;
+        List<FlashcardDto> flashcardDtos;
+        List<ClozeQuestionDto> clozeDtos;
         TrueFalsePackResponse tfPack;
+        ConceptPackResponse mcqConceptPack;
 
         try {
-            conceptPack = studyPackLlmService.generateConceptPack(
-                    flashcardPool,
-                    clozePool,
-                    topicLabels,
-                    settings);
+            flashcardDtos = studyPackLlmService.generateFlashcardsFromSnippets(selectedFlashcardSources);
+
+            clozeDtos = studyPackLlmService.generateClozeQuestionsFromSnippets(selectedClozeSources);
 
             tfPack = studyPackLlmService.generateTrueFalsePack(
-                    processSentences,
-                    detailSentences,
+                    selectedTrueFalseProcessSources,
+                    selectedTrueFalseDetailSources,
                     settings);
+
+            // Keep MCQ generation on existing concept-pack path for now
+            mcqConceptPack = studyPackLlmService.generateConceptPack(selectedFlashcardSources, selectedClozeSources,
+                    topicLabels,
+                    new StudyPack.StudyPackSettings(0, 0, 0, 0, MCQ_COUNT, "EASY"));
+
         } catch (Exception e) {
             throw new RuntimeException("Study pack generation failed: " + e.getMessage(), e);
         }
 
-        List<StudyPack.Flashcard> flashcards = mapFlashcards(conceptPack);
-        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestions(conceptPack);
-        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(conceptPack);
+        List<StudyPack.Flashcard> flashcards = mapFlashcardsFromDtos(flashcardDtos);
+        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestionsFromDtos(clozeDtos);
+        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(mcqConceptPack);
         List<StudyPack.TrueFalseQuestion> tfQuestions = mapTrueFalseQuestions(tfPack);
 
         // Keep matching derived from flashcards
         List<StudyPack.MatchingPair> matchingPairs = generateMatchingPairs(flashcards, MATCHING_COUNT);
 
+        StudyPack.CandidateUsage usage = new StudyPack.CandidateUsage();
+        usage.setFlashcardIds(collectFlashcardIds(flashcards));
+        usage.setMatchingIds(collectMatchingIds(matchingPairs));
+        usage.setClozeIds(collectClozeIds(clozeQuestions));
+        usage.setTrueFalseIds(collectTrueFalseIds(tfQuestions));
+        usage.setMcqIds(collectMcqIds(mcqQuestions));
+
         Instant now = Instant.now();
+
         StudyPack pack = new StudyPack();
         pack.setUserEmail(userEmail);
-        pack.setHistoryId(historyId);
+        pack.setHistoryId(fh.getId());
         pack.setCreatedAt(now);
         pack.setUpdatedAt(now);
         pack.setSourceHash(sourceHash);
+
+        pack.setVersionNumber(versionNumber);
+        pack.setActive(true);
+        pack.setRegeneratedFromPackId(regeneratedFromPackId);
+
+        pack.setFileName(fh.getFileName());
+        pack.setFileLabel(fh.getLabel());
+
         pack.setSettings(settings);
+        pack.setUsedCandidates(usage);
 
         pack.setFlashcards(flashcards);
         pack.setMatchingPairs(matchingPairs);
@@ -166,6 +252,123 @@ public class StudyPackGenerationService {
         pack.setMcqQuestions(mcqQuestions);
 
         return studyPackRepository.save(pack);
+    }
+
+    private Set<String> collectLatestVersionFlashcardSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getFlashcards() == null) {
+            return ids;
+        }
+
+        for (StudyPack.Flashcard card : latest.getFlashcards()) {
+            if (card == null || card.getSourceSnippet() == null || card.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("flashcard-src", card.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectLatestVersionClozeSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getClozeQuestions() == null) {
+            return ids;
+        }
+
+        for (StudyPack.ClozeQuestion q : latest.getClozeQuestions()) {
+            if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("cloze-src", q.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private Set<String> collectLatestVersionTrueFalseSourceIds(List<StudyPack> previousPacks) {
+        Set<String> ids = new HashSet<>();
+        if (previousPacks == null || previousPacks.isEmpty()) {
+            return ids;
+        }
+
+        StudyPack latest = previousPacks.get(0);
+        if (latest.getTrueFalseQuestions() == null) {
+            return ids;
+        }
+
+        for (StudyPack.TrueFalseQuestion q : latest.getTrueFalseQuestions()) {
+            if (q == null || q.getSourceSnippet() == null || q.getSourceSnippet().isBlank()) {
+                continue;
+            }
+            ids.add(buildSourceSentenceId("tf-src", q.getSourceSnippet()));
+        }
+
+        return ids;
+    }
+
+    private List<String> chooseUnusedThenOlderFallbackThenLatest(List<String> originalPool,
+            Set<String> allUsedIds,
+            Set<String> latestUsedIds,
+            String prefix,
+            int targetCount) {
+        List<String> unused = new ArrayList<>();
+        List<String> olderReused = new ArrayList<>();
+        List<String> latestReused = new ArrayList<>();
+
+        if (originalPool == null) {
+            return new ArrayList<>();
+        }
+
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (String item : originalPool) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (!seen.add(item)) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, item);
+
+            if (!allUsedIds.contains(id)) {
+                unused.add(item);
+            } else if (!latestUsedIds.contains(id)) {
+                olderReused.add(item);
+            } else {
+                latestReused.add(item);
+            }
+        }
+
+        List<String> result = new ArrayList<>();
+        result.addAll(unused);
+
+        for (String item : olderReused) {
+            if (result.size() >= targetCount) {
+                break;
+            }
+            result.add(item);
+        }
+
+        for (String item : latestReused) {
+            if (result.size() >= targetCount) {
+                break;
+            }
+            result.add(item);
+        }
+
+        return result;
     }
 
     // Building sentence pools for fetures to pull from
@@ -206,6 +409,148 @@ public class StudyPackGenerationService {
         pools.put("details", detailSentences);
 
         return pools;
+    }
+
+    private List<String> buildBalancedPool(List<String> definitions,
+            List<String> processes,
+            List<String> details,
+            int definitionLimit,
+            int processLimit,
+            int detailLimit,
+            List<String> fallbackPool) {
+
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        addUpTo(result, seen, definitions, definitionLimit);
+        addUpTo(result, seen, processes, processLimit);
+        addUpTo(result, seen, details, detailLimit);
+
+        if (result.isEmpty() && fallbackPool != null) {
+            for (String item : fallbackPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private void addUpTo(List<String> target,
+            Set<String> seen,
+            List<String> source,
+            int limit) {
+        if (source == null || limit <= 0) {
+            return;
+        }
+
+        int added = 0;
+        for (String item : source) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (seen.add(item)) {
+                target.add(item);
+                added++;
+            }
+            if (added >= limit) {
+                break;
+            }
+        }
+    }
+
+    private List<String> selectSourceSnippetsForMode(List<String> pool, Set<String> latestUsedIds, String prefix,
+            int freshTarget,
+            int repeatTarget, int versionNumber) {
+
+        List<String> fresh = new ArrayList<>();
+        List<String> repeated = new ArrayList<>();
+
+        if (pool == null) {
+            return new ArrayList<>();
+        }
+
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (String item : pool) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (!seen.add(item)) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, item);
+            if (latestUsedIds.contains(id)) {
+                repeated.add(item);
+            } else {
+                fresh.add(item);
+            }
+        }
+
+        List<String> rotatedFresh = rotateList(fresh, versionNumber - 1);
+        List<String> rotatedRepeated = rotateList(repeated, versionNumber - 1);
+
+        List<String> result = new ArrayList<>();
+        Set<String> resultSeen = new LinkedHashSet<>();
+
+        // Prefer fresh first
+        addUpTo(result, resultSeen, rotatedFresh, freshTarget);
+
+        // Then allow repeated anchor items
+        addUpTo(result, resultSeen, rotatedRepeated, repeatTarget);
+
+        // If still short, add the rest of the fresh pool
+        addRemaining(result, resultSeen, rotatedFresh);
+
+        // Then the rest of the repeated pool
+        addRemaining(result, resultSeen, rotatedRepeated);
+
+        return result;
+    }
+
+    private List<String> rotateList(List<String> source, int steps) {
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<String> rotated = new ArrayList<>(source);
+        int size = rotated.size();
+
+        int shift = steps % size;
+        if (shift < 0) {
+            shift += size;
+        }
+
+        if (shift == 0) {
+            return rotated;
+        }
+
+        List<String> result = new ArrayList<>(size);
+        result.addAll(rotated.subList(shift, size));
+        result.addAll(rotated.subList(0, shift));
+        return result;
+    }
+
+    private void addRemaining(List<String> target,
+            Set<String> seen,
+            List<String> source) {
+        if (source == null) {
+            return;
+        }
+
+        for (String item : source) {
+            if (item == null || item.isBlank()) {
+                continue;
+            }
+            if (seen.add(item)) {
+                target.add(item);
+            }
+        }
     }
 
     // Text helpers
@@ -1816,6 +2161,160 @@ public class StudyPackGenerationService {
         return out;
     }
 
+    private List<StudyPack.Flashcard> mapFlashcardsFromDtos(List<FlashcardDto> dtos) {
+        List<StudyPack.Flashcard> out = new ArrayList<>();
+        if (dtos == null) {
+            return out;
+        }
+
+        for (FlashcardDto dto : dtos) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.Flashcard card = new StudyPack.Flashcard();
+            card.setFront(dto.getFront());
+            card.setBack(dto.getBack());
+            card.setSourceSnippet(dto.getSourceSnippet());
+            card.setTags(Collections.singletonList(TOPIC_GENERAL));
+            out.add(card);
+        }
+
+        return out;
+    }
+
+    private List<StudyPack.ClozeQuestion> mapClozeQuestionsFromDtos(List<ClozeQuestionDto> dtos) {
+        List<StudyPack.ClozeQuestion> out = new ArrayList<>();
+        if (dtos == null) {
+            return out;
+        }
+
+        for (ClozeQuestionDto dto : dtos) {
+            if (dto == null) {
+                continue;
+            }
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setSentenceWithBlank(dto.getSentenceWithBlank());
+            q.setAnswer(dto.getAnswer());
+            q.setChoices(dto.getChoices() != null ? dto.getChoices() : Collections.emptyList());
+            q.setSourceSnippet(dto.getSourceSnippet());
+            out.add(q);
+        }
+
+        return out;
+    }
+
+    private String buildCandidateId(String prefix, String... parts) {
+        StringBuilder sb = new StringBuilder(prefix);
+
+        if (parts != null) {
+            for (String part : parts) {
+                sb.append("|");
+                sb.append(part == null ? "" : normalizeIdPart(part));
+            }
+        }
+
+        return prefix + "|" + sha256Hex(sb.toString());
+    }
+
+    private String normalizeIdPart(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> collectFlashcardIds(List<StudyPack.Flashcard> flashcards) {
+        List<String> ids = new ArrayList<>();
+        if (flashcards == null) {
+            return ids;
+        }
+
+        for (StudyPack.Flashcard card : flashcards) {
+            if (card == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "flashcard",
+                    card.getFront(),
+                    card.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectClozeIds(List<StudyPack.ClozeQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.ClozeQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "cloze",
+                    q.getAnswer(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectTrueFalseIds(List<StudyPack.TrueFalseQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.TrueFalseQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "tf",
+                    q.getStatement(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectMcqIds(List<StudyPack.McqQuestion> questions) {
+        List<String> ids = new ArrayList<>();
+        if (questions == null) {
+            return ids;
+        }
+
+        for (StudyPack.McqQuestion q : questions) {
+            if (q == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "mcq",
+                    q.getQuestion(),
+                    q.getSourceSnippet()));
+        }
+        return ids;
+    }
+
+    private List<String> collectMatchingIds(List<StudyPack.MatchingPair> pairs) {
+        List<String> ids = new ArrayList<>();
+        if (pairs == null) {
+            return ids;
+        }
+
+        for (StudyPack.MatchingPair pair : pairs) {
+            if (pair == null) {
+                continue;
+            }
+            ids.add(buildCandidateId(
+                    "matching",
+                    pair.getLeft(),
+                    pair.getRight()));
+        }
+        return ids;
+    }
+
     private List<String> buildClozeChoices(String correctAnswer, List<String> conceptPool) {
         LinkedHashSet<String> options = new LinkedHashSet<>();
 
@@ -1867,6 +2366,68 @@ public class StudyPackGenerationService {
 
         Collections.shuffle(finalChoices);
         return finalChoices;
+    }
+
+    private String buildSourceSentenceId(String prefix, String sentence) {
+        return buildCandidateId(prefix, sentence);
+    }
+
+    private List<String> filterPoolByUsedSourceIds(List<String> pool, Set<String> usedIds, String prefix) {
+        List<String> filtered = new ArrayList<>();
+        if (pool == null || pool.isEmpty()) {
+            return filtered;
+        }
+
+        for (String sentence : pool) {
+            if (sentence == null || sentence.isBlank()) {
+                continue;
+            }
+
+            String id = buildSourceSentenceId(prefix, sentence);
+            if (!usedIds.contains(id)) {
+                filtered.add(sentence);
+            }
+        }
+
+        return filtered;
+    }
+
+    private List<String> choosePoolWithFallback(List<String> filteredPool,
+            List<String> originalPool,
+            int minimumRequired) {
+        List<String> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        if (filteredPool != null) {
+            for (String item : filteredPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+            }
+        }
+
+        if (result.size() >= minimumRequired) {
+            return result;
+        }
+
+        if (originalPool != null) {
+            for (String item : originalPool) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+                if (seen.add(item)) {
+                    result.add(item);
+                }
+                if (result.size() >= minimumRequired) {
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
     // Minimal stopword set
