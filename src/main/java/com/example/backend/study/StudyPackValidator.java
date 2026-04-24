@@ -71,6 +71,32 @@ public class StudyPackValidator {
                     new HashMap<>(),
                     Integer.MAX_VALUE);
         }
+
+        // This guarantees correctIndex & correctAnswer
+        mcqQuestions.removeIf(q -> {
+            if (q == null)
+                return true;
+            if (isBlank(q.getQuestion()))
+                return true;
+            if (q.getOptions() == null || q.getOptions().size() != 4)
+                return true;
+            if (isBlank(q.getCorrectAnswer()))
+                return true;
+            if (isBlank(q.getExplanation()))
+                return true;
+            if (isBlank(q.getSourceSnippet()))
+                return true;
+
+            int repairedIndex = findCorrectIndex(q.getOptions(), q.getCorrectAnswer());
+
+            if (repairedIndex < 0) {
+                return true;
+            }
+
+            q.setCorrectIndex(repairedIndex);
+            shuffleMcqOptionsAndRepairIndex(q);
+            return q.getCorrectIndex() < 0;
+        });
         response.setMcqQuestions(mcqQuestions);
 
         return response;
@@ -301,6 +327,20 @@ public class StudyPackValidator {
         return out;
     }
 
+    private void shuffleMcqOptionsAndRepairIndex(McqQuestionDto q) {
+        if (q == null || q.getOptions() == null || q.getCorrectAnswer() == null) {
+            return;
+        }
+
+        List<String> shuffled = new ArrayList<>(q.getOptions());
+        Collections.shuffle(shuffled);
+
+        q.setOptions(shuffled);
+
+        int repairedIndex = findCorrectIndex(shuffled, q.getCorrectAnswer());
+        q.setCorrectIndex(repairedIndex);
+    }
+
     private List<TrueFalseQuestionDto> cleanTf(List<TrueFalseQuestionDto> items, int max) {
         if (items == null)
             return new ArrayList<>();
@@ -334,6 +374,28 @@ public class StudyPackValidator {
 
     private boolean notBlank(String s) {
         return s != null && !s.isBlank();
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private int findCorrectIndex(List<String> options, String correctAnswer) {
+        if (options == null || correctAnswer == null) {
+            return -1;
+        }
+
+        String target = correctAnswer.trim();
+
+        for (int i = 0; i < options.size(); i++) {
+            String option = options.get(i);
+
+            if (option != null && option.trim().equalsIgnoreCase(target)) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private void addFlashcardSnippetsToUsed(List<FlashcardDto> items, Set<String> usedSnippets) {

@@ -8,6 +8,7 @@ public class McqQuestionDto {
     private Integer correctIndex;
     private String explanation;
     private String sourceSnippet;
+    private String correctAnswer;
 
     public String getQuestion() {
         return question;
@@ -47,5 +48,13 @@ public class McqQuestionDto {
 
     public void setSourceSnippet(String sourceSnippet) {
         this.sourceSnippet = sourceSnippet;
+    }
+
+    public String getCorrectAnswer() {
+        return correctAnswer;
+    }
+
+    public void setCorrectAnswer(String correctAnswer) {
+        this.correctAnswer = correctAnswer;
     }
 }

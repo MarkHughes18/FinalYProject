@@ -2130,7 +2130,8 @@ public class StudyPackGenerationService {
             StudyPack.McqQuestion q = new StudyPack.McqQuestion();
             q.setQuestion(dto.getQuestion());
             q.setOptions(dto.getOptions() != null ? dto.getOptions() : Collections.emptyList());
-            q.setCorrectIndex(dto.getCorrectIndex() != null ? dto.getCorrectIndex() : 0);
+            q.setCorrectIndex(dto.getCorrectIndex());
+            q.setCorrectAnswer(dto.getCorrectAnswer());
             q.setExplanation(dto.getExplanation());
             q.setSourceSnippet(dto.getSourceSnippet());
             out.add(q);
