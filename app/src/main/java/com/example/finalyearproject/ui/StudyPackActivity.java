@@ -13,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -43,6 +44,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private Button btnTrueFalse;
     private Button btnMcq;
     private Button btnMatching;
+    private Button toolbarRegenerateBtn;
     private ApiService api;
     private String historyId;
     private String fileName;
@@ -107,6 +109,7 @@ public class StudyPackActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.studyToolbar);
         toolbarTitle = findViewById(R.id.toolbarTitle);
         toolbarBackBtn = findViewById(R.id.toolbarBackBtn);
+        toolbarRegenerateBtn = findViewById(R.id.toolbarRegenerateBtn);
 
         api = RetrofitClient.getApiService();
 
@@ -140,12 +143,14 @@ public class StudyPackActivity extends AppCompatActivity {
         }
 
         setButtonsEnabled(false);
+        toolbarRegenerateBtn.setEnabled(false);
 
         btnFlashcards.setOnClickListener(v -> showFlashcards());
         btnCloze.setOnClickListener(v -> showCloze());
         btnTrueFalse.setOnClickListener(v -> showTrueFalse());
         btnMcq.setOnClickListener(v -> showMcq());
         btnMatching.setOnClickListener(v -> showMatching());
+        toolbarRegenerateBtn.setOnClickListener(v -> showRegenerateConfirmation());
 
 
         if (historyId == null || historyId.isBlank()) {
@@ -187,6 +192,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
                     statusTv.setText("Study Pack Loaded");
                     setButtonsEnabled(true);
+                    toolbarRegenerateBtn.setEnabled(true);
 
                     if (!hasAppliedResumeState && resumeMode != null && !resumeMode.isBlank()) {
                         openResumeMode(resumeMode, resumePosition);
@@ -209,6 +215,7 @@ public class StudyPackActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<StudyPackResponse> call, Throwable t) {
                 progressBar.setVisibility(View.GONE);
+                toolbarRegenerateBtn.setEnabled(true);
                 statusTv.setText("Network error loading study pack.");
                 Toast.makeText(StudyPackActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
@@ -448,6 +455,84 @@ public class StudyPackActivity extends AppCompatActivity {
         pagerCounterTv.setVisibility(View.GONE);
         recyclerView.setVisibility(View.GONE);
         matchingGameContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void showRegenerateConfirmation() {
+        if (historyId == null || historyId.isBlank()) {
+            Toast.makeText(this, "Missing study pack id.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Regenerate study pack?")
+                .setMessage("This will create a new version of the study pack and reload it.")
+                .setPositiveButton("Regenerate", (dialog, which) -> regenerateStudyPack())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void regenerateStudyPack() {
+        String email = getLoggedInEmail();
+        if (email == null) {
+            Toast.makeText(this, "No logged in user found.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        setButtonsEnabled(false);
+        toolbarRegenerateBtn.setEnabled(false);
+        toolbarRegenerateBtn.setText("Regenerating...");
+        progressBar.setVisibility(View.VISIBLE);
+        statusTv.setText("Regenerating study pack...");
+
+        api.regenerateStudyPack(historyId, email).enqueue(new Callback<StudyPackResponse>() {
+            @Override
+            public void onResponse(Call<StudyPackResponse> call, Response<StudyPackResponse> response) {
+                progressBar.setVisibility(View.GONE);
+                toolbarRegenerateBtn.setEnabled(true);
+                toolbarRegenerateBtn.setText("Regenerate");
+
+                if (response.isSuccessful() && response.body() != null) {
+                    currentPack = response.body();
+
+                    flashcardPagerAdapter = null;
+                    clozePagerAdapter = null;
+                    mcqPagerAdapter = null;
+                    trueFalsePagerAdapter = null;
+                    matchingGameAdapter = null;
+                    matchingDoneAdapter = null;
+                    matchedItems.clear();
+
+                    sessionStatsSaved = false;
+                    currentPosition = 0;
+                    hasAppliedResumeState = false;
+
+                    statusTv.setText("Study Pack Regenerated");
+                    setButtonsEnabled(true);
+
+                    showFlashcards();
+                    Toast.makeText(StudyPackActivity.this, "Study pack regenerated", Toast.LENGTH_SHORT).show();
+                } else if (response.code() == 403) {
+                    statusTv.setText("You are not allowed to regenerate this study pack.");
+                    setButtonsEnabled(true);
+                } else if (response.code() == 404) {
+                    statusTv.setText("Study pack source file not found.");
+                    setButtonsEnabled(true);
+                } else {
+                    statusTv.setText("Failed to regenerate study pack. Code: " + response.code());
+                    setButtonsEnabled(true);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<StudyPackResponse> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                toolbarRegenerateBtn.setEnabled(true);
+                toolbarRegenerateBtn.setText("Regenerate");
+                setButtonsEnabled(true);
+                statusTv.setText("Network error regenerating study pack.");
+                Toast.makeText(StudyPackActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void hideMatchingGameMode() {
