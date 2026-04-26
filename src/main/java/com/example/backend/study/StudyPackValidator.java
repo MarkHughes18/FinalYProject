@@ -21,9 +21,12 @@ public class StudyPackValidator {
         Map<String, Integer> snippetUsage = new HashMap<>();
 
         // Flashcards first
-        List<FlashcardDto> flashcards = cleanFlashcards(
-                response.getFlashcards(),
+        List<FlashcardDto> flashcards = cleanFlashcards(response.getFlashcards(),
                 Math.min(settings.getFlashcardCount(), 6));
+
+        flashcards.removeIf(f -> f == null || isWeakSourceSnippet(f.getSourceSnippet())
+                || !notBlank(f.getFront()) || !notBlank(f.getBack()));
+
         response.setFlashcards(flashcards);
         addFlashcardSnippetsToUsage(flashcards, snippetUsage);
 
@@ -129,6 +132,10 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
+                continue;
+            }
+
             String frontKey = normalizeText(i.getFront());
             String backKey = normalizeText(i.getBack());
             String snippetKey = normalizeText(i.getSourceSnippet());
@@ -195,7 +202,15 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
+                continue;
+            }
+
             if (!hasSingleBlank(i.getSentenceWithBlank())) {
+                continue;
+            }
+
+            if (isWeakClozeSentence(i.getSentenceWithBlank())) {
                 continue;
             }
 
@@ -229,10 +244,6 @@ public class StudyPackValidator {
 
             // Reject weak cloze answers
             if (isWeakClozeAnswer(i.getAnswer())) {
-                continue;
-            }
-
-            if (!hasValidClozeChoices(i)) {
                 continue;
             }
 
@@ -282,6 +293,10 @@ public class StudyPackValidator {
                     || i.getCorrectIndex() > 3
                     || !notBlank(i.getExplanation())
                     || !notBlank(i.getSourceSnippet())) {
+                continue;
+            }
+
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
                 continue;
             }
 
@@ -354,6 +369,10 @@ public class StudyPackValidator {
                     || i.getAnswer() == null
                     || !notBlank(i.getExplanation())
                     || !notBlank(i.getSourceSnippet())) {
+                continue;
+            }
+
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
                 continue;
             }
 
@@ -521,6 +540,38 @@ public class StudyPackValidator {
                 "organizational", "business", "product", "result", "service");
 
         return weak.contains(a);
+    }
+
+    private boolean isWeakClozeSentence(String sentenceWithBlank) {
+        if (!notBlank(sentenceWithBlank)) {
+            return true;
+        }
+
+        String s = normalizeText(sentenceWithBlank);
+
+        if (s.length() < 35) {
+            return true;
+        }
+
+        Set<String> weakPhrases = Set.of(
+                "another example involves",
+                "an example involves",
+                "this involves",
+                "it involves",
+                "this is",
+                "it is",
+                "these are",
+                "they are",
+                "this means",
+                "it means");
+
+        for (String phrase : weakPhrases) {
+            if (s.startsWith(phrase) || s.contains(" " + phrase + " ")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isWeakMcq(McqQuestionDto i) {
@@ -721,6 +772,37 @@ public class StudyPackValidator {
                 .replaceAll("[^a-z0-9\\s]", " ")
                 .replaceAll("\\s{2,}", " ")
                 .trim();
+    }
+
+    private boolean isWeakSourceSnippet(String sourceSnippet) {
+        if (!notBlank(sourceSnippet)) {
+            return true;
+        }
+
+        String s = normalizeText(sourceSnippet);
+
+        if (s.length() < 45) {
+            return true;
+        }
+
+        Set<String> weakStarts = Set.of("another example", "an example", "for example",
+                "this example", "this involves", "it involves",
+                "this means", "it means", "this is", "it is",
+                "these are", "they are", "another simple example",
+                "another common example", "another classic example",
+                "a simple example", "a classic example", "one example",
+                "one common example", "one classic example",
+                "a common example", "a typical example",
+                "a simple code example", "a code example", "code example");
+
+        for (String phrase : weakStarts) {
+            if (s.startsWith(phrase)) {
+                System.out.println("Rejected weak snippet: " + sourceSnippet);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isStopWord(String s) {

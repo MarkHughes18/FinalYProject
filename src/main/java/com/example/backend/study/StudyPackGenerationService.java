@@ -19,13 +19,15 @@ import com.example.backend.study.dto.FlashcardDto;
 import com.example.backend.study.dto.ClozeQuestionDto;
 import com.example.backend.study.dto.McqQuestionDto;
 import com.example.backend.study.dto.TrueFalseQuestionDto;
+import com.example.backend.study.StudyPackLlmService;
+import com.example.backend.study.StudyPackValidator;
 
 @Service
 public class StudyPackGenerationService {
 
     // Pack sizes
-    private static final int FLASHCARDS_COUNT = 8;
-    private static final int MATCHING_COUNT = 10;
+    private static final int FLASHCARDS_COUNT = 5;
+    private static final int MATCHING_COUNT = 5;
     private static final int CLOZE_COUNT = 5;
     private static final int TF_COUNT = 10;
     private static final int MCQ_COUNT = 5;
@@ -1592,16 +1594,21 @@ public class StudyPackGenerationService {
             if (pairs.size() >= count)
                 break;
 
-            if (fc == null)
+            if (fc == null) {
                 continue;
-            String left = fc.getFront();
-            String right = shorten(fc.getBack(), 120);
+            }
 
-            if (!isGoodFlashcardFront(left))
-                continue;
+            String left = shorten(fc.getFront(), 75);
+            String right = shorten(fc.getBack(), 80);
 
-            if (right == null || right.isBlank())
+            if (!isGoodFlashcardFront(left)) {
                 continue;
+            }
+
+            if (right == null || right.isBlank()) {
+                continue;
+            }
+
             StudyPack.MatchingPair p = new StudyPack.MatchingPair();
             p.setLeft(left);
             p.setRight(right);
@@ -1991,11 +1998,23 @@ public class StudyPackGenerationService {
 
     // Helpers
     private String shorten(String s, int maxLen) {
-        if (s == null)
+        if (s == null) {
             return null;
-        String t = s.trim();
-        if (t.length() <= maxLen)
+        }
+
+        String t = s.trim().replaceAll("\\s+", " ");
+        ;
+
+        if (t.length() <= maxLen) {
             return t;
+        }
+
+        int cut = t.lastIndexOf(" ", maxLen - 3);
+
+        if (cut < 30) {
+            cut = maxLen - 3;
+        }
+
         return t.substring(0, maxLen - 3).trim() + "...";
     }
 
@@ -2079,7 +2098,7 @@ public class StudyPackGenerationService {
         }
 
         for (FlashcardDto dto : response.getFlashcards()) {
-            if (dto == null) {
+            if (dto == null || isWeakSourceSnippet(dto.getSourceSnippet())) {
                 continue;
             }
 
@@ -2169,7 +2188,7 @@ public class StudyPackGenerationService {
         }
 
         for (FlashcardDto dto : dtos) {
-            if (dto == null) {
+            if (dto == null || isWeakSourceSnippet(dto.getSourceSnippet())) {
                 continue;
             }
 
@@ -2191,7 +2210,7 @@ public class StudyPackGenerationService {
         }
 
         for (ClozeQuestionDto dto : dtos) {
-            if (dto == null) {
+            if (dto == null || isWeakSourceSnippet(dto.getSourceSnippet())) {
                 continue;
             }
 
@@ -2429,6 +2448,52 @@ public class StudyPackGenerationService {
         }
 
         return result;
+    }
+
+    private boolean isWeakSourceSnippet(String sourceSnippet) {
+        if (!notBlank(sourceSnippet)) {
+            return true;
+        }
+
+        String s = normalizeText(sourceSnippet);
+
+        if (s.length() < 45) {
+            return true;
+        }
+
+        Set<String> weakStarts = Set.of("another example", "an example", "for example",
+                "this example", "this involves", "it involves",
+                "this means", "it means", "this is", "it is",
+                "these are", "they are", "another simple example",
+                "another common example", "another classic example",
+                "a simple example", "a classic example", "one example",
+                "one common example", "one classic example",
+                "a common example", "a typical example",
+                "a simple code example", "a code example", "code example");
+
+        for (String phrase : weakStarts) {
+            if (s.startsWith(phrase)) {
+                System.out.println("Rejected weak snippet: " + sourceSnippet);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean notBlank(String s) {
+        return s != null && !s.isBlank();
+    }
+
+    private String normalizeText(String s) {
+        if (s == null) {
+            return "";
+        }
+
+        return s.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s{2,}", " ")
+                .trim();
     }
 
     // Minimal stopword set
