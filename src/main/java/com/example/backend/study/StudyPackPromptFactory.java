@@ -75,6 +75,9 @@ public class StudyPackPromptFactory {
         MCQ rules:
         - Write exactly 4 options.
         - Exactly 1 option must be correct.
+        - correctAnswer must be the exact text of the correct option.
+        - correctIndex must be the zero-based index of correctAnswer in options.
+        - correctIndex and correctAnswer must agree.
         - The question must be a normal multiple-choice question.
         - The options must be short answer choices, not full questions.
         - Do NOT start any option with "What", "Who", "Which", "When", or "Where".
@@ -108,6 +111,7 @@ public class StudyPackPromptFactory {
               "question":"...",
               "options":["...","...","...","..."],
               "correctIndex":0,
+              "correctAnswer":"...",
               "explanation":"...",
               "sourceSnippet":"..."
             }

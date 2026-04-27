@@ -21,9 +21,12 @@ public class StudyPackValidator {
         Map<String, Integer> snippetUsage = new HashMap<>();
 
         // Flashcards first
-        List<FlashcardDto> flashcards = cleanFlashcards(
-                response.getFlashcards(),
+        List<FlashcardDto> flashcards = cleanFlashcards(response.getFlashcards(),
                 Math.min(settings.getFlashcardCount(), 6));
+
+        flashcards.removeIf(f -> f == null || isWeakSourceSnippet(f.getSourceSnippet())
+                || !notBlank(f.getFront()) || !notBlank(f.getBack()));
+
         response.setFlashcards(flashcards);
         addFlashcardSnippetsToUsage(flashcards, snippetUsage);
 
@@ -71,6 +74,32 @@ public class StudyPackValidator {
                     new HashMap<>(),
                     Integer.MAX_VALUE);
         }
+
+        // This guarantees correctIndex & correctAnswer
+        mcqQuestions.removeIf(q -> {
+            if (q == null)
+                return true;
+            if (isBlank(q.getQuestion()))
+                return true;
+            if (q.getOptions() == null || q.getOptions().size() != 4)
+                return true;
+            if (isBlank(q.getCorrectAnswer()))
+                return true;
+            if (isBlank(q.getExplanation()))
+                return true;
+            if (isBlank(q.getSourceSnippet()))
+                return true;
+
+            int repairedIndex = findCorrectIndex(q.getOptions(), q.getCorrectAnswer());
+
+            if (repairedIndex < 0) {
+                return true;
+            }
+
+            q.setCorrectIndex(repairedIndex);
+            shuffleMcqOptionsAndRepairIndex(q);
+            return q.getCorrectIndex() < 0;
+        });
         response.setMcqQuestions(mcqQuestions);
 
         return response;
@@ -100,6 +129,10 @@ public class StudyPackValidator {
 
         for (FlashcardDto i : items) {
             if (i == null || !notBlank(i.getFront()) || !notBlank(i.getBack()) || !notBlank(i.getSourceSnippet())) {
+                continue;
+            }
+
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
                 continue;
             }
 
@@ -169,7 +202,15 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
+                continue;
+            }
+
             if (!hasSingleBlank(i.getSentenceWithBlank())) {
+                continue;
+            }
+
+            if (isWeakClozeSentence(i.getSentenceWithBlank())) {
                 continue;
             }
 
@@ -203,10 +244,6 @@ public class StudyPackValidator {
 
             // Reject weak cloze answers
             if (isWeakClozeAnswer(i.getAnswer())) {
-                continue;
-            }
-
-            if (!hasValidClozeChoices(i)) {
                 continue;
             }
 
@@ -259,6 +296,10 @@ public class StudyPackValidator {
                 continue;
             }
 
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
+                continue;
+            }
+
             String questionKey = normalizeText(i.getQuestion());
             String snippetKey = normalizeText(i.getSourceSnippet());
 
@@ -301,6 +342,20 @@ public class StudyPackValidator {
         return out;
     }
 
+    private void shuffleMcqOptionsAndRepairIndex(McqQuestionDto q) {
+        if (q == null || q.getOptions() == null || q.getCorrectAnswer() == null) {
+            return;
+        }
+
+        List<String> shuffled = new ArrayList<>(q.getOptions());
+        Collections.shuffle(shuffled);
+
+        q.setOptions(shuffled);
+
+        int repairedIndex = findCorrectIndex(shuffled, q.getCorrectAnswer());
+        q.setCorrectIndex(repairedIndex);
+    }
+
     private List<TrueFalseQuestionDto> cleanTf(List<TrueFalseQuestionDto> items, int max) {
         if (items == null)
             return new ArrayList<>();
@@ -314,6 +369,10 @@ public class StudyPackValidator {
                     || i.getAnswer() == null
                     || !notBlank(i.getExplanation())
                     || !notBlank(i.getSourceSnippet())) {
+                continue;
+            }
+
+            if (isWeakSourceSnippet(i.getSourceSnippet())) {
                 continue;
             }
 
@@ -334,6 +393,28 @@ public class StudyPackValidator {
 
     private boolean notBlank(String s) {
         return s != null && !s.isBlank();
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private int findCorrectIndex(List<String> options, String correctAnswer) {
+        if (options == null || correctAnswer == null) {
+            return -1;
+        }
+
+        String target = correctAnswer.trim();
+
+        for (int i = 0; i < options.size(); i++) {
+            String option = options.get(i);
+
+            if (option != null && option.trim().equalsIgnoreCase(target)) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private void addFlashcardSnippetsToUsed(List<FlashcardDto> items, Set<String> usedSnippets) {
@@ -459,6 +540,38 @@ public class StudyPackValidator {
                 "organizational", "business", "product", "result", "service");
 
         return weak.contains(a);
+    }
+
+    private boolean isWeakClozeSentence(String sentenceWithBlank) {
+        if (!notBlank(sentenceWithBlank)) {
+            return true;
+        }
+
+        String s = normalizeText(sentenceWithBlank);
+
+        if (s.length() < 35) {
+            return true;
+        }
+
+        Set<String> weakPhrases = Set.of(
+                "another example involves",
+                "an example involves",
+                "this involves",
+                "it involves",
+                "this is",
+                "it is",
+                "these are",
+                "they are",
+                "this means",
+                "it means");
+
+        for (String phrase : weakPhrases) {
+            if (s.startsWith(phrase) || s.contains(" " + phrase + " ")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isWeakMcq(McqQuestionDto i) {
@@ -659,6 +772,40 @@ public class StudyPackValidator {
                 .replaceAll("[^a-z0-9\\s]", " ")
                 .replaceAll("\\s{2,}", " ")
                 .trim();
+    }
+
+    private boolean isWeakSourceSnippet(String sourceSnippet) {
+        if (!notBlank(sourceSnippet)) {
+            return true;
+        }
+
+        String s = normalizeText(sourceSnippet);
+
+        if (s.length() < 45) {
+            return true;
+        }
+
+        Set<String> weakStarts = Set.of("another example", "an example", "for example",
+                "this example", "this involves", "it involves",
+                "this means", "it means", "this is", "it is",
+                "these are", "they are", "another simple example",
+                "another common example", "another classic example",
+                "a simple example", "a classic example", "one example",
+                "one common example", "one classic example",
+                "a common example", "a typical example",
+                "a simple code example", "a code example", "code example",
+                "example of", "examples of", "example includes", "example is",
+                "let's start with", "lets start with", "today we'll explore",
+                "today we will explore");
+
+        for (String phrase : weakStarts) {
+            if (s.startsWith(phrase)) {
+                System.out.println("Rejected weak snippet: " + sourceSnippet);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isStopWord(String s) {

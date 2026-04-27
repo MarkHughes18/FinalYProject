@@ -515,17 +515,20 @@ public class StudyPack {
         private String question;
         private List<String> options = new ArrayList<>();
         private int correctIndex;
+        private String correctAnswer;
         private String explanation;
         private String sourceSnippet;
 
         public McqQuestion() {
         }
 
-        public McqQuestion(String question, List<String> options, int correctIndex, String explanation,
+        public McqQuestion(String question, List<String> options, int correctIndex, String correctAnswer,
+                String explanation,
                 String sourceSnippet) {
             this.question = question;
             this.options = options != null ? options : new ArrayList<>();
             this.correctIndex = correctIndex;
+            this.correctAnswer = correctAnswer;
             this.explanation = explanation;
             this.sourceSnippet = sourceSnippet;
         }
@@ -552,6 +555,14 @@ public class StudyPack {
 
         public void setCorrectIndex(int correctIndex) {
             this.correctIndex = correctIndex;
+        }
+
+        public String getCorrectAnswer() {
+            return correctAnswer;
+        }
+
+        public void setCorrectAnswer(String correctAnswer) {
+            this.correctAnswer = correctAnswer;
         }
 
         public String getExplanation() {
