@@ -10,7 +10,7 @@
         android:id="@+id/homeTitleTV"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Lazy Learning - Home"
+        android:text="Study Simply - Home"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -184,7 +184,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Answer Accuracy"
+                        android:text=" Latest Answer Accuracy"
                         android:textStyle="bold"
                         android:textSize="13sp" />
 

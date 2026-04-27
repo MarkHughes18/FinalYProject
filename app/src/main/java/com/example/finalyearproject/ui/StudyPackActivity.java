@@ -3,7 +3,11 @@ package com.example.finalyearproject.ui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -27,6 +31,7 @@ import com.example.finalyearproject.data.ContinueLearningPrefs;
 import com.example.finalyearproject.data.RetrofitClient;
 import com.example.finalyearproject.data.StudyPackResponse;
 import com.example.finalyearproject.data.StudySessionStats;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -81,6 +86,11 @@ public class StudyPackActivity extends AppCompatActivity {
     private String resumeMode;
     private int resumePosition = 0;
     private boolean hasAppliedResumeState = false;
+    private BottomSheetDialog generatingDialog;
+    private TextView generatingTitleTv;
+    private TextView generatingMessageTv;
+    private Handler loaderHandler = new Handler(Looper.getMainLooper());
+    private Runnable loaderRunnable;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -173,11 +183,16 @@ public class StudyPackActivity extends AppCompatActivity {
 
         progressBar.setVisibility(View.VISIBLE);
         statusTv.setText("Generating study pack...");
+        setButtonsEnabled(false);
+        toolbarRegenerateBtn.setEnabled(false);
+
+        showGeneratingDialog( "Generating Your Study Pack \uD83D\uDCD6");
 
         api.getStudyPack(historyId, email).enqueue(new Callback<StudyPackResponse>() {
             @Override
             public void onResponse(Call<StudyPackResponse> call, Response<StudyPackResponse> response) {
                 progressBar.setVisibility(View.GONE);
+                hideGeneratingDialog();
 
                 if (response.isSuccessful() && response.body() != null) {
                     currentPack = response.body();
@@ -215,6 +230,7 @@ public class StudyPackActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<StudyPackResponse> call, Throwable t) {
                 progressBar.setVisibility(View.GONE);
+                hideGeneratingDialog();
                 toolbarRegenerateBtn.setEnabled(true);
                 statusTv.setText("Network error loading study pack.");
                 Toast.makeText(StudyPackActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
@@ -484,10 +500,14 @@ public class StudyPackActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         statusTv.setText("Regenerating study pack...");
 
+        showGeneratingDialog("Refreshing Study Pack \uD83D\uDCD6");
+
         api.regenerateStudyPack(historyId, email).enqueue(new Callback<StudyPackResponse>() {
             @Override
             public void onResponse(Call<StudyPackResponse> call, Response<StudyPackResponse> response) {
                 progressBar.setVisibility(View.GONE);
+                hideGeneratingDialog();
+
                 toolbarRegenerateBtn.setEnabled(true);
                 toolbarRegenerateBtn.setText("Regenerate");
 
@@ -526,6 +546,7 @@ public class StudyPackActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<StudyPackResponse> call, Throwable t) {
                 progressBar.setVisibility(View.GONE);
+                hideGeneratingDialog();
                 toolbarRegenerateBtn.setEnabled(true);
                 toolbarRegenerateBtn.setText("Regenerate");
                 setButtonsEnabled(true);
@@ -655,6 +676,74 @@ public class StudyPackActivity extends AppCompatActivity {
         pagerCounterTv.setVisibility(View.VISIBLE);
         recyclerView.setVisibility(View.GONE);
         matchingGameContainer.setVisibility(View.GONE);
+    }
+
+    private void showGeneratingDialog(String title) {
+        if (generatingDialog != null && generatingDialog.isShowing()) {
+            if (generatingTitleTv != null) {
+                generatingTitleTv.setText(title);
+            }
+            return;
+        }
+
+        View view = getLayoutInflater().inflate(R.layout.bottomsheet_generating_pack, null);
+
+        generatingTitleTv = view.findViewById(R.id.generatingTitleTv);
+        generatingMessageTv = view.findViewById(R.id.generatingMessageTv);
+
+        generatingTitleTv.setText(title);
+
+        generatingDialog = new BottomSheetDialog(this);
+        generatingDialog.setContentView(view);
+        generatingDialog.setCancelable(false);
+        generatingDialog.setCanceledOnTouchOutside(false);
+        generatingDialog.show();
+
+        startLoaderMessages();
+    }
+
+    private void hideGeneratingDialog() {
+        stopLoaderMessages();
+
+        if (generatingDialog != null && generatingDialog.isShowing()) {
+            generatingDialog.dismiss();
+        }
+
+        generatingDialog = null;
+        generatingTitleTv = null;
+        generatingMessageTv = null;
+    }
+
+    private void startLoaderMessages() {
+        String[] messages = new String[]{
+                "Analyzing your document...",
+                "Extracting key concepts...",
+                "Building flashcards...",
+                "Creating quiz questions...",
+                "Preparing your study pack..."
+        };
+
+        loaderRunnable = new Runnable() {
+            int index = 0;
+
+            @Override
+            public void run() {
+                if (generatingMessageTv != null) {
+                    generatingMessageTv.setText(messages[index]);
+                    index = (index + 1) % messages.length;
+                    loaderHandler.postDelayed(this, 2000);
+                }
+            }
+        };
+
+        loaderHandler.post(loaderRunnable);
+    }
+
+    private void stopLoaderMessages() {
+        if (loaderRunnable != null) {
+            loaderHandler.removeCallbacks(loaderRunnable);
+            loaderRunnable = null;
+        }
     }
 
     private void showRecyclerMode() {

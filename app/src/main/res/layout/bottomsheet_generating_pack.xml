@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="?attr/colorSurface">
+
+    <ProgressBar
+        android:id="@+id/generatingProgressBar"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:indeterminate="true" />
+
+    <TextView
+        android:id="@+id/generatingTitleTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Generating Study Pack 📖"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:layout_marginTop="18dp"
+        android:textColor="?attr/colorOnSurface" />
+
+    <TextView
+        android:id="@+id/generatingMessageTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Analyzing your document..."
+        android:textSize="15sp"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Larger files can take a little longer."
+        android:textSize="13sp"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>
