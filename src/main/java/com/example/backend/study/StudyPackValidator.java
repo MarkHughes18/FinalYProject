@@ -793,7 +793,10 @@ public class StudyPackValidator {
                 "a simple example", "a classic example", "one example",
                 "one common example", "one classic example",
                 "a common example", "a typical example",
-                "a simple code example", "a code example", "code example");
+                "a simple code example", "a code example", "code example",
+                "example of", "examples of", "example includes", "example is",
+                "let's start with", "lets start with", "today we'll explore",
+                "today we will explore");
 
         for (String phrase : weakStarts) {
             if (s.startsWith(phrase)) {
