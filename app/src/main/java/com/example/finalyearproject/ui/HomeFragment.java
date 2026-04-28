@@ -180,6 +180,7 @@ public class HomeFragment extends Fragment {
             intent.putExtra("fileName", data.getFileName());
             intent.putExtra("resumeMode", data.getLastMode());
             intent.putExtra("resumePosition", data.getLastPosition());
+            intent.putExtra("fromContinueLearning", true);
             startActivity(intent);
         });
     }

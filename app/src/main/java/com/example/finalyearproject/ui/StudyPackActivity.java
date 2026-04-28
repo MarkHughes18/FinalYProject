@@ -91,6 +91,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private TextView generatingMessageTv;
     private Handler loaderHandler = new Handler(Looper.getMainLooper());
     private Runnable loaderRunnable;
+    private boolean fromContinueLearning = false;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -129,6 +130,7 @@ public class StudyPackActivity extends AppCompatActivity {
         currentFileName = getIntent().getStringExtra("fileName");
         resumeMode = getIntent().getStringExtra("resumeMode");
         resumePosition = getIntent().getIntExtra("resumePosition", 0);
+        fromContinueLearning = getIntent().getBooleanExtra("fromContinueLearning", false);
 
         String trimmedFileName = fileName != null ? fileName.trim() : "";
 
@@ -170,8 +172,6 @@ public class StudyPackActivity extends AppCompatActivity {
         }
 
         loadStudyPack();
-        refreshStatsUi();
-        saveContinueLearningState();
     }
 
     private void loadStudyPack() {
@@ -196,6 +196,35 @@ public class StudyPackActivity extends AppCompatActivity {
 
                 if (response.isSuccessful() && response.body() != null) {
                     currentPack = response.body();
+                    if (fromContinueLearning) {
+                        ContinueLearningPrefs.ContinueLearningData data =
+                                ContinueLearningPrefs.getContinueLearning(StudyPackActivity.this);
+
+                        if (data != null && data.getStats() != null) {
+                            StudySessionStats saved = data.getStats();
+
+                            sessionStats.getFlashcardStats().setAttempted(saved.getFlashcardStats().getAttempted());
+                            sessionStats.getFlashcardStats().setCorrect(saved.getFlashcardStats().getCorrect());
+                            sessionStats.getFlashcardStats().setIncorrect(saved.getFlashcardStats().getIncorrect());
+
+                            sessionStats.getClozeStats().setAttempted(saved.getClozeStats().getAttempted());
+                            sessionStats.getClozeStats().setCorrect(saved.getClozeStats().getCorrect());
+                            sessionStats.getClozeStats().setIncorrect(saved.getClozeStats().getIncorrect());
+
+                            sessionStats.getTrueFalseStats().setAttempted(saved.getTrueFalseStats().getAttempted());
+                            sessionStats.getTrueFalseStats().setCorrect(saved.getTrueFalseStats().getCorrect());
+                            sessionStats.getTrueFalseStats().setIncorrect(saved.getTrueFalseStats().getIncorrect());
+
+                            sessionStats.getMcqStats().setAttempted(saved.getMcqStats().getAttempted());
+                            sessionStats.getMcqStats().setCorrect(saved.getMcqStats().getCorrect());
+                            sessionStats.getMcqStats().setIncorrect(saved.getMcqStats().getIncorrect());
+
+                            sessionStats.getMatchingStats().setAttempted(saved.getMatchingStats().getAttempted());
+                            sessionStats.getMatchingStats().setCorrect(saved.getMatchingStats().getCorrect());
+                            sessionStats.getMatchingStats().setIncorrect(saved.getMatchingStats().getIncorrect());
+                        }
+                    }
+                    refreshStatsUi();
 
                     flashcardPagerAdapter = null;
                     clozePagerAdapter = null;
@@ -595,7 +624,8 @@ public class StudyPackActivity extends AppCompatActivity {
                 currentFileName,
                 currentMode,
                 currentPosition,
-                System.currentTimeMillis()
+                System.currentTimeMillis(),
+                sessionStats
         );
     }
 
@@ -669,6 +699,7 @@ public class StudyPackActivity extends AppCompatActivity {
         statsCorrectTv.setText(String.valueOf(correct));
         statsIncorrectTv.setText(String.valueOf(incorrect));
         statsAccuracyTv.setText(accuracy + "%");
+        saveContinueLearningState();
     }
 
     private void showPagerMode() {

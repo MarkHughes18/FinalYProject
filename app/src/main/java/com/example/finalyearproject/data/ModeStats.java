@@ -33,4 +33,16 @@ public class ModeStats {
         }
         return (int) Math.round((correct * 100.0) / attempted);
     }
+
+    public void setAttempted(int attempted) {
+        this.attempted = attempted;
+    }
+
+    public void setCorrect(int correct) {
+        this.correct = correct;
+    }
+
+    public void setIncorrect(int incorrect) {
+        this.incorrect = incorrect;
+    }
 }
