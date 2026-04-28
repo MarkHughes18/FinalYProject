@@ -26,6 +26,7 @@
         <activity android:name=".ui.RegisterActivity"/>
         <activity android:name=".ui.HomePGActivity"/>
         <activity android:name=".ui.StudyPackActivity"/>
+        <activity android:name=".ui.CustomStudyPackActivity" />
     </application>
 
 </manifest>

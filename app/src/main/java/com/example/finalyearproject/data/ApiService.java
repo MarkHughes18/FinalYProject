@@ -48,4 +48,7 @@ public interface ApiService {
 
     @POST("api/study/packs/{historyId}/regenerate")
     Call<StudyPackResponse> regenerateStudyPack(@Path("historyId") String historyId, @Query("email") String email);
+
+    @POST("api/study/custom-pack")
+    Call<StudyPackResponse> createCustomStudyPack(@Body CustomStudyPackRequest request);
 }

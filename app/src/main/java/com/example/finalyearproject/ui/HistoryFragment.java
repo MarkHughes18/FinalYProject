@@ -1,6 +1,7 @@
 package com.example.finalyearproject.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -292,6 +293,7 @@ public class HistoryFragment extends Fragment {
         TextView titleTv = sheetView.findViewById(R.id.actionTitleTV);
         View playAudioBtn = sheetView.findViewById(R.id.actionPlayAudio);
         View openStudyPackBtn = sheetView.findViewById(R.id.actionOpenStudyPack);
+        View createCustomPackBtn = sheetView.findViewById(R.id.actionCreateCustomPack);
         View editLabelBtn = sheetView.findViewById(R.id.actionEditLabel);
         View cancelBtn = sheetView.findViewById(R.id.actionCancel);
 
@@ -306,6 +308,11 @@ public class HistoryFragment extends Fragment {
         });
 
         openStudyPackBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            handleOpenStudyPack(item);
+        });
+
+        createCustomPackBtn.setOnClickListener(v -> {
             dialog.dismiss();
             handleOpenStudyPack(item);
         });
@@ -345,9 +352,21 @@ public class HistoryFragment extends Fragment {
             return;
         }
 
-        android.content.Intent intent = new android.content.Intent(requireContext(), StudyPackActivity.class);
+        Intent intent = new Intent(requireContext(), StudyPackActivity.class);
         intent.putExtra("historyId", item.id);
         intent.putExtra("fileName", item.fileName);
+        startActivity(intent);
+    }
+
+    private void handleCreateCustomStudyPack(HistoryItem item) {
+        if (item == null || item.id == null || item.id.isBlank()) {
+            toast("Cannot create custom study pack: missing file id");
+            return;
+        }
+
+        Intent intent = new Intent(requireContext(), CustomStudyPackActivity.class);
+        intent.putExtra("sourceHistoryId", item.id);
+        intent.putExtra("sourceFileName", item.fileName);
         startActivity(intent);
     }
 
