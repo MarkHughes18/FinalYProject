@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import com.example.backend.study.dto.ConceptPackResponse;
 import com.example.backend.study.dto.TrueFalsePackResponse;
+import com.example.backend.study.dto.CustomStudyPackRequest;
 
 @RestController
 @RequestMapping("/api/study")
@@ -177,6 +178,16 @@ public class StudyPackController {
                                                         null);
                                         return ResponseEntity.ok(resp);
                                 });
+        }
+
+        @PostMapping(value = "/custom-pack", produces = MediaType.APPLICATION_JSON_VALUE)
+        public ResponseEntity<?> createCustomPack(@RequestBody CustomStudyPackRequest request) {
+                if (request == null || request.getUserEmail() == null || request.getUserEmail().isBlank()) {
+                        return ResponseEntity.badRequest().body("Missing user email");
+                }
+
+                StudyPack pack = generationService.createCustomStudyPack(request);
+                return ResponseEntity.ok(pack);
         }
 
         @GetMapping("/test-llm")
