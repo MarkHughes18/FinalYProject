@@ -1,121 +1,267 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="?attr/colorSurface">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/customPackTitleTV"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Create Custom Study Pack"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:orientation="vertical"
+            android:padding="20dp">
 
-        <TextView
-            android:id="@+id/customPackSubtitleTV"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Enter at least 5 snippets for each study mode."
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
 
-        <EditText
-            android:id="@+id/customPackNameET"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:hint="Custom pack title"
-            android:inputType="textCapSentences" />
+                <ImageButton
+                    android:id="@+id/customBackBtn"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_back"
+                    app:tint="@color/md_onSurface"
+                    android:contentDescription="Back" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="Flashcard snippets"
-            android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/customPackTitleTV"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Create Custom Study Pack"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
-        <EditText
-            android:id="@+id/flashcardSnippetsET"
-            android:layout_width="match_parent"
-            android:layout_height="130dp"
-            android:layout_marginTop="8dp"
-            android:gravity="top"
-            android:hint="Enter 5 snippets, one per line"
-            android:inputType="textMultiLine"
-            android:padding="12dp" />
+            <TextView
+                android:id="@+id/customPackSubtitleTV"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Add 5 clear snippets for each study mode."
+                android:textSize="14sp" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Cloze snippets"
-            android:textStyle="bold" />
+            <EditText
+                android:id="@+id/customPackNameET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:hint="Custom pack title"
+                android:inputType="textCapSentences" />
 
-        <EditText
-            android:id="@+id/clozeSnippetsET"
-            android:layout_width="match_parent"
-            android:layout_height="130dp"
-            android:layout_marginTop="8dp"
-            android:gravity="top"
-            android:hint="Enter 5 snippets, one per line"
-            android:inputType="textMultiLine"
-            android:padding="12dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="Flashcard snippets"
+                android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="True/False snippets"
-            android:textStyle="bold" />
+            <EditText
+                android:id="@+id/flashcardSnippet1ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Flashcard snippet 1"/>
 
-        <EditText
-            android:id="@+id/trueFalseSnippetsET"
-            android:layout_width="match_parent"
-            android:layout_height="130dp"
-            android:layout_marginTop="8dp"
-            android:gravity="top"
-            android:hint="Enter 5 snippets, one per line"
-            android:inputType="textMultiLine"
-            android:padding="12dp" />
+            <EditText
+                android:id="@+id/flashcardSnippet2ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Flashcard snippet 2"/>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="MCQ snippets"
-            android:textStyle="bold" />
+            <EditText
+                android:id="@+id/flashcardSnippet3ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Flashcard snippet 3"/>
 
-        <EditText
-            android:id="@+id/mcqSnippetsET"
-            android:layout_width="match_parent"
-            android:layout_height="130dp"
-            android:layout_marginTop="8dp"
-            android:gravity="top"
-            android:hint="Enter 5 snippets, one per line"
-            android:inputType="textMultiLine"
-            android:padding="12dp" />
+            <EditText
+                android:id="@+id/flashcardSnippet4ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Flashcard snippet 4"/>
 
-        <ProgressBar
-            android:id="@+id/customPackProgress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="20dp"
-            android:visibility="gone" />
+            <EditText
+                android:id="@+id/flashcardSnippet5ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Flashcard snippet 5"/>
 
-        <Button
-            android:id="@+id/createCustomPackBtn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Create Study Pack" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="Matching snippets"
+                android:textStyle="bold" />
 
-    </LinearLayout>
-</ScrollView>
+            <EditText
+                android:id="@+id/matchingSnippet1ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Matching snippet 1"/>
+
+            <EditText
+                android:id="@+id/matchingSnippet2ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Matching snippet 2"/>
+
+            <EditText
+                android:id="@+id/matchingSnippet3ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Matching snippet 3"/>
+
+            <EditText
+                android:id="@+id/matchingSnippet4ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Matching snippet 4"/>
+
+            <EditText
+                android:id="@+id/matchingSnippet5ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Matching snippet 5"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="Cloze snippets"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/clozeSnippet1ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloze snippet 1"/>
+
+            <EditText
+                android:id="@+id/clozeSnippet2ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloze snippet 2"/>
+
+            <EditText
+                android:id="@+id/clozeSnippet3ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloze snippet 3"/>
+
+            <EditText
+                android:id="@+id/clozeSnippet4ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloze snippet 4"/>
+
+            <EditText
+                android:id="@+id/clozeSnippet5ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Cloze snippet 5"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="True/False snippets"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/trueFalseSnippet1ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="True/False snippet 1"/>
+
+            <EditText
+                android:id="@+id/trueFalseSnippet2ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="True/False snippet 2"/>
+
+            <EditText
+                android:id="@+id/trueFalseSnippet3ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="True/False snippet 3"/>
+
+            <EditText
+                android:id="@+id/trueFalseSnippet4ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="True/False snippet 4"/>
+
+            <EditText
+                android:id="@+id/trueFalseSnippet5ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="True/False snippet 5"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:text="MCQ snippets"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/mcqSnippet1ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="MCQ snippet 1"/>
+
+            <EditText
+                android:id="@+id/mcqSnippet2ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="MCQ snippet 2"/>
+
+            <EditText
+                android:id="@+id/mcqSnippet3ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="MCQ snippet 3"/>
+
+            <EditText
+                android:id="@+id/mcqSnippet4ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="MCQ snippet 4"/>
+
+            <EditText
+                android:id="@+id/mcqSnippet5ET"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="MCQ snippet 5"/>
+
+            <ProgressBar
+                android:id="@+id/customPackProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/createCustomPackBtn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Create Custom Study Pack"
+                android:enabled="false"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

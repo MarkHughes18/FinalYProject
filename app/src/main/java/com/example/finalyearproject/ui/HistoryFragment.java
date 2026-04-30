@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -42,7 +43,7 @@ public class HistoryFragment extends Fragment {
     private RecyclerView historyRecyclerView;
     private ProgressBar historyProgress;
     private TextView historyEmptyTV;
-
+    private Button createCustomPackTopBtn;
     private HistoryAdapter historyAdapter;
     private android.media.MediaPlayer mediaPlayer;
     private BottomSheetDialog playerSheet;
@@ -50,7 +51,7 @@ public class HistoryFragment extends Fragment {
     private Runnable playerTick;
     private SeekBar bsSeekBar;
     private TextView bsTimeTV;
-    private Button bsPlayPauseBtn;
+    private ImageButton bsPlayPauseBtn;
     private SearchView historySearchView;
     private final List<HistoryItem> historyItems = new ArrayList<>();
     private final List<HistoryItem> allHistoryItems = new ArrayList<>();
@@ -78,7 +79,12 @@ public class HistoryFragment extends Fragment {
         historyProgress     = view.findViewById(R.id.historyProgress);
         historyEmptyTV      = view.findViewById(R.id.historyEmptyTV);
         historyFilterContainer = view.findViewById(R.id.historyFilterContainer);
+        createCustomPackTopBtn = view.findViewById(R.id.createCustomPackTopBtn);
 
+        createCustomPackTopBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), CustomStudyPackActivity.class);
+            startActivity(intent);
+        });
         // Setup RecyclerView
         historyRecyclerView.setLayoutManager(
                 new LinearLayoutManager(requireContext())
@@ -293,9 +299,13 @@ public class HistoryFragment extends Fragment {
         TextView titleTv = sheetView.findViewById(R.id.actionTitleTV);
         View playAudioBtn = sheetView.findViewById(R.id.actionPlayAudio);
         View openStudyPackBtn = sheetView.findViewById(R.id.actionOpenStudyPack);
-        View createCustomPackBtn = sheetView.findViewById(R.id.actionCreateCustomPack);
         View editLabelBtn = sheetView.findViewById(R.id.actionEditLabel);
         View cancelBtn = sheetView.findViewById(R.id.actionCancel);
+
+        boolean isCustomPack = item.fileType != null && item.fileType.equalsIgnoreCase("custom");
+        if (isCustomPack) {
+            playAudioBtn.setVisibility(View.GONE);
+        }
 
         titleTv.setText(item.fileName != null ? item.fileName : "Choose action");
 
@@ -308,11 +318,6 @@ public class HistoryFragment extends Fragment {
         });
 
         openStudyPackBtn.setOnClickListener(v -> {
-            dialog.dismiss();
-            handleOpenStudyPack(item);
-        });
-
-        createCustomPackBtn.setOnClickListener(v -> {
             dialog.dismiss();
             handleOpenStudyPack(item);
         });
@@ -399,14 +404,14 @@ public class HistoryFragment extends Fragment {
         TextView titleTV = sheetView.findViewById(R.id.bsTitleTV);
         bsSeekBar = sheetView.findViewById(R.id.bsSeekBar);
         bsTimeTV = sheetView.findViewById(R.id.bsTimeTV);
-        Button back10 = sheetView.findViewById(R.id.bsBack10Btn);
+        ImageButton back10 = sheetView.findViewById(R.id.bsBack10Btn);
         bsPlayPauseBtn = sheetView.findViewById(R.id.bsPlayPauseBtn);
-        Button fwd10 = sheetView.findViewById(R.id.bsFwd10Btn);
+        ImageButton fwd10 = sheetView.findViewById(R.id.bsFwd10Btn);
 
         titleTV.setText(title != null ? title : "Now playing");
 
         bsPlayPauseBtn.setEnabled(false);
-        bsPlayPauseBtn.setText("Loading...");
+        bsPlayPauseBtn.setContentDescription("Loading...");
 
         playerSheet = new BottomSheetDialog(requireContext());
         playerSheet.setContentView(sheetView);
@@ -427,14 +432,14 @@ public class HistoryFragment extends Fragment {
                 bsTimeTV.setText(fmtTime(0) + " / " + fmtTime(dur));
 
                 bsPlayPauseBtn.setEnabled(true);
-                bsPlayPauseBtn.setText("Pause");
+                bsPlayPauseBtn.setImageResource(R.drawable.baseline_pause_circle_outline_24);
 
                 mp.start();
                 startPlayerTick();
             });
 
             mediaPlayer.setOnCompletionListener(mp -> {
-                bsPlayPauseBtn.setText("Play");
+                bsPlayPauseBtn.setImageResource(R.drawable.baseline_play_arrow_24);
                 stopPlayerTick();
                 bsSeekBar.setProgress(bsSeekBar.getMax());
             });
@@ -556,10 +561,10 @@ public class HistoryFragment extends Fragment {
 
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
-            bsPlayPauseBtn.setText("Play");
+            bsPlayPauseBtn.setContentDescription("Play");
         } else {
             mediaPlayer.start();
-            bsPlayPauseBtn.setText("Pause");
+            bsPlayPauseBtn.setContentDescription("Pause");
             startPlayerTick();
         }
     }

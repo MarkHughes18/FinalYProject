@@ -2,6 +2,8 @@ package com.example.finalyearproject.ui;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,11 +39,7 @@ public class HomePGActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_homepg);
-
-        // Toolbar
-        MaterialToolbar toolbar = findViewById(R.id.homeToolbar);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("");
+        applyFixedSystemBars();
 
         // Bottom navigation
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
@@ -72,5 +70,25 @@ public class HomePGActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             bottomNav.setSelectedItemId(R.id.nav_home);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyFixedSystemBars();
+    }
+
+    private void applyFixedSystemBars() {
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+
+        getWindow().setStatusBarColor(getResources().getColor(R.color.md_tertiary));
+        getWindow().setNavigationBarColor(getResources().getColor(R.color.md_tertiary));
+
+        androidx.core.view.WindowInsetsControllerCompat controller =
+                androidx.core.view.WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+
+        controller.setAppearanceLightStatusBars(false);
+        controller.setAppearanceLightNavigationBars(false);
     }
 }
