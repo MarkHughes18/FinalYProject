@@ -23,6 +23,7 @@ import com.example.backend.study.dto.McqQuestionDto;
 import com.example.backend.study.dto.TrueFalseQuestionDto;
 import com.example.backend.study.StudyPackLlmService;
 import com.example.backend.study.StudyPackValidator;
+import com.example.backend.study.dto.CustomStudyPackRequest;
 
 @Service
 public class StudyPackGenerationService {
@@ -113,6 +114,123 @@ public class StudyPackGenerationService {
         }
 
         return generatePackVersion(userEmail, fh, nextVersion, regeneratedFromPackId);
+    }
+
+    public StudyPack createCustomStudyPack(CustomStudyPackRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Custom study pack request is missing");
+        }
+
+        String userEmail = request.getUserEmail();
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalArgumentException("User email is required");
+        }
+
+        List<String> flashcardSources = cleanCustomSnippets(request.getFlashcardSnippets());
+        List<String> clozeSources = cleanCustomSnippets(request.getClozeSnippets());
+        List<String> trueFalseSources = cleanCustomSnippets(request.getTrueFalseSnippets());
+        List<String> mcqSources = cleanCustomSnippets(request.getMcqSnippets());
+        List<String> matchingSources = cleanCustomSnippets(request.getMatchingSnippets());
+
+        if (flashcardSources.size() < 5 || clozeSources.size() < 5
+                || trueFalseSources.size() < 5 || mcqSources.size() < 5 || matchingSources.size() < 5) {
+            throw new IllegalArgumentException("At least 5 snippets are required for each study mode");
+        }
+
+        String title = request.getTitle();
+        if (title == null || title.isBlank()) {
+            title = "Custom Study Pack";
+        }
+
+        StudyPack.StudyPackSettings settings = new StudyPack.StudyPackSettings(
+                FLASHCARDS_COUNT, MATCHING_COUNT, CLOZE_COUNT, TF_COUNT, MCQ_COUNT, "EASY");
+
+        List<FlashcardDto> flashcardDtos;
+        List<ClozeQuestionDto> clozeDtos;
+        TrueFalsePackResponse tfPack;
+        ConceptPackResponse mcqPack;
+
+        try {
+            flashcardDtos = studyPackLlmService.generateFlashcardsFromSnippets(flashcardSources);
+            clozeDtos = studyPackLlmService.generateClozeQuestionsFromSnippets(clozeSources);
+
+            tfPack = studyPackLlmService.generateTrueFalsePack(
+                    trueFalseSources,
+                    trueFalseSources,
+                    settings);
+
+            mcqPack = studyPackLlmService.generateConceptPack(
+                    mcqSources,
+                    mcqSources,
+                    List.of("Custom Study Pack"),
+                    new StudyPack.StudyPackSettings(0, 0, 0, 0, MCQ_COUNT, "EASY"));
+
+        } catch (Exception e) {
+            throw new RuntimeException("Custom study pack generation failed: " + e.getMessage(), e);
+        }
+
+        List<StudyPack.Flashcard> flashcards = mapFlashcardsFromDtos(flashcardDtos);
+        List<StudyPack.ClozeQuestion> clozeQuestions = mapClozeQuestionsFromDtos(clozeDtos);
+        List<StudyPack.TrueFalseQuestion> tfQuestions = mapTrueFalseQuestions(tfPack);
+        List<StudyPack.McqQuestion> mcqQuestions = mapMcqQuestions(mcqPack);
+
+        StudyPack tempPack = new StudyPack();
+        tempPack.setFlashcards(flashcards);
+        tempPack.setClozeQuestions(clozeQuestions);
+        tempPack.setTrueFalseQuestions(tfQuestions);
+        tempPack.setMcqQuestions(mcqQuestions);
+
+        enforceFinalStudyPackQuality(tempPack);
+        ensureMinimumCountsForCustomPack(tempPack, clozeSources, mcqSources);
+
+        flashcards = tempPack.getFlashcards();
+        clozeQuestions = tempPack.getClozeQuestions();
+        tfQuestions = tempPack.getTrueFalseQuestions();
+        mcqQuestions = tempPack.getMcqQuestions();
+
+        List<StudyPack.MatchingPair> matchingPairs = generateCustomMatchingPairs(matchingSources, MATCHING_COUNT);
+
+        Instant now = Instant.now();
+
+        FileHistory fh = new FileHistory();
+        fh.setUserEmail(userEmail);
+        fh.setFileName(title);
+        fh.setFileType("custom");
+        fh.setLabel("Study");
+        fh.setUploadedAt(now);
+        fh.setUpdatedAt(now);
+        fh.setTextStatus("READY");
+        fh.setNarrationStatus("READY");
+        fh.setExtractedText(String.join("\n", mergeSnippetLists(
+                flashcardSources, clozeSources, trueFalseSources, mcqSources, matchingSources)));
+        fh.setNarrationText(fh.getExtractedText());
+
+        FileHistory savedHistory = fileHistoryRepository.save(fh);
+
+        StudyPack pack = new StudyPack();
+        pack.setUserEmail(userEmail);
+        pack.setHistoryId(savedHistory.getId());
+        pack.setCreatedAt(now);
+        pack.setUpdatedAt(now);
+        pack.setSourceHash(sha256Hex(savedHistory.getNarrationText()));
+
+        pack.setVersionNumber(1);
+        pack.setActive(true);
+        pack.setRegeneratedFromPackId(null);
+
+        pack.setFileName(title);
+        pack.setFileLabel("Study");
+        pack.setSettings(settings);
+
+        pack.setFlashcards(flashcards);
+        pack.setMatchingPairs(matchingPairs);
+        pack.setClozeQuestions(clozeQuestions);
+        pack.setTrueFalseQuestions(tfQuestions);
+        pack.setMcqQuestions(mcqQuestions);
+
+        pack.setUsedCandidates(buildCandidateUsage(pack));
+
+        return studyPackRepository.save(pack);
     }
 
     private StudyPack generatePackVersion(String userEmail,
@@ -605,6 +723,255 @@ public class StudyPackGenerationService {
         }
 
         return result;
+    }
+
+    private List<String> cleanCustomSnippets(List<String> snippets) {
+        List<String> cleaned = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        if (snippets == null) {
+            return cleaned;
+        }
+
+        for (String snippet : snippets) {
+            if (snippet == null || snippet.isBlank()) {
+                continue;
+            }
+
+            String value = normalize(snippet);
+            String key = normalizeText(value);
+
+            if (value.length() < 20) {
+                continue;
+            }
+
+            if (seen.add(key)) {
+                cleaned.add(value);
+            }
+        }
+
+        return cleaned;
+    }
+
+    @SafeVarargs
+    private final List<String> mergeSnippetLists(List<String>... lists) {
+        List<String> merged = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        for (List<String> list : lists) {
+            if (list == null) {
+                continue;
+            }
+
+            for (String item : list) {
+                if (item == null || item.isBlank()) {
+                    continue;
+                }
+
+                String key = normalizeText(item);
+                if (seen.add(key)) {
+                    merged.add(item);
+                }
+            }
+        }
+
+        return merged;
+    }
+
+    private void ensureMinimumCountsForCustomPack(StudyPack pack, List<String> clozeSources, List<String> mcqSources) {
+        if (pack == null)
+            return;
+
+        // Flashcards fallback
+        if (pack.getFlashcards().size() < 5) {
+            pack.setFlashcards(new ArrayList<>(pack.getFlashcards()));
+        }
+
+        // Cloze fallback
+        if (pack.getClozeQuestions().size() < 5) {
+            pack.setClozeQuestions(new ArrayList<>(pack.getClozeQuestions()));
+        }
+
+        // MCQ fallback
+        if (pack.getMcqQuestions().size() < 5) {
+            pack.setMcqQuestions(new ArrayList<>(pack.getMcqQuestions()));
+        }
+
+        if (pack.getTrueFalseQuestions() == null || pack.getTrueFalseQuestions().isEmpty()) {
+            pack.setTrueFalseQuestions(generateBasicTrueFalseFallback(pack.getFlashcards()));
+        }
+
+        topUpCustomClozeFallback(pack, clozeSources, 5);
+        topUpCustomMcqFallback(pack, mcqSources, 5);
+    }
+
+    private void topUpCustomClozeFallback(StudyPack pack, List<String> sources, int minimum) {
+        if (pack.getClozeQuestions().size() >= minimum || sources == null) {
+            return;
+        }
+
+        Set<String> existing = pack.getClozeQuestions().stream()
+                .filter(Objects::nonNull)
+                .map(StudyPack.ClozeQuestion::getSourceSnippet)
+                .filter(this::notBlank)
+                .map(this::normalizeText)
+                .collect(Collectors.toSet());
+
+        for (String source : sources) {
+            if (pack.getClozeQuestions().size() >= minimum) {
+                return;
+            }
+
+            if (!notBlank(source)) {
+                continue;
+            }
+
+            String key = normalizeText(source);
+            if (!existing.add(key)) {
+                continue;
+            }
+
+            String[] words = source.trim().split("\\s+");
+            if (words.length < 4) {
+                continue;
+            }
+
+            String answer = words[0].replaceAll("[^A-Za-z0-9]", "");
+            if (!notBlank(answer)) {
+                continue;
+            }
+
+            String sentenceWithBlank = source.replaceFirst(Pattern.quote(words[0]), "_____");
+
+            StudyPack.ClozeQuestion q = new StudyPack.ClozeQuestion();
+            q.setSentenceWithBlank(sentenceWithBlank);
+            q.setAnswer(answer);
+            q.setChoices(buildBasicChoices(answer));
+            q.setSourceSnippet(source);
+
+            pack.getClozeQuestions().add(q);
+        }
+    }
+
+    private void topUpCustomMcqFallback(StudyPack pack, List<String> sources, int minimum) {
+        if (pack.getMcqQuestions().size() >= minimum || sources == null) {
+            return;
+        }
+
+        Set<String> existing = pack.getMcqQuestions().stream()
+                .filter(Objects::nonNull)
+                .map(StudyPack.McqQuestion::getSourceSnippet)
+                .filter(this::notBlank)
+                .map(this::normalizeText)
+                .collect(Collectors.toSet());
+
+        List<String> concepts = sources.stream()
+                .filter(this::notBlank)
+                .map(s -> s.trim().split("\\s+")[0].replaceAll("[^A-Za-z0-9]", ""))
+                .filter(this::notBlank)
+                .distinct()
+                .collect(Collectors.toList());
+
+        for (String source : sources) {
+            if (pack.getMcqQuestions().size() >= minimum) {
+                return;
+            }
+
+            if (!notBlank(source)) {
+                continue;
+            }
+
+            String key = normalizeText(source);
+            if (!existing.add(key)) {
+                continue;
+            }
+
+            String[] words = source.trim().split("\\s+");
+            if (words.length < 4) {
+                continue;
+            }
+
+            String answer = words[0].replaceAll("[^A-Za-z0-9]", "");
+            if (!notBlank(answer)) {
+                continue;
+            }
+
+            List<String> options = new ArrayList<>();
+            options.add(answer);
+
+            for (String concept : concepts) {
+                if (options.size() >= 4) {
+                    break;
+                }
+
+                if (!concept.equalsIgnoreCase(answer)) {
+                    options.add(concept);
+                }
+            }
+
+            while (options.size() < 4) {
+                options.add("Option " + options.size());
+            }
+
+            Collections.shuffle(options);
+            int correctIndex = options.indexOf(answer);
+
+            StudyPack.McqQuestion q = new StudyPack.McqQuestion();
+            q.setQuestion("Which concept best matches this statement: \"" + shorten(source, 90) + "\"?");
+            q.setOptions(options);
+            q.setCorrectIndex(correctIndex);
+            q.setCorrectAnswer(answer);
+            q.setExplanation("This question was created from your custom snippet.");
+            q.setSourceSnippet(source);
+
+            pack.getMcqQuestions().add(q);
+        }
+    }
+
+    private List<StudyPack.TrueFalseQuestion> generateBasicTrueFalseFallback(
+            List<StudyPack.Flashcard> flashcards) {
+
+        List<StudyPack.TrueFalseQuestion> out = new ArrayList<>();
+
+        if (flashcards == null)
+            return out;
+
+        for (StudyPack.Flashcard fc : flashcards) {
+            if (fc == null || fc.getBack() == null)
+                continue;
+
+            StudyPack.TrueFalseQuestion q = new StudyPack.TrueFalseQuestion();
+            q.setStatement(fc.getBack());
+            q.setAnswer(true);
+            q.setExplanation("This statement comes directly from your input.");
+            q.setSourceSnippet(fc.getSourceSnippet());
+
+            out.add(q);
+
+            if (out.size() >= 5)
+                break;
+        }
+
+        return out;
+    }
+
+    private List<String> buildBasicChoices(String answer) {
+        List<String> choices = new ArrayList<>();
+        choices.add(answer);
+
+        List<String> defaults = List.of("Inheritance", "Encapsulation", "Polymorphism", "Abstraction", "Interface");
+
+        for (String option : defaults) {
+            if (choices.size() >= 4) {
+                break;
+            }
+
+            if (!option.equalsIgnoreCase(answer)) {
+                choices.add(option);
+            }
+        }
+
+        return choices;
     }
 
     private List<String> rotateList(List<String> source, int steps) {
@@ -1707,6 +2074,51 @@ public class StudyPackGenerationService {
             pairs.add(p);
         }
         return pairs;
+    }
+
+    private List<StudyPack.MatchingPair> generateCustomMatchingPairs(List<String> matchingSources, int count) {
+        List<StudyPack.MatchingPair> pairs = new ArrayList<>();
+
+        if (matchingSources == null) {
+            return pairs;
+        }
+
+        for (String source : matchingSources) {
+            if (pairs.size() >= count) {
+                break;
+            }
+
+            if (source == null || source.isBlank()) {
+                continue;
+            }
+
+            String cleaned = normalize(source);
+
+            StudyPack.MatchingPair pair = new StudyPack.MatchingPair();
+            pair.setLeft(buildCustomMatchingLeft(cleaned));
+            pair.setRight(shorten(cleaned, 90));
+
+            pairs.add(pair);
+        }
+
+        return pairs;
+    }
+
+    private String buildCustomMatchingLeft(String source) {
+        if (source == null || source.isBlank()) {
+            return "Match this concept";
+        }
+
+        String[] words = source.trim().split("\\s+");
+
+        if (words.length > 0) {
+            String firstWord = words[0].replaceAll("[^A-Za-z0-9]", "");
+            if (firstWord != null && !firstWord.isBlank()) {
+                return "Match: " + firstWord;
+            }
+        }
+
+        return "Match this concept";
     }
 
     // Generating Cloze sentences
