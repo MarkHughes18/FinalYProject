@@ -18,7 +18,6 @@ import com.example.finalyearproject.data.StudySessionStats;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
     // position -> generated/displayed options for consistency
     private final Map<Integer, List<String>> optionsCache = new HashMap<>();
     private final StudySessionStats sessionStats;
-    private final Set<Integer> scoredPositions = new HashSet<>();
     private final OnStatsChangedListener statsChangedListener;
 
     public ClozePagerAdapter(List<StudyPackResponse.ClozeQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
@@ -66,10 +64,11 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         bindOptionButton(holder.option3Btn, item, options, 2, position);
         bindOptionButton(holder.option4Btn, item, options, 3, position);
 
-        boolean alreadyAnswered = selectedAnswers.containsKey(position);
+        boolean alreadyAnswered = selectedAnswers.containsKey(position) || sessionStats.isClozeAnswered(position);
 
         if (alreadyAnswered) {
-            int selectedIndex = selectedAnswers.get(position);
+            Integer selectedIndex = sessionStats.getClozeAnswer(position);
+            if (selectedIndex == null) return;
             String selectedText = getOptionText(options, selectedIndex);
             String correctAnswer = item.answer != null ? item.answer : "";
             boolean correct = correctAnswer.equalsIgnoreCase(selectedText != null ? selectedText : "");
@@ -165,10 +164,8 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         unique.add("Administrative planning");
     }
 
-    private void bindOptionButton(Button button, StudyPackResponse.ClozeQuestion item,
-                                  List<String> options,
-                                  int optionIndex,
-                                  int position) {
+    private void bindOptionButton(Button button, StudyPackResponse.ClozeQuestion item, List<String> options,
+                                  int optionIndex, int position) {
 
         String text = getOptionText(options, optionIndex);
 
@@ -183,26 +180,25 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
 
         resetButtonStyle(button);
 
-        if (selectedAnswers.containsKey(position)) {
+        if (selectedAnswers.containsKey(position) || sessionStats.isClozeAnswered(position)) {
             button.setOnClickListener(null);
             return;
         }
 
         button.setOnClickListener(v -> {
+            sessionStats.setClozeAnswer(position, optionIndex);
             selectedAnswers.put(position, optionIndex);
 
             String selectedText = getOptionText(options, optionIndex);
             String correctAnswer = item.answer != null ? item.answer : "";
             boolean isCorrect = correctAnswer.equalsIgnoreCase(selectedText != null ? selectedText : "");
 
-            if (!scoredPositions.contains(position)) {
+            if (sessionStats.markClozeAnswered(position)) {
                 if (isCorrect) {
                     sessionStats.getClozeStats().recordCorrect();
                 } else {
                     sessionStats.getClozeStats().recordIncorrect();
                 }
-
-                scoredPositions.add(position);
 
                 if (statsChangedListener != null) {
                     statsChangedListener.onStatsChanged();
@@ -226,11 +222,8 @@ public class ClozePagerAdapter extends RecyclerView.Adapter<ClozePagerAdapter.Vi
         holder.option4Btn.setEnabled(enabled);
     }
 
-    private void highlightButton(Button button,
-                                 List<String> options,
-                                 int optionIndex,
-                                 int selectedIndex,
-                                 String correctAnswer) {
+    private void highlightButton(Button button, List<String> options, int optionIndex,
+                                 int selectedIndex, String correctAnswer) {
 
         String optionText = getOptionText(options, optionIndex);
         if (optionText == null) {

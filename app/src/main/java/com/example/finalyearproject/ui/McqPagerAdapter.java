@@ -25,7 +25,6 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
 
     private final List<StudyPackResponse.McqQuestion> items;
     private final StudySessionStats sessionStats;
-    private final Set<Integer> scoredPositions = new HashSet<>();
     private final OnStatsChangedListener statsChangedListener;
     // position -> selected option index
     private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
@@ -59,10 +58,11 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
         bindOptionButton(holder.option3Btn, item, 2, position);
         bindOptionButton(holder.option4Btn, item, 3, position);
 
-        boolean alreadyAnswered = selectedAnswers.containsKey(position);
+        boolean alreadyAnswered = sessionStats.isMcqAnswered(position);
 
         if (alreadyAnswered) {
-            int selectedIndex = selectedAnswers.get(position);
+            Integer selectedIndex = sessionStats.getMcqAnswer(position);
+            if (selectedIndex == null) return;
             boolean correct = item.correctIndex >= 0 && selectedIndex == item.correctIndex;
 
             holder.resultTv.setVisibility(View.VISIBLE);
@@ -124,18 +124,16 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
         );
 
         button.setOnClickListener(v -> {
-            selectedAnswers.put(position, optionIndex);
+            sessionStats.setMcqAnswer(position, optionIndex);
 
             boolean isCorrect = item.correctIndex >= 0 && optionIndex == item.correctIndex;
 
-            if (!scoredPositions.contains(position)) {
+            if (sessionStats.markMcqAnswered(position)) {
                 if (isCorrect) {
                     sessionStats.getMcqStats().recordCorrect();
                 } else {
                     sessionStats.getMcqStats().recordIncorrect();
                 }
-
-                scoredPositions.add(position);
 
                 if (statsChangedListener != null) {
                     statsChangedListener.onStatsChanged();

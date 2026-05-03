@@ -31,15 +31,18 @@ public class ContinueLearningPrefs {
     private static final String KEY_MATCH_CORRECT = "match_correct";
     private static final String KEY_MATCH_INCORRECT = "match_incorrect";
 
-    public static void saveContinueLearning(
-            Context context,
-            String historyId,
-            String fileName,
-            String lastMode,
-            int lastPosition,
-            long lastOpenedAt,
-            StudySessionStats stats
-    ) {
+    private static final String KEY_ANSWERED_CLOZE = "answered_cloze";
+    private static final String KEY_ANSWERED_TF = "answered_tf";
+    private static final String KEY_ANSWERED_MCQ = "answered_mcq";
+    private static final String KEY_ANSWERED_MATCHING = "answered_matching";
+
+    private static final String KEY_SELECTED_MCQ = "selected_mcq";
+    private static final String KEY_SELECTED_CLOZE = "selected_cloze";
+    private static final String KEY_SELECTED_TF = "selected_tf";
+
+    public static void saveContinueLearning(Context context, String historyId, String fileName, String lastMode,
+                                            int lastPosition, long lastOpenedAt, StudySessionStats stats) {
+
         SharedPreferences.Editor editor = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEY_HISTORY_ID, historyId)
@@ -68,6 +71,15 @@ public class ContinueLearningPrefs {
             editor.putInt(KEY_MATCH_ATTEMPTED, stats.getMatchingStats().getAttempted());
             editor.putInt(KEY_MATCH_CORRECT, stats.getMatchingStats().getCorrect());
             editor.putInt(KEY_MATCH_INCORRECT, stats.getMatchingStats().getIncorrect());
+
+            editor.putString(KEY_ANSWERED_CLOZE, setToString(stats.getAnsweredClozePositions()));
+            editor.putString(KEY_ANSWERED_TF, setToString(stats.getAnsweredTrueFalsePositions()));
+            editor.putString(KEY_ANSWERED_MCQ, setToString(stats.getAnsweredMcqPositions()));
+            editor.putString(KEY_ANSWERED_MATCHING, setToString(stats.getAnsweredMatchingPositions()));
+
+            editor.putString(KEY_SELECTED_MCQ, intMapToString(stats.getMcqSelectedAnswers()));
+            editor.putString(KEY_SELECTED_CLOZE, intMapToString(stats.getClozeSelectedAnswers()));
+            editor.putString(KEY_SELECTED_TF, boolMapToString(stats.getTrueFalseSelectedAnswers()));
         }
 
         editor.apply();
@@ -108,7 +120,139 @@ public class ContinueLearningPrefs {
         stats.getMatchingStats().setCorrect(prefs.getInt(KEY_MATCH_CORRECT, 0));
         stats.getMatchingStats().setIncorrect(prefs.getInt(KEY_MATCH_INCORRECT, 0));
 
+        restoreSet(stats.getAnsweredClozePositions(), prefs.getString(KEY_ANSWERED_CLOZE, ""));
+        restoreSet(stats.getAnsweredTrueFalsePositions(), prefs.getString(KEY_ANSWERED_TF, ""));
+        restoreSet(stats.getAnsweredMcqPositions(), prefs.getString(KEY_ANSWERED_MCQ, ""));
+        restoreSet(stats.getAnsweredMatchingPositions(), prefs.getString(KEY_ANSWERED_MATCHING, ""));
+
+        restoreIntMap(stats.getMcqSelectedAnswers(), prefs.getString(KEY_SELECTED_MCQ, ""));
+        restoreIntMap(stats.getClozeSelectedAnswers(), prefs.getString(KEY_SELECTED_CLOZE, ""));
+        restoreBoolMap(stats.getTrueFalseSelectedAnswers(), prefs.getString(KEY_SELECTED_TF, ""));
+
         return new ContinueLearningData(historyId, fileName, lastMode, lastPosition, lastOpenedAt, stats);
+    }
+
+    private static String setToString(java.util.Set<Integer> set) {
+        if (set == null || set.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (Integer value : set) {
+            if (value == null) {
+                continue;
+            }
+
+            if (sb.length() > 0) {
+                sb.append(",");
+            }
+
+            sb.append(value);
+        }
+
+        return sb.toString();
+    }
+
+    private static void restoreSet(java.util.Set<Integer> target, String saved) {
+        if (target == null || saved == null || saved.isBlank()) {
+            return;
+        }
+
+        String[] parts = saved.split(",");
+
+        for (String part : parts) {
+            try {
+                target.add(Integer.parseInt(part.trim()));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static String intMapToString(java.util.Map<Integer, Integer> map) {
+        if (map == null || map.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (java.util.Map.Entry<Integer, Integer> entry : map.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+
+            if (sb.length() > 0) {
+                sb.append(",");
+            }
+
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+
+        return sb.toString();
+    }
+
+    private static void restoreIntMap(java.util.Map<Integer, Integer> target, String saved) {
+        if (target == null || saved == null || saved.isBlank()) {
+            return;
+        }
+
+        String[] entries = saved.split(",");
+
+        for (String entry : entries) {
+            try {
+                String[] parts = entry.split("=");
+                if (parts.length == 2) {
+                    target.put(
+                            Integer.parseInt(parts[0].trim()),
+                            Integer.parseInt(parts[1].trim())
+                    );
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static String boolMapToString(java.util.Map<Integer, Boolean> map) {
+        if (map == null || map.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (java.util.Map.Entry<Integer, Boolean> entry : map.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+
+            if (sb.length() > 0) {
+                sb.append(",");
+            }
+
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+
+        return sb.toString();
+    }
+
+    private static void restoreBoolMap(java.util.Map<Integer, Boolean> target, String saved) {
+        if (target == null || saved == null || saved.isBlank()) {
+            return;
+        }
+
+        String[] entries = saved.split(",");
+
+        for (String entry : entries) {
+            try {
+                String[] parts = entry.split("=");
+                if (parts.length == 2) {
+                    target.put(
+                            Integer.parseInt(parts[0].trim()),
+                            Boolean.parseBoolean(parts[1].trim())
+                    );
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public static void clearContinueLearning(Context context) {

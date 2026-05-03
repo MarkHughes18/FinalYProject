@@ -143,8 +143,10 @@ public class MatchingGameAdapter extends RecyclerView.Adapter<MatchingGameAdapte
                         pairId
                 );
 
-                sessionStats.getMatchingStats().recordCorrect();
-                listener.onStatsChanged();
+                if (sessionStats.markMatchingAnswered(pairId)) {
+                    sessionStats.getMatchingStats().recordCorrect();
+                    listener.onStatsChanged();
+                }
 
                 showCorrectFeedback = true;
                 notifyDataSetChanged();

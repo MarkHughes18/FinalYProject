@@ -16,10 +16,8 @@ import com.example.finalyearproject.data.StudyPackResponse;
 import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAdapter.ViewHolder> {
 
@@ -27,7 +25,6 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
     // position -> user's selected answer
     private final Map<Integer, Boolean> selectedAnswers = new HashMap<>();
     private final StudySessionStats sessionStats;
-    private final Set<Integer> scoredPositions = new HashSet<>();
     private final OnStatsChangedListener statsChangedListener;
 
     public TrueFalsePagerAdapter(List<StudyPackResponse.TrueFalseQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
@@ -54,10 +51,12 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
         holder.statementTv.setText(item.statement != null ? item.statement : "");
 
-        boolean alreadyAnswered = selectedAnswers.containsKey(position);
+        boolean alreadyAnswered = selectedAnswers.containsKey(position) || sessionStats.isTrueFalseAnswered(position);
 
         if (alreadyAnswered) {
-            boolean selected = selectedAnswers.get(position);
+            Boolean selectedValue = sessionStats.getTrueFalseAnswer(position);
+            if (selectedValue == null) return;
+            boolean selected = selectedValue;
             boolean correct = selected == item.answer;
 
             holder.resultTv.setVisibility(View.VISIBLE);
@@ -90,46 +89,42 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
             resetButtonStyle(holder.falseBtn);
 
             holder.trueBtn.setOnClickListener(v -> {
+                sessionStats.setTrueFalseAnswer(position, true);
                 selectedAnswers.put(position, true);
 
                 boolean isCorrect = item.answer;
 
-                if (!scoredPositions.contains(position)) {
+                if (sessionStats.markTrueFalseAnswered(position)) {
                     if (isCorrect) {
                         sessionStats.getTrueFalseStats().recordCorrect();
                     } else {
                         sessionStats.getTrueFalseStats().recordIncorrect();
                     }
 
-                    scoredPositions.add(position);
-
                     if (statsChangedListener != null) {
                         statsChangedListener.onStatsChanged();
                     }
                 }
-
                 notifyItemChanged(position);
             });
 
             holder.falseBtn.setOnClickListener(v -> {
+                sessionStats.setTrueFalseAnswer(position, false);
                 selectedAnswers.put(position, false);
 
                 boolean isCorrect = !item.answer;
 
-                if (!scoredPositions.contains(position)) {
+                if (sessionStats.markTrueFalseAnswered(position)) {
                     if (isCorrect) {
                         sessionStats.getTrueFalseStats().recordCorrect();
                     } else {
                         sessionStats.getTrueFalseStats().recordIncorrect();
                     }
 
-                    scoredPositions.add(position);
-
                     if (statsChangedListener != null) {
                         statsChangedListener.onStatsChanged();
                     }
                 }
-
                 notifyItemChanged(position);
             });
 

@@ -222,6 +222,27 @@ public class StudyPackActivity extends AppCompatActivity {
                             sessionStats.getMatchingStats().setAttempted(saved.getMatchingStats().getAttempted());
                             sessionStats.getMatchingStats().setCorrect(saved.getMatchingStats().getCorrect());
                             sessionStats.getMatchingStats().setIncorrect(saved.getMatchingStats().getIncorrect());
+
+                            sessionStats.getAnsweredClozePositions().clear();
+                            sessionStats.getAnsweredClozePositions().addAll(saved.getAnsweredClozePositions());
+
+                            sessionStats.getAnsweredTrueFalsePositions().clear();
+                            sessionStats.getAnsweredTrueFalsePositions().addAll(saved.getAnsweredTrueFalsePositions());
+
+                            sessionStats.getAnsweredMcqPositions().clear();
+                            sessionStats.getAnsweredMcqPositions().addAll(saved.getAnsweredMcqPositions());
+
+                            sessionStats.getAnsweredMatchingPositions().clear();
+                            sessionStats.getAnsweredMatchingPositions().addAll(saved.getAnsweredMatchingPositions());
+
+                            sessionStats.getMcqSelectedAnswers().clear();
+                            sessionStats.getMcqSelectedAnswers().putAll(saved.getMcqSelectedAnswers());
+
+                            sessionStats.getClozeSelectedAnswers().clear();
+                            sessionStats.getClozeSelectedAnswers().putAll(saved.getClozeSelectedAnswers());
+
+                            sessionStats.getTrueFalseSelectedAnswers().clear();
+                            sessionStats.getTrueFalseSelectedAnswers().putAll(saved.getTrueFalseSelectedAnswers());
                         }
                     }
                     refreshStatsUi();
