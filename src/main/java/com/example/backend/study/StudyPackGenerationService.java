@@ -2057,8 +2057,8 @@ public class StudyPackGenerationService {
                 continue;
             }
 
-            String left = shorten(fc.getFront(), 75);
-            String right = shorten(fc.getBack(), 80);
+            String left = fc.getFront();
+            String right = fc.getBack();
 
             if (!isGoodFlashcardFront(left)) {
                 continue;

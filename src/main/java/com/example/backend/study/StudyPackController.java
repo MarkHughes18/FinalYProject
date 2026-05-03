@@ -48,7 +48,6 @@ public class StudyPackController {
                         String updatedAt) {
         }
 
-        // Get a StudyPack for a given historyId.
         @GetMapping(value = "/packs/{historyId}", produces = MediaType.APPLICATION_JSON_VALUE)
         public ResponseEntity<?> getOrGeneratePack(@PathVariable String historyId,
                         @RequestParam("email") String email) {
