@@ -7,6 +7,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
+// file to configure async processing, allowing it to run LLM calls and other long-running tasks in the background without blocking the main thread
 @Configuration
 @EnableAsync
 public class AsyncConfig {

@@ -8,11 +8,13 @@ import java.util.List;
 @Service
 public class TextChunkService {
 
-    // Rough character budget per chunk
+    // rough character budget per chunk
     private static final int CHUNK_SIZE = 2000;
     private static final int OVERLAP = 200;
     private static final int MAX_CHUNKS = 30;
 
+    // breaks cleaned text into chunks for LLM processing, trying to split on
+    // sentence boundaries
     public List<String> chunk(String text) {
         List<String> chunks = new ArrayList<>();
         if (text == null || text.isBlank())
@@ -40,7 +42,6 @@ public class TextChunkService {
                 break;
             }
             // overlap correctly
-            start = Math.max(cut - OVERLAP, 0);
             if (cut >= text.length()) {
                 break;
             }

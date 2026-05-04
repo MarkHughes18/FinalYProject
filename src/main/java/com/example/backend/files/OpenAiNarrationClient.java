@@ -23,10 +23,14 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
 
     private final WebClient web;
     private final ObjectMapper mapper = new ObjectMapper();
+    // only one request is sent at a time
     private static final Semaphore OPENAI_LOCK = new Semaphore(1);
+    // tracks last call to space out requests
     private static volatile long lastCallMs = 0;
+    // minimum delay between calls to avoid hitting rate limits
     private static final long MIN_GAP_MS = 2500; // 2.5 seconds between calls
 
+    // api key
     public OpenAiNarrationClient() {
         String apiKey = System.getenv("OPENAI_API_KEY");
         if (apiKey == null || apiKey.isBlank()) {
@@ -40,8 +44,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                 .build();
     }
 
-    // Explain a chunk into STRUCTURED JSON for narration building, returns JSON
-    // string
+    // explain a chunk into structured JSON for narration building, returns JSON
     @Override
     public String explainChunks(List<String> chunks) throws Exception {
         if (chunks == null || chunks.isEmpty()) {
@@ -51,6 +54,8 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
                 You are an expert tutor. Output MUST be valid JSON only.
                 No markdown. No extra text.
                 """;
+
+        // format chunks with headers for clarity in the prompt
         int totalChunks = chunks.size();
         StringBuilder notes = new StringBuilder();
         for (int i = 0; i < chunks.size(); i++) {
@@ -135,6 +140,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         return withRateLimit(() -> callAndExtractContent(payload));
     }
 
+    // reads message from api response and handles errors, retries, and rate limits
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ChatCompletionsResponse(java.util.List<Choice> choices) {
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -146,6 +152,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         }
     }
 
+    // spaces out calls and prevents multiple simultaneous calls
     private <T> T withRateLimit(Callable<T> fn) throws Exception {
         OPENAI_LOCK.acquire();
         try {
@@ -163,16 +170,8 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         }
     }
 
-    private String formatChunks(List<String> chunks) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < chunks.size(); i++) {
-            sb.append("\n--- CHUNK ").append(i + 1).append(" ---\n");
-            sb.append(chunks.get(i));
-            sb.append("\n");
-        }
-        return sb.toString();
-    }
-
+    // makes the API call and extracts the content, with error handling and retries
+    // for rate limits
     private String callAndExtractContent(Map<String, Object> payload) {
 
         int maxAttempts = 5;
@@ -262,6 +261,7 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
         throw new RuntimeException("OpenAI call failed after retries");
     }
 
+    // helper that does both steps in one call
     @Override
     public String smoothNarrationFromNotes(List<String> chunks) throws Exception {
         String system = """

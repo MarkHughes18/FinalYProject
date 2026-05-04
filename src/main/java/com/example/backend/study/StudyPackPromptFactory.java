@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class StudyPackPromptFactory {
 
+  // builds the system prompt for concept pack generation (flashcards, cloze
+  // questions, mcqs)
   public String buildConceptSystemPrompt() {
     return """
         You generate educational study-pack content from source sentences.
@@ -24,6 +26,8 @@ public class StudyPackPromptFactory {
         """;
   }
 
+  // builds the user prompt for concept pack generation, including instructions
+  // and the provided source material
   public String buildConceptUserPrompt(
       List<String> definitionPool,
       List<String> processPool,
@@ -127,6 +131,7 @@ public class StudyPackPromptFactory {
             joinLines(processPool));
   }
 
+  // builds the system prompt for true/false question generation
   public String buildTrueFalseSystemPrompt() {
     return """
         You generate educational true/false questions from source sentences.
@@ -141,6 +146,8 @@ public class StudyPackPromptFactory {
         """;
   }
 
+  // builds the user prompt for true/false question generation, including
+  // instructions and the provided source material
   public String buildTrueFalseUserPrompt(
       List<String> processPool,
       List<String> detailPool,
@@ -184,6 +191,7 @@ public class StudyPackPromptFactory {
         joinLines(detailPool));
   }
 
+  // builds the system prompt for generating flashcards from selected snippets
   public String buildFlashcardSnippetSystemPrompt() {
     return """
         You generate study flashcards from provided source snippets.
@@ -198,6 +206,8 @@ public class StudyPackPromptFactory {
         """;
   }
 
+  // builds the user prompt for generating flashcards from selected snippets,
+  // including instructions and the provided snippets
   public String buildFlashcardSnippetUserPrompt(List<String> selectedSnippets) {
     StringBuilder sb = new StringBuilder();
     sb.append("Generate exactly one flashcard for each source snippet below.\n");
@@ -211,6 +221,8 @@ public class StudyPackPromptFactory {
     return sb.toString();
   }
 
+  // builds the system prompt for generating cloze questions from selected
+  // snippets
   public String buildClozeSnippetSystemPrompt() {
     return """
         You generate cloze study questions from provided source snippets.
@@ -226,6 +238,8 @@ public class StudyPackPromptFactory {
         """;
   }
 
+  // builds the user prompt for generating cloze questions from selected snippets,
+  // including instructions and the provided snippets
   public String buildClozeSnippetUserPrompt(List<String> selectedSnippets) {
     StringBuilder sb = new StringBuilder();
     sb.append("Generate exactly one cloze question for each source snippet below.\n");
@@ -239,6 +253,7 @@ public class StudyPackPromptFactory {
     return sb.toString();
   }
 
+  // helper to join lines with bullet points for better readability in prompts
   private String joinLines(List<String> items) {
     if (items == null || items.isEmpty()) {
       return "(none)";
