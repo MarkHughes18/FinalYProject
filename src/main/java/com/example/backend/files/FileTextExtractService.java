@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 @Service
 public class FileTextExtractService {
-    private final Tika tika = new Tika();
+    private final Tika tika = new Tika(); // used to extract text
 
     public String extractText(Path filePath) throws IOException, TikaException {
         String text = tika.parseToString(filePath);

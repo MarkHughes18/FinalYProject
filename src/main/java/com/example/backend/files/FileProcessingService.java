@@ -26,6 +26,7 @@ public class FileProcessingService {
         this.narrationService = narrationService;
     }
 
+    // main processing flow - extract text, build narration, synthesize audio
     @Async
     public void processHistoryAsync(String historyId) {
         FileHistory fh = repo.findById(historyId).orElse(null);
@@ -49,6 +50,7 @@ public class FileProcessingService {
                 extracted = extracted.substring(0, MAX_EXTRACTED_CHARS);
             }
 
+            // save extracted text and mark ready
             System.out.println(
                     "TEXT extract done id=" + historyId + " len=" + (extracted == null ? 0 : extracted.length()));
             fh.setExtractedText(extracted);
@@ -71,7 +73,7 @@ public class FileProcessingService {
             fh.setUpdatedAt(Instant.now());
             repo.save(fh);
 
-            String toSpeak = narration; // trim to fit TTS limits
+            String toSpeak = narration; // prepare narration fro TTS and keep within limits
             if (toSpeak == null)
                 toSpeak = "";
 
@@ -80,21 +82,26 @@ public class FileProcessingService {
             }
             System.out.println("TTS start id=" + historyId + " speakLen=" + toSpeak.length());
 
+            // use users preferred TTS settings if provided, otherwise defaults
             String lang = fh.getTtsLanguageCode();
             String voice = fh.getTtsVoice();
             if (lang == null || lang.isBlank())
                 lang = "en-GB";
             if (voice == null || voice.isBlank())
                 voice = "female";
+
+            // generate mp3 audio
             byte[] mp3Bytes = ttsService.synthesizeMp3(toSpeak, lang, voice);
             System.out.println("TTS done id=" + historyId + " bytes=" + (mp3Bytes == null ? 0 : mp3Bytes.length));
 
+            // save audio to disk and update history record with path and url
             Path audioDir = Paths.get("audio");
             Files.createDirectories(audioDir);
 
             Path outMp3 = audioDir.resolve(fh.getId() + ".mp3");
             Files.write(outMp3, mp3Bytes);
 
+            // update history record with audio info
             fh.setAudioPath(outMp3.toAbsolutePath().toString());
             fh.setAudioStatus("READY");
             fh.setAudioUrl("/api/files/history/" + fh.getId() + "/audio");

@@ -10,6 +10,10 @@ import java.util.stream.Collectors;
 @Component
 public class StudyPackValidator {
 
+    // validates and cleans up LLM-generated concept packs, ensuring they meet
+    // quality standards and are not too similar to each other
+    // it also tracks source snippet usage to maximize diversity across question
+    // types
     public ConceptPackResponse validateConceptPack(
             ConceptPackResponse response,
             StudyPack.StudyPackSettings settings) {
@@ -105,6 +109,8 @@ public class StudyPackValidator {
         return response;
     }
 
+    // Validates and cleans up true/false questions, ensuring they meet quality
+    // standards and are not too similar to each other
     public TrueFalsePackResponse validateTrueFalsePack(
             TrueFalsePackResponse response,
             StudyPack.StudyPackSettings settings) {
@@ -118,6 +124,8 @@ public class StudyPackValidator {
         return response;
     }
 
+    // following methods implement the cleaning and validation logic for flashcards,
+    // cloze questions, MCQs, and true/false questions.
     private List<FlashcardDto> cleanFlashcards(List<FlashcardDto> items, int max) {
         if (items == null)
             return new ArrayList<>();
@@ -152,12 +160,6 @@ public class StudyPackValidator {
             if (snippetUsage.getOrDefault(snippetKey, 0) >= 1) {
                 continue;
             }
-
-            /**
-             * if (isTooSimilarToExisting(frontKey, seenFronts, 0.85)) {
-             * continue;
-             * }
-             */
 
             snippetUsage.put(snippetKey, snippetUsage.getOrDefault(snippetKey, 0) + 1);
             out.add(i);
@@ -342,6 +344,8 @@ public class StudyPackValidator {
         return out;
     }
 
+    // shuffles MCQ options and repairs the correct index to ensure the correct
+    // answer remains consistent after shuffling
     private void shuffleMcqOptionsAndRepairIndex(McqQuestionDto q) {
         if (q == null || q.getOptions() == null || q.getCorrectAnswer() == null) {
             return;
@@ -415,32 +419,6 @@ public class StudyPackValidator {
         }
 
         return -1;
-    }
-
-    private void addFlashcardSnippetsToUsed(List<FlashcardDto> items, Set<String> usedSnippets) {
-        if (items == null) {
-            return;
-        }
-
-        for (FlashcardDto item : items) {
-            if (item == null || !notBlank(item.getSourceSnippet())) {
-                continue;
-            }
-            usedSnippets.add(normalizeText(item.getSourceSnippet()));
-        }
-    }
-
-    private void addClozeSnippetsToUsed(List<ClozeQuestionDto> items, Set<String> usedSnippets) {
-        if (items == null) {
-            return;
-        }
-
-        for (ClozeQuestionDto item : items) {
-            if (item == null || !notBlank(item.getSourceSnippet())) {
-                continue;
-            }
-            usedSnippets.add(normalizeText(item.getSourceSnippet()));
-        }
     }
 
     private boolean hasValidMcqOptions(List<String> options) {
@@ -701,42 +679,6 @@ public class StudyPackValidator {
         }
 
         return normalized.size() < 4;
-    }
-
-    private String safeOptionAt(List<String> options, int index) {
-        if (options == null || index < 0 || index >= options.size()) {
-            return null;
-        }
-        return options.get(index);
-    }
-
-    private boolean isTooSimilarToExisting(List<String> options) {
-        if (options == null || options.size() < 4) {
-            return true;
-        }
-
-        Set<String> normalized = new HashSet<>();
-        for (String opt : options) {
-            normalized.add(normalizeText(opt));
-        }
-        return normalized.size() < 4;
-    }
-
-    private double similarity(String a, String b) {
-        Set<String> aWords = new HashSet<>(Arrays.asList(a.split("\\s+")));
-        Set<String> bWords = new HashSet<>(Arrays.asList(b.split("\\s+")));
-
-        if (aWords.isEmpty() || bWords.isEmpty()) {
-            return 0.0;
-        }
-
-        Set<String> intersection = new HashSet<>(aWords);
-        intersection.retainAll(bWords);
-
-        Set<String> union = new HashSet<>(aWords);
-        union.addAll(bWords);
-
-        return (double) intersection.size() / union.size();
     }
 
     private boolean hasSingleBlank(String sentence) {

@@ -247,9 +247,9 @@ public class FileHistoryController {
                         return ResponseEntity.notFound().build();
                 }
 
-                // Not ready yet
+                // not ready yet
                 if (!"READY".equalsIgnoreCase(fh.getNarrationStatus()) || fh.getNarrationText() == null) {
-                        return ResponseEntity.status(202) // Accepted (processing)
+                        return ResponseEntity.status(202) // Accepted status to show processing
                                         .contentType(MediaType.TEXT_PLAIN)
                                         .body("Narration is not ready yet. Status = " + fh.getNarrationStatus());
                 }

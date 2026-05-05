@@ -24,6 +24,7 @@ import java.util.concurrent.Semaphore;
 @Service
 @Primary
 public class OpenAiStudyPackClient implements StudyPackLlmClient {
+        // Client for calling OpenAI's API to generate study packs based on prompts
 
         private final WebClient web;
         private final ObjectMapper mapper = new ObjectMapper();
@@ -33,6 +34,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
         private static volatile long lastCallMs = 0;
         private static final long MIN_GAP_MS = 2500;
 
+        // builds webclient using api key in env variables
         public OpenAiStudyPackClient(StudyPackPromptFactory promptFactory) {
                 this.promptFactory = promptFactory;
 
@@ -48,6 +50,8 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                 .build();
         }
 
+        // generates fashcards, cloze questions, and mcqs based on the provided
+        // definition/process pools
         @Override
         public ConceptPackResponse generateConceptPack(
                         List<String> definitionPool,
@@ -73,6 +77,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 return mapper.readValue(content, ConceptPackResponse.class);
         }
 
+        // generates true/false questions based on the provided process and detail pools
         @Override
         public TrueFalsePackResponse generateTrueFalsePack(
                         List<String> processPool,
@@ -95,6 +100,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 return mapper.readValue(content, TrueFalsePackResponse.class);
         }
 
+        // generates flashcards based on the provided snippets
         @Override
         public List<FlashcardDto> generateFlashcardsFromSnippets(
                         List<String> selectedSnippets) throws Exception {
@@ -121,6 +127,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 return mapper.readerForListOf(FlashcardDto.class).readValue(itemsNode);
         }
 
+        // generates cloze questions based on the provided snippets
         @Override
         public List<ClozeQuestionDto> generateClozeQuestionsFromSnippets(
                         List<String> selectedSnippets) throws Exception {
@@ -147,6 +154,8 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 return mapper.readerForListOf(ClozeQuestionDto.class).readValue(itemsNode);
         }
 
+        // helper to build the JSON schema for the concept pack response, which includes
+        // flashcards, cloze questions, and mcqs
         private Map<String, Object> buildConceptJsonSchema() {
                 return Map.of(
                                 "type", "json_schema",
@@ -245,6 +254,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                                                                 "mcqQuestions"))));
         }
 
+        // helper to build the JSON schema for the true/false pack response
         private Map<String, Object> buildTrueFalseJsonSchema() {
                 return Map.of(
                                 "type", "json_schema",
@@ -280,6 +290,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                                                 "required", List.of("trueFalseQuestions"))));
         }
 
+        // helper to build the JSON schema for the flashcard generation response
         private Map<String, Object> buildFlashcardJsonSchema() {
                 return Map.of(
                                 "type", "json_schema",
@@ -311,6 +322,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                                                 "required", List.of("flashcards"))));
         }
 
+        // helper to build the JSON schema for the cloze question generation response
         private Map<String, Object> buildClozeJsonSchema() {
                 return Map.of(
                                 "type", "json_schema",
@@ -354,6 +366,7 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                                                                 "required", List.of("clozeQuestions"))));
         }
 
+        // used to extract the associated content from the OpenAI response
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record ChatCompletionsResponse(List<Choice> choices) {
                 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -365,6 +378,8 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 }
         }
 
+        // helper to enforce a minimum gap between OpenAI calls, to reduce likelihood of
+        // hitting rate limits
         private <T> T withRateLimit(Callable<T> fn) throws Exception {
                 OPENAI_LOCK.acquire();
                 try {
@@ -381,6 +396,8 @@ public class OpenAiStudyPackClient implements StudyPackLlmClient {
                 }
         }
 
+        // sends the request, extracts the response, validtes it as JSON, and returns
+        // the content string, with retries for rate limits and error handling
         private String callAndExtractContent(Map<String, Object> payload) {
                 int maxAttempts = 5;
 
