@@ -42,6 +42,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
     private TextView statusTv;
     private ProgressBar progressBar;
+    private RecyclerView recyclerView;
     private Button btnFlashcards;
     private Button btnCloze;
     private Button btnTrueFalse;
@@ -99,6 +100,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
         statusTv = findViewById(R.id.studyPackStatusTV);
         progressBar = findViewById(R.id.studyPackProgress);
+        recyclerView = findViewById(R.id.studyPackRecyclerView);
         btnFlashcards = findViewById(R.id.btnFlashcards);
         btnCloze = findViewById(R.id.btnCloze);
         btnTrueFalse = findViewById(R.id.btnTrueFalse);
@@ -145,6 +147,7 @@ public class StudyPackActivity extends AppCompatActivity {
 
         matchingUnmatchedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         matchingDoneRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         if (!pagerCallbackRegistered) {
             studyViewPager.registerOnPageChangeCallback(pageChangeCallback);
@@ -524,6 +527,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showMatchingGameMode() {
         studyViewPager.setVisibility(View.GONE);
         pagerCounterTv.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
         matchingGameContainer.setVisibility(View.VISIBLE);
     }
 
@@ -734,6 +738,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private void showPagerMode() {
         studyViewPager.setVisibility(View.VISIBLE);
         pagerCounterTv.setVisibility(View.VISIBLE);
+        recyclerView.setVisibility(View.GONE);
         matchingGameContainer.setVisibility(View.GONE);
     }
 
