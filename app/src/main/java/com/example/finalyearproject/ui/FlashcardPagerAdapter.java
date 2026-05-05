@@ -145,13 +145,6 @@ public class FlashcardPagerAdapter extends RecyclerView.Adapter<FlashcardPagerAd
         return items.size();
     }
 
-    public void resetAllToFront() {
-        if (!revealedPositions.isEmpty()) {
-            revealedPositions.clear();
-            notifyDataSetChanged();
-        }
-    }
-
     static class ViewHolder extends RecyclerView.ViewHolder {
         FrameLayout outerCard;
         TextView sideLabelTv;

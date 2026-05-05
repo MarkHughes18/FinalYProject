@@ -16,18 +16,14 @@ import com.example.finalyearproject.data.StudyPackResponse;
 import com.example.finalyearproject.data.StudySessionStats;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.McqQuestion> items;
     private final StudySessionStats sessionStats;
     private final OnStatsChangedListener statsChangedListener;
-    // position -> selected option index
-    private final Map<Integer, Integer> selectedAnswers = new HashMap<>();
 
     public McqPagerAdapter(List<StudyPackResponse.McqQuestion> items, StudySessionStats sessionStats, OnStatsChangedListener statsChangedListener) {
         this.items = items;
@@ -77,10 +73,7 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
 
             setButtonsEnabled(holder, false);
 
-            holder.itemView.setOnClickListener(v -> {
-                selectedAnswers.remove(position);
-                notifyItemChanged(position);
-            });
+            holder.itemView.setOnClickListener(null);
 
             highlightButton(holder.option1Btn, item, 0, selectedIndex);
             highlightButton(holder.option2Btn, item, 1, selectedIndex);
@@ -113,11 +106,6 @@ public class McqPagerAdapter extends RecyclerView.Adapter<McqPagerAdapter.ViewHo
 
         button.setVisibility(View.VISIBLE);
         button.setText(text);
-
-        if (selectedAnswers.containsKey(position)) {
-            button.setOnClickListener(null);
-            return;
-        }
 
         button.setBackgroundTintList(
                 ColorStateList.valueOf(Color.parseColor("#66BB6A")) // your default green

@@ -136,7 +136,7 @@ public class SettingsFragment extends Fragment {
             }
             new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                     .setTitle("Clear Upload History")
-                    .setMessage("Are you sure you want to delete all uploaded files? This cannot be undone.")
+                    .setMessage("Are you sure you want to delete your upload history? This cannot be undone.")
                     .setPositiveButton("Delete", (dialog, which) -> {
                         api.clearHistory(email).enqueue(new retrofit2.Callback<Void>() {
                             @Override

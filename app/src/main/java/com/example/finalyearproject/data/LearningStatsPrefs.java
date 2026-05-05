@@ -3,6 +3,7 @@ package com.example.finalyearproject.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+//stores overall learning stats for dashboard across all sessions
 public class LearningStatsPrefs {
 
     private static final String PREF_NAME = "learning_stats_prefs";
@@ -26,6 +27,7 @@ public class LearningStatsPrefs {
     private static final String KEY_FLASHCARD_ATTEMPTED = "flashcard_attempted";
     private static final String KEY_SESSIONS_COMPLETED = "sessions_completed";
 
+    //merges current session stats into overall stored stats
     public static void mergeSessionStats(Context context, StudySessionStats sessionStats) {
         if (context == null || sessionStats == null) {
             return;
@@ -69,6 +71,7 @@ public class LearningStatsPrefs {
                 .apply();
     }
 
+    //retrieves calculated stats for dashboard display
     public static DashboardStats getDashboardStats(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
@@ -115,6 +118,7 @@ public class LearningStatsPrefs {
         );
     }
 
+    //determines which study mode has highest accuracy
     private static String calculateBestMode(
             int mcqAttempted, int mcqCorrect,
             int clozeAttempted, int clozeCorrect,
@@ -159,13 +163,7 @@ public class LearningStatsPrefs {
         return bestMode;
     }
 
-    public static void clearStats(Context context) {
-        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply();
-    }
-
+    //model used to return dashboard data
     public static class DashboardStats {
         private final int totalAttempted;
         private final int totalCorrect;

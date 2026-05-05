@@ -5,19 +5,23 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 
+//tracks stats and answered positions for the current study session
 public class StudySessionStats {
 
+    //stores per-mode score counters
     private final ModeStats mcqStats = new ModeStats();
     private final ModeStats clozeStats = new ModeStats();
     private final ModeStats trueFalseStats = new ModeStats();
     private final ModeStats matchingStats = new ModeStats();
     private final ModeStats flashcardStats = new ModeStats();
 
+    //tracks which questions have already been answered to stop duplicate scoring
     private final Set<Integer> answeredMcqPositions = new HashSet<>();
     private final Set<Integer> answeredClozePositions = new HashSet<>();
     private final Set<Integer> answeredTrueFalsePositions = new HashSet<>();
     private final Set<Integer> answeredMatchingPositions = new HashSet<>();
 
+    //stores selected answers so answered questions can be restored/reviewed
     private final Map<Integer, Integer> mcqSelectedAnswers = new HashMap<>();
     private final Map<Integer, Integer> clozeSelectedAnswers = new HashMap<>();
     private final Map<Integer, Boolean> trueFalseSelectedAnswers = new HashMap<>();
@@ -40,6 +44,7 @@ public class StudySessionStats {
 
     public ModeStats getFlashcardStats() {return flashcardStats;}
 
+    //marks as answered and returns false if already answered
     public boolean markMcqAnswered(int position){
         return answeredMcqPositions.add(position);
     }
@@ -49,10 +54,12 @@ public class StudySessionStats {
     public boolean markTrueFalseAnswered(int position){
         return answeredTrueFalsePositions.add(position);
     }
+
     public boolean markMatchingAnswered(int position){
         return answeredMatchingPositions.add(position);
     }
 
+    //checks if this position was already answered
     public boolean isMcqAnswered(int position) {
         return answeredMcqPositions.contains(position);
     }
@@ -85,15 +92,17 @@ public class StudySessionStats {
         return answeredMatchingPositions;
     }
 
+    //saves selected option index for review/continue learning
     public void setMcqAnswer(int position, int selectedIndex) {
         mcqSelectedAnswers.put(position, selectedIndex);
     }
 
+    //returns selected option index
     public Integer getMcqAnswer(int position) {
         return mcqSelectedAnswers.get(position);
     }
 
-    public java.util.Map<Integer, Integer> getMcqSelectedAnswers() {
+    public Map<Integer, Integer> getMcqSelectedAnswers() {
         return mcqSelectedAnswers;
     }
 
@@ -105,7 +114,7 @@ public class StudySessionStats {
         return clozeSelectedAnswers.get(position);
     }
 
-    public java.util.Map<Integer, Integer> getClozeSelectedAnswers() {
+    public Map<Integer, Integer> getClozeSelectedAnswers() {
         return clozeSelectedAnswers;
     }
 
@@ -117,9 +126,11 @@ public class StudySessionStats {
         return trueFalseSelectedAnswers.get(position);
     }
 
-    public java.util.Map<Integer, Boolean> getTrueFalseSelectedAnswers() {
+    public Map<Integer, Boolean> getTrueFalseSelectedAnswers() {
         return trueFalseSelectedAnswers;
     }
+
+    //returns total attempts across all study modes
     public int getTotalAttempted() {
         return flashcardStats.getAttempted()
                 + mcqStats.getAttempted()
@@ -128,20 +139,25 @@ public class StudySessionStats {
                 + matchingStats.getAttempted();
     }
 
+    //returns total correct answers for scored question modes
     public int getTotalCorrect() {
         return mcqStats.getCorrect()
                 + clozeStats.getCorrect()
                 + trueFalseStats.getCorrect()
-                + matchingStats.getCorrect();
+                + matchingStats.getCorrect()
+                + flashcardStats.getCorrect();
     }
 
+    //returns total incorrect answers for scored question modes
     public int getTotalIncorrect() {
         return mcqStats.getIncorrect()
                 + clozeStats.getIncorrect()
                 + trueFalseStats.getIncorrect()
-                + matchingStats.getIncorrect();
+                + matchingStats.getIncorrect()
+                + flashcardStats.getIncorrect();
     }
 
+    //calculates overall accuracy
     public int getOverallAccuracyPercent() {
         int attempted = getTotalCorrect() + getTotalIncorrect();
         if (attempted == 0) {
