@@ -3,6 +3,7 @@ package com.example.backend.files;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -10,6 +11,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
+
+import io.netty.resolver.DefaultAddressResolverGroup;
+import reactor.netty.http.client.HttpClient;
 
 import java.util.List;
 import java.util.Map;
@@ -37,7 +41,11 @@ public class OpenAiNarrationClient implements LlmNarrationClient {
             throw new IllegalStateException("OPENAI_API_KEY is not set");
         }
 
+        HttpClient httpClient = HttpClient.create()
+                .resolver(DefaultAddressResolverGroup.INSTANCE);
+
         this.web = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .baseUrl("https://api.openai.com/v1")
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
