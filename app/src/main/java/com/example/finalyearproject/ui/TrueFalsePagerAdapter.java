@@ -15,15 +15,11 @@ import com.example.finalyearproject.R;
 import com.example.finalyearproject.data.StudyPackResponse;
 import com.example.finalyearproject.data.StudySessionStats;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAdapter.ViewHolder> {
 
     private final List<StudyPackResponse.TrueFalseQuestion> items;
-    // position -> user's selected answer
-    private final Map<Integer, Boolean> selectedAnswers = new HashMap<>();
     private final StudySessionStats sessionStats;
     private final OnStatsChangedListener statsChangedListener;
 
@@ -51,7 +47,7 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
         holder.statementTv.setText(item.statement != null ? item.statement : "");
 
-        boolean alreadyAnswered = selectedAnswers.containsKey(position) || sessionStats.isTrueFalseAnswered(position);
+        boolean alreadyAnswered = sessionStats.isTrueFalseAnswered(position);
 
         if (alreadyAnswered) {
             Boolean selectedValue = sessionStats.getTrueFalseAnswer(position);
@@ -72,10 +68,7 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
             highlightButtons(holder, selected, item.answer);
 
-            holder.itemView.setOnClickListener(v -> {
-                selectedAnswers.remove(position);
-                notifyItemChanged(position);
-            });
+            holder.itemView.setOnClickListener(null);
 
         } else {
             holder.resultTv.setVisibility(View.GONE);
@@ -90,7 +83,6 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
             holder.trueBtn.setOnClickListener(v -> {
                 sessionStats.setTrueFalseAnswer(position, true);
-                selectedAnswers.put(position, true);
 
                 boolean isCorrect = item.answer;
 
@@ -110,7 +102,6 @@ public class TrueFalsePagerAdapter extends RecyclerView.Adapter<TrueFalsePagerAd
 
             holder.falseBtn.setOnClickListener(v -> {
                 sessionStats.setTrueFalseAnswer(position, false);
-                selectedAnswers.put(position, false);
 
                 boolean isCorrect = !item.answer;
 

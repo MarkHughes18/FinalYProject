@@ -3,11 +3,9 @@ package com.example.finalyearproject.ui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -39,6 +37,7 @@ import retrofit2.Response;
 
 import java.util.*;
 
+//handles loading/regenerating packs, switching study modes, tracking stats
 public class StudyPackActivity extends AppCompatActivity {
 
     private TextView statusTv;
@@ -93,6 +92,7 @@ public class StudyPackActivity extends AppCompatActivity {
     private Runnable loaderRunnable;
     private boolean fromContinueLearning = false;
 
+    //initialises UI, gets intent data, sets listeners, starts pack load
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -174,6 +174,7 @@ public class StudyPackActivity extends AppCompatActivity {
         loadStudyPack();
     }
 
+    //calls backend to fetch/generate study pack, restores continue learning state if needed
     private void loadStudyPack() {
         String email = getLoggedInEmail();
         if (email == null) {
@@ -288,6 +289,7 @@ public class StudyPackActivity extends AppCompatActivity {
         });
     }
 
+    //opens the last mode + position user was on
     private void openResumeMode(String resumeMode, int resumePosition) {
         if (resumeMode == null || resumeMode.isBlank()) {
             showFlashcards();
@@ -347,6 +349,7 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     }
 
+    //displays flashcards mode using ViewPager
     private void showFlashcards() {
         updateSelectedTab(btnFlashcards);
         currentPagerMode = "flashcards";
@@ -376,6 +379,7 @@ public class StudyPackActivity extends AppCompatActivity {
         updatePagerCounter("Card", 0, currentPack.flashcards.size());
     }
 
+    //displays cloze mode
     private void showCloze() {
         updateSelectedTab(btnCloze);
         currentPagerMode = "cloze";
@@ -403,6 +407,7 @@ public class StudyPackActivity extends AppCompatActivity {
         updatePagerCounter("Question", 0, currentPack.clozeQuestions.size());
     }
 
+    // display true/false mode
     private void showTrueFalse() {
         updateSelectedTab(btnTrueFalse);
         currentPagerMode = "truefalse";
@@ -429,6 +434,7 @@ public class StudyPackActivity extends AppCompatActivity {
         updatePagerCounter("Question", 0, currentPack.trueFalseQuestions.size());
     }
 
+    //display mcq mode
     private void showMcq() {
         updateSelectedTab(btnMcq);
         currentPagerMode = "mcq";
@@ -456,6 +462,7 @@ public class StudyPackActivity extends AppCompatActivity {
         updatePagerCounter("Question", 0, currentPack.mcqQuestions.size());
     }
 
+    //display matching mode
     private void showMatching() {
         updateSelectedTab(btnMatching);
         currentPagerMode = "matching";
@@ -516,6 +523,7 @@ public class StudyPackActivity extends AppCompatActivity {
         matchingProgressTv.setText("Matched " + matchedItems.size() + " of " + currentPack.matchingPairs.size());
     }
 
+    //switches UI from pager to matching layout
     private void showMatchingGameMode() {
         studyViewPager.setVisibility(View.GONE);
         pagerCounterTv.setVisibility(View.GONE);
@@ -523,6 +531,7 @@ public class StudyPackActivity extends AppCompatActivity {
         matchingGameContainer.setVisibility(View.VISIBLE);
     }
 
+    //shows confirmation dialog before regenerating pack
     private void showRegenerateConfirmation() {
         if (historyId == null || historyId.isBlank()) {
             Toast.makeText(this, "Missing study pack id.", Toast.LENGTH_SHORT).show();
@@ -537,6 +546,7 @@ public class StudyPackActivity extends AppCompatActivity {
                 .show();
     }
 
+    //calls backend to regenerate study pack and resets UI/state
     private void regenerateStudyPack() {
         String email = getLoggedInEmail();
         if (email == null) {
@@ -606,10 +616,7 @@ public class StudyPackActivity extends AppCompatActivity {
         });
     }
 
-    private void hideMatchingGameMode() {
-        matchingGameContainer.setVisibility(View.GONE);
-    }
-
+    //enables/disables study mode buttons
     private void setButtonsEnabled(boolean enabled) {
         btnFlashcards.setEnabled(enabled);
         btnCloze.setEnabled(enabled);
@@ -618,6 +625,7 @@ public class StudyPackActivity extends AppCompatActivity {
         btnMatching.setEnabled(enabled);
     }
 
+    //highlights selected study mode button
     private void updateSelectedTab(Button selectedButton) {
         Button[] buttons = {btnFlashcards, btnCloze, btnTrueFalse, btnMcq, btnMatching};
 
@@ -634,6 +642,7 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     }
 
+    //saves current mode, position and stats for resume feature
     private void saveContinueLearningState() {
         if (currentHistoryId == null || currentFileName == null || currentMode == null) {
             return;
@@ -650,6 +659,7 @@ public class StudyPackActivity extends AppCompatActivity {
         );
     }
 
+    //saves session stats once when leaving activity
     private void persistSessionStatsOnce() {
         if (sessionStatsSaved) {
             return;
@@ -665,6 +675,7 @@ public class StudyPackActivity extends AppCompatActivity {
         sessionStatsSaved = true;
     }
 
+    //updates stats bar UI based on current mode stats
     private void refreshStatsUi() {
         if (statsBarLayout == null) {
             return;
@@ -723,6 +734,7 @@ public class StudyPackActivity extends AppCompatActivity {
         saveContinueLearningState();
     }
 
+    //shows pager UI and hides matching UI
     private void showPagerMode() {
         studyViewPager.setVisibility(View.VISIBLE);
         pagerCounterTv.setVisibility(View.VISIBLE);
@@ -730,6 +742,7 @@ public class StudyPackActivity extends AppCompatActivity {
         matchingGameContainer.setVisibility(View.GONE);
     }
 
+    //shows bottom sheet loader with animated messages
     private void showGeneratingDialog(String title) {
         if (generatingDialog != null && generatingDialog.isShowing()) {
             if (generatingTitleTv != null) {
@@ -754,6 +767,7 @@ public class StudyPackActivity extends AppCompatActivity {
         startLoaderMessages();
     }
 
+    //hides loader dialog and stops messages
     private void hideGeneratingDialog() {
         stopLoaderMessages();
 
@@ -766,6 +780,7 @@ public class StudyPackActivity extends AppCompatActivity {
         generatingMessageTv = null;
     }
 
+    //cycles loading messages every few seconds
     private void startLoaderMessages() {
         String[] messages = new String[]{
                 "Analyzing your document...",
@@ -791,6 +806,7 @@ public class StudyPackActivity extends AppCompatActivity {
         loaderHandler.post(loaderRunnable);
     }
 
+    //stops loading message updates
     private void stopLoaderMessages() {
         if (loaderRunnable != null) {
             loaderHandler.removeCallbacks(loaderRunnable);
@@ -798,17 +814,12 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     }
 
-    private void showRecyclerMode() {
-        studyViewPager.setVisibility(View.GONE);
-        pagerCounterTv.setVisibility(View.GONE);
-        recyclerView.setVisibility(View.VISIBLE);
-        matchingGameContainer.setVisibility(View.GONE);
-    }
-
+    //updates "Question X of Y" counter
     private void updatePagerCounter(String label, int position, int total) {
         pagerCounterTv.setText(label + " " + (position + 1) + " of " + total);
     }
 
+    //tracks page changes and saves position for continue learning
     private final ViewPager2.OnPageChangeCallback pageChangeCallback = new ViewPager2.OnPageChangeCallback() {
         @Override
         public void onPageSelected(int position) {
@@ -829,18 +840,14 @@ public class StudyPackActivity extends AppCompatActivity {
         }
     };
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        finish();
-        return true;
-    }
-
+    //persists stats when user leaves screen
     @Override
     protected void onStop() {
         super.onStop();
         persistSessionStatsOnce();
     }
 
+    //gets logged-in user email from shared prefs
     private String getLoggedInEmail() {
         SharedPreferences prefs = getSharedPreferences("auth", Context.MODE_PRIVATE);
         return prefs.getString("email", null);

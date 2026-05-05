@@ -516,7 +516,7 @@ public class HomeFragment extends Fragment {
                 public void onResponse(Call<HistoryItem> call, Response<HistoryItem> response) {
                     uploadProgress.setVisibility(View.GONE);
                     if (response.isSuccessful() && response.body() != null) {
-                        toast("Upload started. Processing will run in the shadows.");
+                        toast("Upload started. Processing your Study Materials");
                         String email = getLoggedInEmail();
                         if (email != null){
                             getHistory(email);
@@ -563,50 +563,7 @@ public class HomeFragment extends Fragment {
 
         showPlayerBottomSheet(item.fileName, fullUrl);
     }
-    private void playAudioFromUrl(String audioUrlPath) {
-        String fullUrl = audioUrlPath.startsWith("http")
-                ? audioUrlPath
-                : BASE_URL_FOR_MEDIA + audioUrlPath;
-        startMediaPlayer(fullUrl);
-    }
-    private void startMediaPlayer(String url) {
-        try {
-            if (mediaPlayer != null) {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-                mediaPlayer = null;
-            }
-            uploadProgress.setVisibility(View.VISIBLE);
-            toast("Loading audio...");
 
-            mediaPlayer = new android.media.MediaPlayer();
-            mediaPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(url);
-
-            mediaPlayer.setOnPreparedListener(mp -> {
-                uploadProgress.setVisibility(View.GONE);
-                mp.start();
-                toast("Playing");
-            });
-
-            mediaPlayer.setOnCompletionListener(mp -> {
-                toast("Finished");
-            });
-
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                uploadProgress.setVisibility(View.GONE);
-                toast("Audio playback error");
-                return true;
-            });
-
-            mediaPlayer.prepareAsync();
-
-        } catch (Exception e) {
-            uploadProgress.setVisibility(View.GONE);
-            e.printStackTrace();
-            toast("Failed to play audio: " + e.getMessage());
-        }
-    }
     @Override
     public void onStop() {
         super.onStop();

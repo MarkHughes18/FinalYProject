@@ -3,6 +3,10 @@ package com.example.finalyearproject.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Map;
+import java.util.Set;
+
+//saves and restores users last study position and in progress session stats
 public class ContinueLearningPrefs {
 
     private static final String PREF_NAME = "continue_learning_prefs";
@@ -40,6 +44,7 @@ public class ContinueLearningPrefs {
     private static final String KEY_SELECTED_CLOZE = "selected_cloze";
     private static final String KEY_SELECTED_TF = "selected_tf";
 
+    //saves current studypack, mode, position and session stats
     public static void saveContinueLearning(Context context, String historyId, String fileName, String lastMode,
                                             int lastPosition, long lastOpenedAt, StudySessionStats stats) {
 
@@ -85,6 +90,7 @@ public class ContinueLearningPrefs {
         editor.apply();
     }
 
+    //restores the saved data, inc answered positions and selected answers
     public static ContinueLearningData getContinueLearning(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
@@ -132,7 +138,8 @@ public class ContinueLearningPrefs {
         return new ContinueLearningData(historyId, fileName, lastMode, lastPosition, lastOpenedAt, stats);
     }
 
-    private static String setToString(java.util.Set<Integer> set) {
+    //converts positions into a string for SharedPref
+    private static String setToString(Set<Integer> set) {
         if (set == null || set.isEmpty()) {
             return "";
         }
@@ -154,7 +161,8 @@ public class ContinueLearningPrefs {
         return sb.toString();
     }
 
-    private static void restoreSet(java.util.Set<Integer> target, String saved) {
+    //restores answered q position from the string ^^^
+    private static void restoreSet(Set<Integer> target, String saved) {
         if (target == null || saved == null || saved.isBlank()) {
             return;
         }
@@ -169,14 +177,15 @@ public class ContinueLearningPrefs {
         }
     }
 
-    private static String intMapToString(java.util.Map<Integer, Integer> map) {
+    //converts selected answer map into a key=value string
+    private static String intMapToString(Map<Integer, Integer> map) {
         if (map == null || map.isEmpty()) {
             return "";
         }
 
         StringBuilder sb = new StringBuilder();
 
-        for (java.util.Map.Entry<Integer, Integer> entry : map.entrySet()) {
+        for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
             if (entry.getKey() == null || entry.getValue() == null) {
                 continue;
             }
@@ -191,7 +200,8 @@ public class ContinueLearningPrefs {
         return sb.toString();
     }
 
-    private static void restoreIntMap(java.util.Map<Integer, Integer> target, String saved) {
+    //restores selected answer maps from saved key=value string
+    private static void restoreIntMap(Map<Integer, Integer> target, String saved) {
         if (target == null || saved == null || saved.isBlank()) {
             return;
         }
@@ -212,14 +222,14 @@ public class ContinueLearningPrefs {
         }
     }
 
-    private static String boolMapToString(java.util.Map<Integer, Boolean> map) {
+    private static String boolMapToString(Map<Integer, Boolean> map) {
         if (map == null || map.isEmpty()) {
             return "";
         }
 
         StringBuilder sb = new StringBuilder();
 
-        for (java.util.Map.Entry<Integer, Boolean> entry : map.entrySet()) {
+        for (Map.Entry<Integer, Boolean> entry : map.entrySet()) {
             if (entry.getKey() == null || entry.getValue() == null) {
                 continue;
             }
@@ -234,7 +244,7 @@ public class ContinueLearningPrefs {
         return sb.toString();
     }
 
-    private static void restoreBoolMap(java.util.Map<Integer, Boolean> target, String saved) {
+    private static void restoreBoolMap(Map<Integer, Boolean> target, String saved) {
         if (target == null || saved == null || saved.isBlank()) {
             return;
         }
@@ -253,11 +263,6 @@ public class ContinueLearningPrefs {
             } catch (Exception ignored) {
             }
         }
-    }
-
-    public static void clearContinueLearning(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        prefs.edit().clear().apply();
     }
 
     public static class ContinueLearningData {
